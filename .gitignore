@@ -1,0 +1,6 @@
+/waifuwebshelf
+.env
+data/*.db
+data/*.db-*
+data/images/*
+!data/images/.gitkeep

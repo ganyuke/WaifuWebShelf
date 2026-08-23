@@ -1,0 +1,47 @@
+{{define "admin_bookline_form"}}
+{{template "header" .}}
+<p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
+<div class="box">
+  <h1 class="bar">{{if .Data.New}}New book line{{else}}Edit book line{{end}}</h1>
+  <form class="stack" method="post">
+    <label>Format
+      <select name="kind">
+        <option value="manga" {{if eq .Data.Kind "manga"}}selected{{end}}>Manga</option>
+        <option value="light_novel" {{if eq .Data.Kind "light_novel"}}selected{{end}}>Light novel</option>
+        <option value="artbook" {{if eq .Data.Kind "artbook"}}selected{{end}}>Artbook</option>
+        <option value="other" {{if eq .Data.Kind "other"}}selected{{end}}>Other</option>
+      </select>
+    </label>
+    <label>Label <input name="label" value="{{.Data.Label}}" placeholder="optional, e.g. Official Comic Anthology"></label>
+    <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="leave blank if unknown / ongoing"></label>
+    <label>Default currency
+      <input name="default_currency" value="{{if .Data.DefaultCurrency}}{{.Data.DefaultCurrency}}{{else}}CAD{{end}}" list="currencies" maxlength="8">
+    </label>
+    <datalist id="currencies">
+      <option value="CAD"><option value="USD"><option value="JPY"><option value="EUR">
+    </datalist>
+    <label>Default MSRP <input name="default_msrp" inputmode="decimal" value="{{.Data.DefaultMSRP}}" placeholder="prefilled on new volumes"></label>
+    <button type="submit">Save</button>
+  </form>
+</div>
+{{if not .Data.New}}
+<section class="panel">
+  <h2>Volumes</h2>
+  <ul>
+    {{range .Data.Volumes}}
+    <li>
+      Vol. {{.VolumeNumber}}
+      {{if .Store}} · {{.Store}}{{end}}
+      · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>
+    </li>
+    {{else}}
+    <li class="muted">None yet</li>
+    {{end}}
+  </ul>
+  <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a></p>
+</section>
+{{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
+<p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete book line</a></p>
+{{end}}
+{{template "footer" .}}
+{{end}}

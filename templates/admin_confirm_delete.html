@@ -1,0 +1,14 @@
+{{define "admin_confirm_delete"}}
+{{template "header" .}}
+<div class="box">
+  <h1 class="bar">Delete {{.Data.Title}}?</h1>
+  <p>{{.Data.Body}}</p>
+  <form class="stack" method="post" action="{{.Data.Action}}">
+    <div>
+      <button type="submit" class="danger">Delete</button>
+      <a class="btn secondary" href="{{.Data.Cancel}}">Cancel</a>
+    </div>
+  </form>
+</div>
+{{template "footer" .}}
+{{end}}

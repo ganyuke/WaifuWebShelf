@@ -1,0 +1,50 @@
+{{define "admin_series_form"}}
+{{template "header" .}}
+<p class="crumb"><a href="/admin">Admin</a></p>
+<div class="box">
+  <h1 class="bar">{{if .Data.New}}New series{{else}}Edit {{.Data.Name}}{{end}}</h1>
+  <form class="stack" method="post" enctype="multipart/form-data">
+    <label>Name <input name="name" value="{{.Data.Name}}" required></label>
+    <label>Slug <input name="slug" value="{{.Data.Slug}}" placeholder="generated from name if empty"></label>
+    <label>Notes <textarea name="notes" rows="4">{{.Data.Notes}}</textarea></label>
+    <label>Cover photo <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+    {{if .Data.Image}}
+    <p class="thumb-row"><img src="{{imageURL .Data.Image}}" alt="" class="thumb">
+    <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
+    {{end}}
+    <button type="submit">Save</button>
+  </form>
+</div>
+{{if not .Data.New}}
+<section class="panel">
+  <h2>Book lines</h2>
+  <ul>
+    {{range .Data.Lines}}
+    <li>
+      {{lineTitle .Kind .Label}}
+      · <a href="/admin/book-lines/{{.ID}}/edit">Edit</a>
+      · <a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a>
+    </li>
+    {{else}}
+    <li class="muted">None yet</li>
+    {{end}}
+  </ul>
+  <p><a class="btn" href="/admin/series/{{.Data.ID}}/book-lines/new">Add book line</a></p>
+</section>
+<section class="panel">
+  <h2>Merch</h2>
+  <ul>
+    {{range .Data.Merch}}
+    <li><a href="/admin/merch/{{.ID}}/edit">{{.Name}}</a></li>
+    {{else}}
+    <li class="muted">None yet</li>
+    {{end}}
+  </ul>
+  <p><a class="btn" href="/admin/series/{{.Data.ID}}/merch/new">Add merch</a></p>
+</section>
+  <p class="admin-actions"><a href="/series/{{.Data.Slug}}">View public page</a></p>
+{{template "links_editor" dict "Links" .Data.Links "OwnerType" "series" "OwnerID" .Data.ID "Next" (printf "/admin/series/%d/edit" .Data.ID)}}
+<p class="admin-actions"><a class="danger-text" href="/admin/series/{{.Data.ID}}/delete">Delete series</a></p>
+{{end}}
+{{template "footer" .}}
+{{end}}

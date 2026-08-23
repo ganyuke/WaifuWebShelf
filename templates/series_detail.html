@@ -1,0 +1,88 @@
+{{define "series_detail"}}
+{{template "header" .}}
+<div class="box">
+  <div class="bar">
+    <h1>{{.Data.Series.Name}}</h1>
+    {{if $.SignedIn}}
+    <span>
+      <a href="/admin/series/{{.Data.Series.ID}}/edit">Edit</a>
+      · <a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add book line</a>
+      · <a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>
+    </span>
+    {{end}}
+  </div>
+  <header class="series-hero">
+    {{if .Data.Cover}}<img class="series-cover" src="{{imageURL .Data.Cover}}" alt="">{{end}}
+    <div>
+      {{template "links_list" .Data.Links}}
+      {{if .Data.Series.Notes}}<p class="notes">{{.Data.Series.Notes}}</p>{{end}}
+    </div>
+  </header>
+</div>
+
+{{range $grid := .Data.Grids}}
+<div class="box book-line">
+  <div class="bar">
+    <h2>{{$grid.Caption}}</h2>
+    {{if $.SignedIn}}<a href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new">Add volume</a>{{end}}
+  </div>
+  {{template "links_list" $grid.Links}}
+  {{if $grid.Cells}}
+  <ol class="vol-grid">
+    {{range $grid.Cells}}
+    <li>
+      {{if .Owned}}
+      <a class="vol-cell owned" href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}{{if gt (len .Copies) 1}} · {{len .Copies}} copies{{end}}">{{.Number}}{{if gt (len .Copies) 1}}<span class="copy-count">×{{len .Copies}}</span>{{end}}</a>
+      {{else if $.SignedIn}}
+      <a class="vol-cell missing" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{.Number}}</a>
+      {{else}}
+      <span class="vol-cell missing">{{.Number}}</span>
+      {{end}}
+    </li>
+    {{end}}
+  </ol>
+  {{end}}
+  {{if $grid.Extras}}
+  <h3>Extras</h3>
+  <ul class="extras">
+    {{range $grid.Extras}}
+    <li><a href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.VolumeNumber}}">Vol. {{.VolumeNumber}}</a></li>
+    {{end}}
+  </ul>
+  {{end}}
+</div>
+{{else}}
+<div class="box">
+  <div class="bar">
+    <h2>Books</h2>
+    {{if $.SignedIn}}<a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add book line</a>{{end}}
+  </div>
+  <p class="muted">No manga or light novel lines yet.</p>
+</div>
+{{end}}
+
+<div class="box">
+  <div class="bar">
+    <h2>Merchandise</h2>
+    {{if $.SignedIn}}<a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>{{end}}
+  </div>
+  {{if .Data.Merch}}
+  <div class="card-grid merch-grid">
+    {{range .Data.Merch}}
+    <a class="card" href="/merch/{{.ID}}">
+      <div class="cover">
+        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+      </div>
+      <div class="card-body">
+        <h2>{{.Name}}</h2>
+        {{if .Kind}}<p class="muted">{{.Kind}}{{if gt .Quantity 1}} · ×{{.Quantity}}{{end}}</p>{{end}}
+      </div>
+    </a>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="muted">No merch for this series.</p>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

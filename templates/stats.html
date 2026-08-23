@@ -1,0 +1,52 @@
+{{define "stats"}}
+{{template "header" .}}
+<div class="box">
+  <h1 class="bar">Spending</h1>
+  <section class="overview">
+    <article class="stat"><h3>Series</h3><p class="big">{{.Data.SeriesCount}}</p></article>
+    <article class="stat"><h3>Volumes</h3><p class="big">{{.Data.VolumeCount}}</p></article>
+    <article class="stat"><h3>Merch pieces</h3><p class="big">{{.Data.MerchPieces}}</p></article>
+  </section>
+  {{template "money_block" .Data.ByCurrency}}
+</div>
+<div class="box">
+  <h2 class="bar">Purchases</h2>
+  {{if .Data.Expenditures}}
+  <div class="table-wrap">
+    <table class="catalog">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Item</th>
+          <th>Store</th>
+          <th class="num">MSRP</th>
+          <th class="num">Without tax</th>
+          <th class="num">With tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data.Expenditures}}
+        <tr>
+          <td class="date">{{if .PurchasedAt.Valid}}{{.PurchasedAt.String}}{{else}}—{{end}}</td>
+          <td>
+            {{if eq .Kind "volume"}}
+            <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} · {{lineTitle .LineKind .LineLabel}} · Vol. {{.VolumeNumber}}</a>
+            {{else}}
+            <a href="/merch/{{.ID}}">{{.SeriesName}} · {{.Name}}</a>{{if .MerchKind}} · {{.MerchKind}}{{end}}{{if gt .Quantity 1}} · ×{{.Quantity}}{{end}}
+            {{end}}
+          </td>
+          <td>{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
+          <td class="num">{{money .MSRPCents.Valid .MSRPCents.Int64 .Currency}}</td>
+          <td class="num">{{money .PriceExTaxCents.Valid .PriceExTaxCents.Int64 .Currency}}</td>
+          <td class="num">{{money .PriceIncTaxCents.Valid .PriceIncTaxCents.Int64 .Currency}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">No purchases yet.</p>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

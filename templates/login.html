@@ -1,0 +1,13 @@
+{{define "login"}}
+{{template "header" .}}
+<div class="box">
+  <h1 class="bar">Log in</h1>
+  <form class="stack" method="post" action="/login">
+    <input type="hidden" name="next" value="{{.Data.Next}}">
+    <label>Username <input name="username" value="{{.Data.Username}}" autocomplete="username" required></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Log in</button>
+  </form>
+</div>
+{{template "footer" .}}
+{{end}}

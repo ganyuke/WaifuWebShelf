@@ -1,0 +1,134 @@
+{{define "header"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .Title}}{{.Title}} · {{end}}WaifuWebShelf</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="/">WaifuWebShelf</a>
+  <nav>
+    <a class="{{active .Path "/"}}" href="/">Home</a>
+    <a class="{{active .Path "/series"}}" href="/series">Series</a>
+    <a class="{{active .Path "/merch"}}" href="/merch">Merch</a>
+    <a class="{{active .Path "/stats"}}" href="/stats">Spending</a>
+    {{if .SignedIn}}
+    <a class="{{active .Path "/admin"}}" href="/admin">Admin</a>
+    <form method="post" action="/logout" class="nav-form"><button type="submit">Log out</button></form>
+    {{else if .AdminEnabled}}
+    <a class="{{active .Path "/login"}}" href="/login">Admin</a>
+    {{end}}
+  </nav>
+</header>
+<main class="wrap">
+{{if flashText .Flash}}<p class="flash">{{flashText .Flash}}</p>{{end}}
+{{if .Err}}<p class="error">{{.Err}}</p>{{end}}
+{{end}}
+
+{{define "footer"}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "links_list"}}
+{{if .}}
+<ul class="ext-links">
+  {{range .}}
+  <li>
+    <a href="{{.URL}}" rel="noopener noreferrer">
+      <img src="/static/icons/{{.Icon}}.svg" alt="" width="16" height="16">
+      {{.Label}}
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{end}}
+{{end}}
+
+{{define "links_editor"}}
+<section class="panel">
+  <h2>{{if .Title}}{{.Title}}{{else}}Links{{end}}</h2>
+  {{template "links_list" .Links}}
+  {{range .Links}}
+  <form class="inline" method="post" action="/admin/links/{{.ID}}/delete">
+    <input type="hidden" name="next" value="{{$.Next}}">
+    <button type="submit" class="danger-text">Remove {{.Label}}</button>
+  </form>
+  {{end}}
+  <form class="stack" method="post" action="/admin/links">
+    <input type="hidden" name="owner_type" value="{{.OwnerType}}">
+    <input type="hidden" name="owner_id" value="{{.OwnerID}}">
+    <input type="hidden" name="owner_key" value="{{.OwnerKey}}">
+    <input type="hidden" name="next" value="{{.Next}}">
+    <label>Label <input name="label" placeholder="MAL" required></label>
+    <label>URL <input name="url" type="url" placeholder="https://" required></label>
+    <button type="submit">Add link</button>
+  </form>
+</section>
+{{end}}
+
+{{define "purchase_fields"}}
+<label>Bought on <input type="date" name="purchased_at" value="{{.PurchasedAt}}"></label>
+<label>Store <input name="store" value="{{.Store}}" placeholder="Kinokuniya, AmiAmi, …"></label>
+<label>Currency
+  <input name="currency" value="{{if .Currency}}{{.Currency}}{{else}}CAD{{end}}" list="currencies" maxlength="8">
+</label>
+<datalist id="currencies">
+  <option value="CAD"><option value="USD"><option value="JPY"><option value="EUR">
+</datalist>
+<label>MSRP <input name="msrp" inputmode="decimal" value="{{.MSRP}}" placeholder="list price for this purchase"></label>
+<label>Paid without tax <input name="price_ex_tax" inputmode="decimal" value="{{.PriceEx}}"></label>
+<label>Paid with tax <input name="price_inc_tax" inputmode="decimal" value="{{.PriceInc}}"></label>
+<label>Notes <textarea name="notes" rows="3">{{.Notes}}</textarea></label>
+{{end}}
+
+{{define "series_card"}}
+<tr>
+  <td class="catalog-cover">
+    {{if .Cover}}<img src="{{imageURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+  </td>
+  <td><a href="/series/{{.Slug}}">{{.Name}}</a></td>
+  <td>
+    {{range .Lines}}{{lineTitle .Kind .Label}} · {{progress .Owned .Total}}<br>{{else}}—{{end}}
+  </td>
+  <td>{{if .MerchCount}}{{.MerchCount}}{{else}}—{{end}}</td>
+</tr>
+{{end}}
+
+{{define "money_block"}}
+<section class="stats-grid">
+  {{range .}}
+  <article class="spend-card">
+    <h3>{{.Currency}}</h3>
+    <dl class="spend-rows">
+      <div>
+        <dt>MSRP</dt>
+        <dd>{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</dd>
+      </div>
+      <div>
+        <dt>Paid without tax</dt>
+        <dd>{{amount .ExTaxCents .Currency}}</dd>
+      </div>
+      <div>
+        <dt>Paid with tax</dt>
+        <dd>{{amount .IncTaxCents .Currency}}</dd>
+      </div>
+      {{if .WithMSRP}}
+      <div class="delta {{if gt .DeltaCents 0}}under{{else if lt .DeltaCents 0}}over{{end}}">
+        <dt>Vs MSRP</dt>
+        <dd>{{amountDelta .DeltaCents .Currency}}</dd>
+      </div>
+      {{end}}
+    </dl>
+    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} items have no MSRP.</p>{{end}}
+  </article>
+  {{else}}
+  <p class="muted">No purchases yet.</p>
+  {{end}}
+</section>
+{{end}}

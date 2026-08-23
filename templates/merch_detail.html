@@ -1,0 +1,26 @@
+{{define "merch_detail"}}
+{{template "header" .}}
+<p class="crumb"><a href="/series/{{.Data.Merch.SeriesSlug}}">{{.Data.Merch.SeriesName}}</a> · merch</p>
+<div class="box">
+  <div class="bar">
+    <h1>{{.Data.Merch.Name}}</h1>
+    {{if $.SignedIn}}<a href="/admin/merch/{{.Data.Merch.ID}}/edit">Edit</a>{{end}}
+  </div>
+  <article class="detail">
+    {{if .Data.Merch.ImagePath.Valid}}<img class="hero-img" src="{{imageURL .Data.Merch.ImagePath.String}}" alt="">{{end}}
+    <div>
+      {{if .Data.Merch.Kind}}<p class="muted">{{.Data.Merch.Kind}}{{if gt .Data.Merch.Quantity 1}} · ×{{.Data.Merch.Quantity}}{{end}}</p>{{end}}
+      {{template "links_list" .Data.Links}}
+      <dl class="facts">
+        {{if .Data.Merch.PurchasedAt.Valid}}<dt>Bought</dt><dd>{{.Data.Merch.PurchasedAt.String}}</dd>{{end}}
+        {{if .Data.Merch.Store}}<dt>Store</dt><dd>{{.Data.Merch.Store}}</dd>{{end}}
+        <dt>MSRP</dt><dd>{{money .Data.Merch.MSRPCents.Valid .Data.Merch.MSRPCents.Int64 .Data.Merch.Currency}}</dd>
+        <dt>Paid without tax</dt><dd>{{money .Data.Merch.PriceExTaxCents.Valid .Data.Merch.PriceExTaxCents.Int64 .Data.Merch.Currency}}</dd>
+        <dt>Paid with tax</dt><dd>{{money .Data.Merch.PriceIncTaxCents.Valid .Data.Merch.PriceIncTaxCents.Int64 .Data.Merch.Currency}}</dd>
+      </dl>
+      {{if .Data.Merch.Notes}}<p class="notes">{{.Data.Merch.Notes}}</p>{{end}}
+    </div>
+  </article>
+</div>
+{{template "footer" .}}
+{{end}}

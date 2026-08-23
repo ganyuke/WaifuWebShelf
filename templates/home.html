@@ -1,0 +1,21 @@
+{{define "home"}}
+{{template "header" .}}
+<div class="box">
+  <div class="bar">
+    <h1>Series</h1>
+    {{if .SignedIn}}<a href="/admin/series/new">Add series</a>{{end}}
+  </div>
+  <p class="subhead">{{.Data.Stats.SeriesCount}} series · {{.Data.Stats.VolumeCount}} volumes · {{.Data.Stats.MerchPieces}} merch · <a href="/stats">Spending</a></p>
+  {{if .Data.Series}}
+  <table class="catalog">
+    <thead><tr><th></th><th>Series</th><th>Books</th><th>Merch</th></tr></thead>
+    <tbody>
+      {{range .Data.Series}}{{template "series_card" .}}{{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No series yet.{{if $.SignedIn}} <a href="/admin/series/new">Add a series</a>.{{end}}</p>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

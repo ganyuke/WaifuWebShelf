@@ -1,0 +1,258 @@
+package web
+
+import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"fmt"
+	"html/template"
+	"io/fs"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
+	"waifuwebshelf/internal/config"
+	"waifuwebshelf/internal/db"
+)
+
+type Server struct {
+	cfg       config.Config
+	db        *db.DB
+	tmpl      *template.Template
+	staticDir string
+	imagesDir string
+	sessions  map[string]time.Time
+	sessionMu sync.Mutex
+	pageMu    sync.Mutex
+	pageGen   uint64
+	pageHTML  map[string][]byte
+}
+
+type View struct {
+	Title        string
+	Path         string
+	Flash        string
+	Err          string
+	AdminEnabled bool
+	SignedIn     bool
+	Data         any
+}
+
+func New(cfg config.Config, store *db.DB) (*Server, error) {
+	tmplDir, err := findDir("templates")
+	if err != nil {
+		return nil, fmt.Errorf("templates directory not found; run from the repo root or place templates next to the binary")
+	}
+	staticDir, err := findDir("static")
+	if err != nil {
+		return nil, fmt.Errorf("static directory not found; run from the repo root or place static next to the binary")
+	}
+	tmpl, err := template.New("").Funcs(funcMap()).ParseGlob(filepath.Join(tmplDir, "*.html"))
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(cfg.ImagesDir(), 0o755); err != nil {
+		return nil, err
+	}
+	return &Server{
+		cfg:       cfg,
+		db:        store,
+		tmpl:      tmpl,
+		staticDir: staticDir,
+		imagesDir: cfg.ImagesDir(),
+		sessions:  map[string]time.Time{},
+		pageHTML:  map[string][]byte{},
+	}, nil
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.staticDir))))
+	mux.Handle("GET /images/", http.StripPrefix("/images/", s.imageServer()))
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		http.ServeFile(w, r, filepath.Join(s.staticDir, "favicon.svg"))
+	})
+
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("ok\n"))
+	})
+
+	mux.HandleFunc("GET /{$}", s.home)
+	mux.HandleFunc("GET /series", s.seriesList)
+	mux.HandleFunc("GET /series/{slug}", s.seriesDetail)
+	mux.HandleFunc("GET /series/{slug}/{lineSlug}/{number}", s.volumePage)
+	mux.HandleFunc("GET /merch", s.merchList)
+	mux.HandleFunc("GET /merch/{id}", s.merchDetail)
+	mux.HandleFunc("GET /stats", s.statsPage)
+
+	mux.HandleFunc("GET /login", s.loginForm)
+	mux.HandleFunc("POST /login", s.loginSubmit)
+	mux.HandleFunc("POST /logout", s.logout)
+
+	mux.HandleFunc("GET /admin", s.requireAdmin(s.adminHome))
+	mux.HandleFunc("GET /admin/{$}", s.requireAdmin(s.adminHome))
+
+	mux.HandleFunc("GET /admin/series/new", s.requireAdmin(s.seriesForm))
+	mux.HandleFunc("POST /admin/series/new", s.requireAdmin(s.seriesSaveNew))
+	mux.HandleFunc("GET /admin/series/{id}/edit", s.requireAdmin(s.seriesEdit))
+	mux.HandleFunc("POST /admin/series/{id}/edit", s.requireAdmin(s.seriesSaveEdit))
+	mux.HandleFunc("GET /admin/series/{id}/delete", s.requireAdmin(s.seriesDeleteForm))
+	mux.HandleFunc("POST /admin/series/{id}/delete", s.requireAdmin(s.seriesDelete))
+
+	mux.HandleFunc("GET /admin/series/{id}/book-lines/new", s.requireAdmin(s.bookLineNewForm))
+	mux.HandleFunc("POST /admin/series/{id}/book-lines/new", s.requireAdmin(s.bookLineSaveNew))
+	mux.HandleFunc("GET /admin/book-lines/{id}/edit", s.requireAdmin(s.bookLineEdit))
+	mux.HandleFunc("POST /admin/book-lines/{id}/edit", s.requireAdmin(s.bookLineSaveEdit))
+	mux.HandleFunc("GET /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDeleteForm))
+	mux.HandleFunc("POST /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDelete))
+
+	mux.HandleFunc("GET /admin/book-lines/{id}/volumes/new", s.requireAdmin(s.volumeNewForm))
+	mux.HandleFunc("POST /admin/book-lines/{id}/volumes/new", s.requireAdmin(s.volumeSaveNew))
+	mux.HandleFunc("GET /admin/volumes/{id}/edit", s.requireAdmin(s.volumeEdit))
+	mux.HandleFunc("POST /admin/volumes/{id}/edit", s.requireAdmin(s.volumeSaveEdit))
+	mux.HandleFunc("GET /admin/volumes/{id}/delete", s.requireAdmin(s.volumeDeleteForm))
+	mux.HandleFunc("POST /admin/volumes/{id}/delete", s.requireAdmin(s.volumeDelete))
+
+	mux.HandleFunc("GET /admin/series/{id}/merch/new", s.requireAdmin(s.merchNewForm))
+	mux.HandleFunc("POST /admin/series/{id}/merch/new", s.requireAdmin(s.merchSaveNew))
+	mux.HandleFunc("GET /admin/merch/{id}/edit", s.requireAdmin(s.merchEdit))
+	mux.HandleFunc("POST /admin/merch/{id}/edit", s.requireAdmin(s.merchSaveEdit))
+	mux.HandleFunc("GET /admin/merch/{id}/delete", s.requireAdmin(s.merchDeleteForm))
+	mux.HandleFunc("POST /admin/merch/{id}/delete", s.requireAdmin(s.merchDelete))
+
+	mux.HandleFunc("POST /admin/links", s.requireAdmin(s.linkCreate))
+	mux.HandleFunc("POST /admin/links/{id}/delete", s.requireAdmin(s.linkDelete))
+
+	return s.withPageCache(mux)
+}
+
+func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !s.cfg.AdminEnabled() {
+			http.Error(w, "admin is disabled (set ADMIN_PASS)", http.StatusServiceUnavailable)
+			return
+		}
+		if !s.loggedIn(r) {
+			http.Redirect(w, r, "/login?next="+url.QueryEscape(r.URL.RequestURI()), http.StatusSeeOther)
+			return
+		}
+		next(w, r)
+	}
+}
+
+func secureEqual(a, b string) bool {
+	ah := sha256.Sum256([]byte(a))
+	bh := sha256.Sum256([]byte(b))
+	return subtle.ConstantTimeCompare(ah[:], bh[:]) == 1
+}
+
+func logRequest(r *http.Request, cache string) {
+	log.Printf("%s %s ip=%s cache=%s", r.Method, r.URL.Path, clientIP(r), cache)
+}
+
+func clientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		if i := strings.IndexByte(fwd, ','); i >= 0 {
+			fwd = fwd[:i]
+		}
+		if ip := strings.TrimSpace(fwd); ip != "" {
+			return ip
+		}
+	}
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func requestHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if i := strings.IndexByte(proto, ','); i >= 0 {
+		proto = proto[:i]
+	}
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
+func logSafeUser(user string) string {
+	user = strings.ReplaceAll(strings.ReplaceAll(user, "\n", " "), "\r", "")
+	if len(user) > 64 {
+		return user[:64]
+	}
+	return user
+}
+
+func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title string, data any) {
+	s.renderErr(w, r, name, title, "", data)
+}
+
+func (s *Server) renderErr(w http.ResponseWriter, r *http.Request, name, title, formErr string, data any) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	view := View{
+		Title:        title,
+		Path:         r.URL.Path,
+		Flash:        r.URL.Query().Get("ok"),
+		Err:          formErr,
+		AdminEnabled: s.cfg.AdminEnabled(),
+		SignedIn:     s.loggedIn(r),
+		Data:         data,
+	}
+	if err := s.tmpl.ExecuteTemplate(w, name, view); err != nil {
+		log.Printf("template %s: %v", name, err)
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotFound)
+	s.render(w, r, "notfound", "Not found", nil)
+}
+
+func (s *Server) serverError(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("error: %v", err)
+	http.Error(w, "internal server error", http.StatusInternalServerError)
+}
+
+func findDir(name string) (string, error) {
+	var starts []string
+	if cwd, err := os.Getwd(); err == nil {
+		starts = append(starts, cwd)
+	}
+	if exe, err := os.Executable(); err == nil {
+		starts = append(starts, filepath.Dir(exe))
+	}
+	seen := map[string]bool{}
+	for _, start := range starts {
+		dir := start
+		for i := 0; i < 6; i++ {
+			if seen[dir] {
+				break
+			}
+			seen[dir] = true
+			candidate := filepath.Join(dir, name)
+			if st, err := os.Stat(candidate); err == nil && st.IsDir() {
+				return candidate, nil
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	return "", fs.ErrNotExist
+}

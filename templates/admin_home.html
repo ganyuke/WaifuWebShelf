@@ -1,0 +1,34 @@
+{{define "admin_home"}}
+{{template "header" .}}
+<div class="box">
+  <div class="bar">
+    <h1>Admin</h1>
+    <a href="/admin/series/new">Add series</a>
+  </div>
+  {{if .Data}}
+  <table class="admin-table">
+    <thead><tr><th>Series</th><th>Books</th><th>Merch</th><th></th></tr></thead>
+    <tbody>
+    {{range .Data}}
+      <tr>
+        <td><a href="/admin/series/{{.ID}}/edit">{{.Name}}</a></td>
+        <td>
+          {{range .Lines}}{{lineTitle .Kind .Label}} {{progress .Owned .Total}}
+          · <a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a><br>{{else}}—{{end}}
+        </td>
+        <td>{{.MerchCount}}</td>
+        <td>
+          <a href="/admin/series/{{.ID}}/edit">Edit</a>
+          · <a href="/admin/series/{{.ID}}/book-lines/new">Add book line</a>
+          · <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No series yet. <a href="/admin/series/new">Add one</a>, then book lines, volumes, and merch hang off that series.</p>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}
