@@ -122,14 +122,14 @@
 {{end}}
 
 {{define "wish_money"}}
-<table class="catalog">
+<table class="catalog stack-sm">
   <thead><tr><th>Currency</th><th class="num">Items</th><th class="num">List price</th></tr></thead>
   <tbody>
     {{range .}}
     <tr>
-      <td>{{.Currency}}</td>
-      <td class="num">{{.ItemCount}}</td>
-      <td class="num strong">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
+      <td class="head">{{.Currency}}</td>
+      <td class="num" data-label="Items">{{.ItemCount}}</td>
+      <td class="num strong" data-label="List price">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
     </tr>
     {{end}}
   </tbody>
@@ -139,7 +139,7 @@
 
 {{define "money_block"}}
 {{if .Totals}}
-<table class="catalog">
+<table class="catalog stack-sm">
   <thead>
     <tr>
       <th>Currency</th>
@@ -153,12 +153,12 @@
   <tbody>
     {{range .Totals}}
     <tr>
-      <td>{{.Currency}}</td>
-      <td class="num">{{.ItemCount}}</td>
-      <td class="num strong">{{amount .IncTaxCents .Currency}}</td>
-      {{if $.SignedIn}}<td class="num">{{amount .ExTaxCents .Currency}}</td>{{end}}
-      <td class="num">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
-      <td class="num {{if gt .DeltaCents 0}}under{{else if lt .DeltaCents 0}}over{{end}}">{{if .WithMSRP}}{{amount .DeltaCents .Currency}}{{else}}—{{end}}</td>
+      <td class="head">{{.Currency}}</td>
+      <td class="num" data-label="Items">{{.ItemCount}}</td>
+      <td class="num strong" data-label="Paid">{{amount .IncTaxCents .Currency}}</td>
+      {{if $.SignedIn}}<td class="num" data-label="Before tax">{{amount .ExTaxCents .Currency}}</td>{{end}}
+      <td class="num" data-label="List price">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
+      <td class="num {{if gt .DeltaCents 0}}under{{else if lt .DeltaCents 0}}over{{end}}" data-label="Saved">{{if .WithMSRP}}{{amount .DeltaCents .Currency}}{{else}}—{{end}}</td>
     </tr>
     {{end}}
   </tbody>

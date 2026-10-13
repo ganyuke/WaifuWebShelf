@@ -17,7 +17,7 @@
               <a href="/series/{{.Slug}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
             </td>
             <td class="name-cell"><a class="name" href="/series/{{.Slug}}">{{.Name}}</a></td>
-            <td>
+            <td class="lines-cell">
               {{if .Lines}}
               <table class="lines">
                 {{range .Lines}}
@@ -30,7 +30,7 @@
               </table>
               {{else}}—{{end}}
             </td>
-            <td class="num">{{if .MerchCount}}{{.MerchCount}}{{else}}—{{end}}</td>
+            <td class="num merch-cell" data-label="Merch">{{if .MerchCount}}{{.MerchCount}}{{else}}—{{end}}</td>
           </tr>
           {{end}}
         </tbody>

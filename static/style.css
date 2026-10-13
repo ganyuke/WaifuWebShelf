@@ -344,3 +344,35 @@ button.danger { background: var(--danger); border-color: var(--danger); }
   .series-table .name-cell { width: auto; }
   .key { margin-left: 0; }
 }
+
+/* Phones: each table row becomes a small block, with column names as labels */
+@media (max-width: 640px) {
+  .stack-sm, .stack-sm tbody { display: block; }
+  .stack-sm thead { display: none; }
+  .stack-sm tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .stack-sm tbody tr:hover { background: none; }
+  .stack-sm td { display: flex; justify-content: space-between; gap: 16px; padding: 1px 0; border: 0; text-align: right; white-space: normal; }
+  .stack-sm td[data-label]::before { content: attr(data-label); flex: none; color: var(--muted); font-weight: 400; text-align: left; }
+  .stack-sm td.head { display: block; text-align: left; font-weight: 700; }
+  .stack-sm td.wide { display: block; text-align: left; padding: 2px 0 4px; }
+
+  .series-table, .series-table > tbody { display: block; }
+  .series-table > thead { display: none; }
+  .series-table > tbody > tr { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .series-table > tbody > tr > td { display: block; padding: 0; border: 0; }
+  .series-table .catalog-cover { grid-row: 1 / span 3; width: auto; }
+  .series-table .merch-cell { text-align: left; color: var(--muted); }
+  .series-table .merch-cell::before { content: attr(data-label) " "; }
+  .lines, .lines tbody { display: block; }
+  .lines tr { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 2px; }
+  .lines td, .lines td:last-child { display: block; }
+  .lines td:last-child { flex: none; text-align: right; white-space: nowrap; }
+
+  .trips tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "date paid" "store count" "items items"; gap: 0 16px; }
+  .trips td.head { grid-area: date; }
+  .trips td[data-label="Paid"] { grid-area: paid; }
+  .trips td[data-label="Store"] { grid-area: store; justify-content: flex-start; color: var(--muted); }
+  .trips td[data-label="Count"] { grid-area: count; justify-content: flex-end; color: var(--muted); gap: 5px; }
+  .trips td[data-label="Paid"]::before, .trips td[data-label="Store"]::before { content: none; }
+  .trips td.wide { grid-area: items; padding-top: 4px; }
+}

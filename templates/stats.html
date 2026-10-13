@@ -19,14 +19,14 @@
   <h2 class="bar">Purchases</h2>
   {{if .Data.Trips}}
   <div class="table-wrap">
-    <table class="catalog">
+    <table class="catalog stack-sm trips">
       <thead><tr><th>Date</th><th>Store</th><th>Items</th><th class="num">Count</th><th class="num">Paid</th></tr></thead>
       <tbody>
         {{range .Data.Trips}}
         <tr>
-          <td class="date">{{if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</td>
-          <td>{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
-          <td>
+          <td class="date head">{{if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</td>
+          <td data-label="Store">{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
+          <td class="wide">
             {{range $line := .Lines}}
             <p>
               {{if .Merch}}
@@ -37,8 +37,8 @@
             </p>
             {{end}}
           </td>
-          <td class="num">{{.Count}}</td>
-          <td class="num strong">{{range $i, $p := .Paid}}{{if $i}} + {{end}}{{$p}}{{end}}</td>
+          <td class="num" data-label="Count">{{.Count}}</td>
+          <td class="num strong" data-label="Paid">{{range $i, $p := .Paid}}{{if $i}} + {{end}}{{$p}}{{end}}</td>
         </tr>
         {{end}}
       </tbody>
