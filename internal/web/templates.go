@@ -38,8 +38,8 @@ func funcMap() template.FuncMap {
 		},
 		"moneyInput": moneyVal,
 		"kinds":      func() []string { return []string{"manga", "light_novel", "artbook", "other"} },
-		"money":  money.DisplayNull,
-		"amount": money.Display,
+		"money":      money.DisplayNull,
+		"amount":     money.Display,
 		"abs": func(n int64) int64 {
 			if n < 0 {
 				return -n
@@ -54,7 +54,7 @@ func funcMap() template.FuncMap {
 		"percent": func(owned int, total *int) int {
 			return catalog.Percent(owned, total)
 		},
-		"merchSub": merchSub,
+		"merchSub":        merchSub,
 		"amountDelta":     money.FormatAmountDelta,
 		"defaultCurrency": func() string { return money.Default },
 		"kindName":        catalog.KindName,
