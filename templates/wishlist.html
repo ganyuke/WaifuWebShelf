@@ -90,9 +90,12 @@
 {{end}}
 
 {{define "wish_volumes"}}
-<ol class="vol-grid">
+<div class="card-grid wish-grid">
   {{range .}}
-  <li><span class="vol-cell wish" title="Volume {{.Number}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></span></li>
+  <div class="card">
+    <div class="cover">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}</div>
+    <div class="card-body"><h3>Volume {{.Number}}</h3></div>
+  </div>
   {{end}}
-</ol>
+</div>
 {{end}}
