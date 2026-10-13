@@ -1,29 +1,49 @@
 {{define "volume_detail"}}
 {{template "header" .}}
-<p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> · {{.Data.Title}}</p>
+<p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> · <a href="/series/{{.Data.Series.Slug}}#{{.Data.Line.Slug}}">{{.Data.Title}}</a></p>
 <div class="box">
   <div class="bar">
-    <h1>Volume {{.Data.Number}}</h1>
+    <h1>Volume {{.Data.Number}}{{if gt (len .Data.Copies) 1}} <span class="count">{{len .Data.Copies}} copies</span>{{end}}</h1>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/book-lines/{{.Data.Line.ID}}/volumes/new?n={{.Data.Number}}">Add copy</a>
     </span>
     {{end}}
   </div>
-  <article class="detail">
-    {{if .Data.Cover}}<img class="hero-img book" src="{{imageURL .Data.Cover}}" alt="">{{end}}
+  <article class="detail book{{if not .Data.Cover}} no-pic{{end}}">
+    {{if .Data.Cover}}<img class="hero-img" src="{{imageURL .Data.Cover}}" alt="">{{end}}
     <div>
       {{template "links_list" .Data.Links}}
-      {{if gt (len .Data.Copies) 1}}<h3>{{len .Data.Copies}} copies</h3>{{end}}
-      {{range .Data.Copies}}
-      <section class="copy">
-        {{if .ImagePath.Valid}}<img class="thumb" src="{{imageURL .ImagePath.String}}" alt="">{{end}}
-        {{template "purchase_facts" dict "P" . "SignedIn" $.SignedIn}}
-        {{template "links_list" .Links}}
-        {{if .Notes}}<p class="notes">{{.Notes}}</p>{{end}}
-        {{if $.SignedIn}}<p><a href="/admin/volumes/{{.ID}}/edit">Edit</a></p>{{end}}
-      </section>
-      {{end}}
+      <div class="table-wrap">
+        <table class="catalog">
+          <thead>
+            <tr>
+              <th>Bought</th>
+              <th>Store</th>
+              <th class="num">Paid</th>
+              {{if $.SignedIn}}<th class="num">Before tax</th>{{end}}
+              <th class="num">List price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Data.Copies}}
+            <tr>
+              <td class="date">{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{else}}—{{end}}</td>
+              <td>
+                {{if .ImagePath.Valid}}<img class="thumb" src="{{imageURL .ImagePath.String}}" alt="">{{end}}
+                {{if .Store}}{{.Store}}{{else}}—{{end}}
+                {{if $.SignedIn}} · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>{{end}}
+                {{template "links_list" .Links}}
+                {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
+              </td>
+              <td class="num strong">{{money .Paid.Valid .Paid.Int64 .Currency}}</td>
+              {{if $.SignedIn}}<td class="num">{{money .PriceExTaxCents.Valid .PriceExTaxCents.Int64 .Currency}}</td>{{end}}
+              <td class="num">{{money .MSRPCents.Valid .MSRPCents.Int64 .Currency}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
     </div>
   </article>
   {{if or .Data.Prev .Data.Next}}

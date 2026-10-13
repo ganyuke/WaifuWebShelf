@@ -22,9 +22,9 @@
     <a class="{{active .Path "/wishlist"}}" href="/wishlist">Wishlist</a>
     <a class="{{active .Path "/stats"}}" href="/stats">Spending</a>
     {{if .SignedIn}}
-    <a class="owner" href="/admin/items/new">Add item</a>
-    <a class="owner {{active .Path "/admin"}}" href="/admin">Admin</a>
-    <form method="post" action="/logout" class="nav-form"><button type="submit" class="owner">Log out</button></form>
+    <a class="owner-first" href="/admin/items/new">Add item</a>
+    <a class="{{active .Path "/admin"}}" href="/admin">Admin</a>
+    <form method="post" action="/logout" class="nav-form"><button type="submit">Log out</button></form>
     {{end}}
   </nav>
 </header>
@@ -122,52 +122,49 @@
 {{end}}
 
 {{define "wish_money"}}
-<section class="stats-grid">
-  {{range .}}
-  <article class="spend-card">
-    <h3>{{.Currency}}</h3>
-    <p class="spend-big">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}} <span>at list price</span></p>
-    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} have no list price.</p>{{end}}
-  </article>
-  {{end}}
-</section>
+<table class="catalog">
+  <thead><tr><th>Currency</th><th class="num">Items</th><th class="num">List price</th></tr></thead>
+  <tbody>
+    {{range .}}
+    <tr>
+      <td>{{.Currency}}</td>
+      <td class="num">{{.ItemCount}}</td>
+      <td class="num strong">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{range .}}{{if .Incomplete}}<p class="note">{{.Currency}}: {{.MissingMSRP}} of {{.ItemCount}} have no list price.</p>{{end}}{{end}}
 {{end}}
 
 {{define "money_block"}}
-<section class="stats-grid">
-  {{range .Totals}}
-  <article class="spend-card">
-    <h3>{{.Currency}}</h3>
-    <p class="spend-big">{{amount .IncTaxCents .Currency}} <span>paid</span></p>
-    <dl class="spend-rows">
-      {{if .WithMSRP}}
-      <div>
-        <dt>List price</dt>
-        <dd>{{amount .MSRPCents .Currency}}</dd>
-      </div>
-      {{if gt .DeltaCents 0}}
-      <div class="under">
-        <dt>Saved <span class="hint" title="List price minus the price before tax" tabindex="0">(?)</span></dt>
-        <dd>{{amount .DeltaCents .Currency}}</dd>
-      </div>
-      {{else if lt .DeltaCents 0}}
-      <div class="over">
-        <dt>Over list price <span class="hint" title="Price before tax minus list price" tabindex="0">(?)</span></dt>
-        <dd>{{amount (abs .DeltaCents) .Currency}}</dd>
-      </div>
-      {{end}}
-      {{end}}
-      {{if $.SignedIn}}
-      <div>
-        <dt>Before tax</dt>
-        <dd>{{amount .ExTaxCents .Currency}}</dd>
-      </div>
-      {{end}}
-    </dl>
-    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} items have no list price.</p>{{end}}
-  </article>
-  {{else}}
-  <p class="muted">No purchases yet.</p>
-  {{end}}
-</section>
+{{if .Totals}}
+<table class="catalog">
+  <thead>
+    <tr>
+      <th>Currency</th>
+      <th class="num">Items</th>
+      <th class="num">Paid</th>
+      {{if $.SignedIn}}<th class="num">Before tax</th>{{end}}
+      <th class="num">List price</th>
+      <th class="num">Saved <span class="hint" title="List price minus the price before tax" tabindex="0">(?)</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Totals}}
+    <tr>
+      <td>{{.Currency}}</td>
+      <td class="num">{{.ItemCount}}</td>
+      <td class="num strong">{{amount .IncTaxCents .Currency}}</td>
+      {{if $.SignedIn}}<td class="num">{{amount .ExTaxCents .Currency}}</td>{{end}}
+      <td class="num">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</td>
+      <td class="num {{if gt .DeltaCents 0}}under{{else if lt .DeltaCents 0}}over{{end}}">{{if .WithMSRP}}{{amount .DeltaCents .Currency}}{{else}}—{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{range .Totals}}{{if .Incomplete}}<p class="note">{{.Currency}}: {{.MissingMSRP}} of {{.ItemCount}} items have no list price.</p>{{end}}{{end}}
+{{else}}
+<p class="muted">No purchases yet.</p>
+{{end}}
 {{end}}

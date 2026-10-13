@@ -1,5 +1,25 @@
 {{define "series_detail"}}
 {{template "header" .}}
+<div class="cols rail-left">
+<aside class="rail">
+  <div class="box">
+    {{if .Data.Cover}}<img class="series-cover" src="{{imageURL .Data.Cover}}" alt="">{{end}}
+  </div>
+  {{if .Data.Links}}
+  <div class="box">
+    <h2 class="bar">Links</h2>
+    {{template "links_list" .Data.Links}}
+  </div>
+  {{end}}
+  <div class="box">
+    <h2 class="bar">Collection</h2>
+    <ul class="toc">
+      {{range .Data.Grids}}<li><a href="#{{.Line.Slug}}">{{.FullTitle}}</a><span>{{.Owned}}{{if .Total}} / {{.Total}}{{end}}</span></li>{{end}}
+      <li><a href="#merch">Merch</a><span>{{len .Data.Merch}}</span></li>
+    </ul>
+  </div>
+</aside>
+<div>
 <div class="box">
   <div class="bar">
     <h1>{{.Data.Series.Name}}</h1>
@@ -12,21 +32,13 @@
     </span>
     {{end}}
   </div>
-  {{if or .Data.Cover .Data.Links .Data.Series.Notes}}
-  <header class="series-hero">
-    {{if .Data.Cover}}<img class="series-cover" src="{{imageURL .Data.Cover}}" alt="">{{end}}
-    <div>
-      {{template "links_list" .Data.Links}}
-      {{if .Data.Series.Notes}}<p class="notes">{{.Data.Series.Notes}}</p>{{end}}
-    </div>
-  </header>
-  {{end}}
+  {{if .Data.Series.Notes}}<p class="notes">{{.Data.Series.Notes}}</p>{{end}}
 </div>
 
 {{range $grid := .Data.Grids}}
-<div class="box book-line">
+<div class="box book-line" id="{{$grid.Line.Slug}}">
   <div class="bar">
-    <h2>{{$grid.FullTitle}}</h2>
+    <h2>{{$grid.FullTitle}} <span class="count">{{$grid.ProgressText}}</span></h2>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new">Add volume</a>
@@ -34,9 +46,9 @@
     </span>
     {{end}}
   </div>
+  {{if or $grid.Links $grid.HasWanted $grid.HasMissing}}
   <div class="line-status">
-    <span class="owned-text">{{$grid.ProgressText}}</span>
-    {{if ge $grid.Percent 0}}<progress class="meter" max="100" value="{{$grid.Percent}}"></progress>{{end}}
+    {{template "links_list" $grid.Links}}
     {{if or $grid.HasWanted $grid.HasMissing}}
     <ul class="key">
       <li><i class="owned"></i>Owned</li>
@@ -45,7 +57,7 @@
     </ul>
     {{end}}
   </div>
-  {{template "links_list" $grid.Links}}
+  {{end}}
   {{if $grid.Cells}}
   <ol class="vol-grid">
     {{range $grid.Cells}}
@@ -93,7 +105,7 @@
 </div>
 {{end}}
 
-<div class="box">
+<div class="box" id="merch">
   <div class="bar">
     <h2>Merch</h2>
     {{if $.SignedIn}}
@@ -120,6 +132,8 @@
     {{end}}
   </div>
   {{end}}
+</div>
+</div>
 </div>
 {{template "footer" .}}
 {{end}}

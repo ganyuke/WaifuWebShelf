@@ -17,28 +17,33 @@
     </span>
     {{end}}
   </div>
-  <ul class="wish-list">
-    {{range .Items}}
-    <li>
-      <a class="cover" href="/wishlist/{{.ID}}">
-        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}<span class="cover-text">Vol. {{.RemainLabel}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
-      </a>
-      <div class="wish-body">
-        {{if eq .Kind "merch"}}
-        <h3><a href="/wishlist/{{.ID}}">{{.Name}}</a></h3>
-        {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
-        {{else}}
-        <h3><a href="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a></h3>
-        {{if gt .RemainCount 1}}<p class="muted">{{.RemainCount}} volumes</p>{{end}}
+  <div class="table-wrap">
+    <table class="catalog">
+      <thead><tr><th></th><th>Item</th><th>Shops</th><th class="num">List price</th></tr></thead>
+      <tbody>
+        {{range .Items}}
+        <tr>
+          <td class="catalog-cover">
+            <a href="/wishlist/{{.ID}}">{{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}<span class="cover-text">Vol. {{.RemainLabel}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
+          </td>
+          <td>
+            {{if eq .Kind "merch"}}
+            <a class="strong" href="/wishlist/{{.ID}}">{{.Name}}</a>
+            {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
+            {{else}}
+            <a class="strong" href="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a>
+            {{if gt .RemainCount 1}}<p class="muted">{{.RemainCount}} volumes</p>{{end}}
+            {{end}}
+            {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
+            {{if $.SignedIn}}<p><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></p>{{end}}
+          </td>
+          <td>{{if .Links}}{{template "links_list" .Links}}{{else}}—{{end}}</td>
+          <td class="num strong">{{if .MSRPValid}}{{amount .MSRPAmount .Currency}}{{else}}—{{end}}</td>
+        </tr>
         {{end}}
-        {{template "links_list" .Links}}
-        {{if .Notes}}<p class="notes">{{.Notes}}</p>{{end}}
-        {{if $.SignedIn}}<p><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></p>{{end}}
-      </div>
-      {{if .MSRPValid}}<div class="wish-price"><b>{{amount .MSRPAmount .Currency}}</b><span>list price</span></div>{{end}}
-    </li>
-    {{end}}
-  </ul>
+      </tbody>
+    </table>
+  </div>
 </div>
 {{end}}
 {{template "footer" .}}

@@ -6,7 +6,7 @@
     <h1>{{.Data.Merch.Name}}</h1>
     {{if $.SignedIn}}<a href="/admin/merch/{{.Data.Merch.ID}}/edit">Edit</a>{{end}}
   </div>
-  <article class="detail">
+  <article class="detail{{if not .Data.Merch.ImagePath.Valid}} no-pic{{end}}">
     {{if .Data.Merch.ImagePath.Valid}}<a href="{{imageURL .Data.Merch.ImagePath.String}}"><img class="hero-img" src="{{imageURL .Data.Merch.ImagePath.String}}" alt=""></a>{{end}}
     <div>
       {{with merchSub .Data.Merch.Name .Data.Merch.Kind .Data.Merch.Quantity}}<p class="muted">{{.}}</p>{{end}}

@@ -23,8 +23,11 @@ type MerchGroup struct {
 	Items      []db.MerchRow
 }
 
-// homeStrip is how many pictures each row on the home page shows.
-const homeStrip = 6
+// How many entries the home page shows in its side lists and merch grid.
+const (
+	homeList  = 8
+	homeMerch = 14
+)
 
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	stats, err := s.db.ShelfStats()
@@ -37,7 +40,7 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	recent, err := s.db.RecentAdditions(homeStrip)
+	recent, err := s.db.RecentAdditions(homeList)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -65,10 +68,9 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 		"Stats":     stats,
 		"Series":    cards,
 		"Recent":    recent,
-		"Merch":     firstN(merch, homeStrip),
-		"MerchMore": len(merch) > homeStrip,
-		"Wanted":    firstN(wishItems, homeStrip),
-		"WantMore":  len(wishItems) > homeStrip,
+		"Merch":     firstN(merch, homeMerch),
+		"MerchMore": len(merch) > homeMerch,
+		"Wanted":    firstN(wishItems, homeList),
 	})
 }
 
