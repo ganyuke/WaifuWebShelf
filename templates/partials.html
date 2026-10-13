@@ -46,7 +46,7 @@
   <div class="cover">
     {{if .Image}}<img src="{{imageURL .Image}}" alt="" loading="lazy">{{else if .Text}}<span class="cover-text">{{.Text}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
   </div>
-  {{if .Wanted}}<span class="tag">Wanted</span>{{end}}
+  {{if .Wanted}}<span class="tag">Wishlist</span>{{end}}
   <div class="card-body">
     <h3>{{.Name}}</h3>
     {{if .Sub}}<p class="muted">{{.Sub}}</p>{{end}}

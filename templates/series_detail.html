@@ -52,7 +52,7 @@
     {{if or $grid.HasWanted $grid.HasMissing}}
     <ul class="key">
       <li><i class="owned"></i>Owned</li>
-      {{if $grid.HasWanted}}<li><i class="wanted"></i>Wanted</li>{{end}}
+      {{if $grid.HasWanted}}<li><i class="wanted"></i>On wishlist</li>{{end}}
       {{if $grid.HasMissing}}<li><i class="missing"></i>Not owned</li>{{end}}
     </ul>
     {{end}}
@@ -66,14 +66,14 @@
       <a class="vol-cell owned" href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}{{if gt (len .Copies) 1}} · {{len .Copies}} copies{{end}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span>{{if gt (len .Copies) 1}}<span class="copy-count">×{{len .Copies}}</span>{{end}}</a>
       {{else if .Wanted}}
         {{if $.SignedIn}}
-        <a class="vol-cell wanted" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}"><span class="vol-num">{{.Number}}</span><span class="vol-tag">Wanted</span></a>
+        <a class="vol-cell wanted" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></a>
         {{else}}
-        <span class="vol-cell wanted" title="Volume {{.Number}} · wanted"><span class="vol-num">{{.Number}}</span><span class="vol-tag">Wanted</span></span>
+        <span class="vol-cell wanted" title="Volume {{.Number}} · on wishlist">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></span>
         {{end}}
       {{else if $.SignedIn}}
-      <a class="vol-cell missing" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{.Number}}</a>
+      <a class="vol-cell missing" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></a>
       {{else}}
-      <span class="vol-cell missing" title="Volume {{.Number}} · not owned">{{.Number}}</span>
+      <span class="vol-cell missing" title="Volume {{.Number}} · not owned">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></span>
       {{end}}
     </li>
     {{end}}
@@ -82,7 +82,7 @@
   {{if $grid.WantedExtras}}
   <ul class="extras">
     {{range $grid.WantedExtras}}
-    <li><span class="vol-cell wanted"><span class="vol-num">{{.}}</span><span class="vol-tag">Wanted</span></span></li>
+    <li><span class="vol-cell wanted"><span class="vol-num">{{.}}</span><span class="vol-tag">Wishlist</span></span></li>
     {{end}}
   </ul>
   {{end}}
@@ -125,7 +125,7 @@
   <p class="muted">No merch for this series.</p>
   {{end}}
   {{if .Data.WantMerch}}
-  {{if .Data.Merch}}<h3 class="wanted-heading">Wanted</h3>{{end}}
+  {{if .Data.Merch}}<h3 class="wanted-heading">Wishlist</h3>{{end}}
   <div class="card-grid merch-grid">
     {{range .Data.WantMerch}}
     {{template "tile" dict "URL" (printf "/wishlist/%d" .ID) "Image" .ImagePath.String "Name" .Name "Sub" (merchSub .Name .MerchKind .Quantity) "Wanted" true}}

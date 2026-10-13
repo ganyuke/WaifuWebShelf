@@ -84,13 +84,13 @@
     {{if .Data.Wanted}}
     <div class="box">
       <div class="bar">
-        <h2>Wanted</h2>
-        <a href="/wishlist">Wishlist</a>
+        <h2>Wishlist</h2>
+        <a href="/wishlist">All items</a>
       </div>
       <ul class="compact">
         {{range .Data.Wanted}}
         <li class="wanted">
-          <span class="pic">{{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
+          <span class="pic">{{if .Picture}}<img src="{{imageURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
           <span class="text">
             {{if eq .Kind "merch"}}
             <a href="/wishlist/{{.ID}}">{{.Name}}</a>

@@ -19,6 +19,41 @@ type WishView struct {
 	RemainCount int
 	MSRPTotal   *int64
 	Links       []LinkView
+	// Volumes are the wanted volumes still missing, with a cover when one is stored.
+	Volumes []WishVolume
+}
+
+type WishVolume struct {
+	Number int
+	Cover  string
+}
+
+// Picture is the image shown for the item: its own, or the first wanted volume's cover.
+func (v WishView) Picture() string {
+	if v.ImagePath.Valid && v.ImagePath.String != "" {
+		return v.ImagePath.String
+	}
+	for _, vol := range v.Volumes {
+		if vol.Cover != "" {
+			return vol.Cover
+		}
+	}
+	return ""
+}
+
+// Each is the list price of one volume, shown when several are wanted.
+func (v WishView) Each() string {
+	if v.Kind != "volumes" || v.RemainCount < 2 || !v.MSRPCents.Valid {
+		return ""
+	}
+	return money.Display(v.MSRPCents.Int64, v.Currency)
+}
+
+func (v *WishView) applyCovers(covers map[string]string) {
+	v.Volumes = nil
+	for _, n := range v.Remain.Numbers {
+		v.Volumes = append(v.Volumes, WishVolume{Number: n, Cover: covers[strconv.Itoa(n)]})
+	}
 }
 
 func (v WishView) Active() bool {
@@ -121,9 +156,11 @@ func (s *Server) wishView(row db.WishlistRow, owned map[string]bool) WishView {
 
 func (s *Server) activeWishViews(rows []db.WishlistRow) ([]WishView, error) {
 	ownedCache := map[int64]map[string]bool{}
+	coverCache := map[int64]map[string]string{}
 	var out []WishView
 	for _, row := range rows {
 		owned := map[string]bool{}
+		var covers map[string]string
 		if row.Kind == "volumes" && row.BookLineID.Valid {
 			id := row.BookLineID.Int64
 			if _, ok := ownedCache[id]; !ok {
@@ -132,13 +169,20 @@ func (s *Server) activeWishViews(rows []db.WishlistRow) ([]WishView, error) {
 					return nil, err
 				}
 				ownedCache[id] = keys
+				lineCovers, err := s.db.LineCovers(id)
+				if err != nil {
+					return nil, err
+				}
+				coverCache[id] = lineCovers
 			}
 			owned = ownedCache[id]
+			covers = coverCache[id]
 		}
 		v := s.wishView(row, owned)
 		if !v.Active() {
 			continue
 		}
+		v.applyCovers(covers)
 		out = append(out, v)
 	}
 	return out, nil
@@ -216,7 +260,11 @@ func (s *Server) wishlist(w http.ResponseWriter, r *http.Request) {
 		}
 		items[i].Links = toLinkViews(ll)
 	}
-	s.render(w, r, "wishlist", "Wishlist", groupWishViews(items))
+	s.render(w, r, "wishlist", "Wishlist", map[string]any{
+		"Groups": groupWishViews(items),
+		"Count":  len(items),
+		"Totals": wishMoneyTotals(items),
+	})
 }
 
 func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
@@ -235,8 +283,14 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	owned := map[string]bool{}
+	var covers map[string]string
 	if row.Kind == "volumes" && row.BookLineID.Valid {
 		owned, err = s.db.LineOwnedKeys(row.BookLineID.Int64)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		covers, err = s.db.LineCovers(row.BookLineID.Int64)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -247,13 +301,14 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	v.applyCovers(covers)
 	ll, err := s.db.ListLinks("wishlist", row.ID)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	v.Links = toLinkViews(ll)
-	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: "Wanted · " + v.SeriesName, Image: nullImage(v.ImagePath)}, v)
+	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: "Wishlist · " + v.SeriesName, Image: v.Picture()}, v)
 }
 
 func wishTitle(v WishView) string {

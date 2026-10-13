@@ -3,6 +3,7 @@ package web
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 	"strings"
 
 	"waifuwebshelf/internal/catalog"
@@ -227,6 +228,13 @@ type bookLineFormData struct {
 	New             bool
 	Links           []LinkView
 	Volumes         []db.Volume
+	// SpareCovers are covers stored for volumes that are not owned.
+	SpareCovers []SpareCover
+}
+
+type SpareCover struct {
+	Number string
+	Image  string
 }
 
 func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
@@ -331,7 +339,22 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 	if err != nil {
 		return bookLineFormData{}, err
 	}
+	covers, err := s.db.LineCovers(id)
+	if err != nil {
+		return bookLineFormData{}, err
+	}
+	for _, v := range vols {
+		delete(covers, v.VolumeNumber)
+	}
+	spare := make([]SpareCover, 0, len(covers))
+	for number, image := range covers {
+		spare = append(spare, SpareCover{Number: number, Image: image})
+	}
+	sort.Slice(spare, func(i, j int) bool {
+		return volumeSortOrder(spare[i].Number) < volumeSortOrder(spare[j].Number)
+	})
 	return bookLineFormData{
+		SpareCovers:     spare,
 		ID:              line.ID,
 		SeriesID:        ser.ID,
 		SeriesName:      ser.Name,
@@ -344,6 +367,76 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 		Links:           toLinkViews(ll),
 		Volumes:         vols,
 	}, nil
+}
+
+// bookLineCoverSave stores a cover for a volume number, owned or not.
+func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	if err := parseMaybeMultipart(r); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	data, err := s.loadBookLineForm(id)
+	if db.IsNotFound(err) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	number := normalizeVolumeNumber(r.FormValue("volume_number"))
+	if number == "" {
+		s.renderErr(w, r, "admin_bookline_form", "Edit book line", "volume number is required", data)
+		return
+	}
+	existing, err := s.db.VolumeCover(id, number)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	cover, err := s.applyImageField(r, "cover", "", existing)
+	if err != nil {
+		s.renderErr(w, r, "admin_bookline_form", "Edit book line", err.Error(), data)
+		return
+	}
+	if cover == existing {
+		s.renderErr(w, r, "admin_bookline_form", "Edit book line", "choose an image for the cover", data)
+		return
+	}
+	if err := s.db.SetVolumeCover(id, number, cover); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
+}
+
+func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	number := normalizeVolumeNumber(r.FormValue("volume_number"))
+	existing, err := s.db.VolumeCover(id, number)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if err := s.db.SetVolumeCover(id, number, sql.NullString{}); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.deleteImage(existing)
+	http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=deleted", http.StatusSeeOther)
 }
 
 func (s *Server) bookLineSaveEdit(w http.ResponseWriter, r *http.Request) {

@@ -12,16 +12,16 @@
     </span>
     {{end}}
   </div>
-  <article class="detail{{if not .Data.ImagePath.Valid}} no-pic{{end}}">
-    {{if .Data.ImagePath.Valid}}<a href="{{imageURL .Data.ImagePath.String}}"><img class="hero-img" src="{{imageURL .Data.ImagePath.String}}" alt=""></a>{{end}}
+  <article class="detail{{if not .Data.Picture}} no-pic{{end}}{{if eq .Data.Kind "volumes"}} book{{end}}">
+    {{if .Data.Picture}}<a href="{{imageURL .Data.Picture}}"><img class="hero-img" src="{{imageURL .Data.Picture}}" alt=""></a>{{end}}
     <div>
-      <p><span class="tag">Wanted</span></p>
-      {{if eq .Data.Kind "merch"}}{{with merchSub .Data.Name .Data.MerchKind .Data.Quantity}}<p class="muted">{{.}}</p>{{end}}{{end}}
+            {{if eq .Data.Kind "merch"}}{{with merchSub .Data.Name .Data.MerchKind .Data.Quantity}}<p class="muted">{{.}}</p>{{end}}{{end}}
       {{template "links_list" .Data.Links}}
       <dl class="facts">
         {{if and (eq .Data.Kind "volumes") (gt .Data.RemainCount 1)}}<dt>Volumes</dt><dd>{{.Data.RemainCount}}</dd>{{end}}
-        {{if .Data.MSRPValid}}<dt>List price</dt><dd>{{amount .Data.MSRPAmount .Data.Currency}}</dd>{{end}}
+        {{if .Data.MSRPValid}}<dt>List price</dt><dd>{{amount .Data.MSRPAmount .Data.Currency}}{{with .Data.Each}} <span class="muted">· {{.}} each</span>{{end}}</dd>{{end}}
       </dl>
+      {{if gt (len .Data.Volumes) 1}}{{template "wish_volumes" .Data.Volumes}}{{end}}
       {{if .Data.Notes}}<p class="notes">{{.Data.Notes}}</p>{{end}}
     </div>
   </article>

@@ -100,8 +100,6 @@ func main() {
 	must(store.CreateLink("book_line", enID, "", "Kodansha", "https://kodansha.us/series/rent-a-girlfriend/"))
 	must(store.CreateLink("book_line", shyID, "", "MAL", "https://myanimelist.net/manga/128534/Kanojo_Hitomishirimasu"))
 
-	enOwned := append(append(seq(1, 12), 14, 16, 17, 18), append(seq(21, 24), 30, 31)...)
-	jpOwned := append(seq(1, 8), 12, 15, 18, 20)
 	mustErr(addVols(store, enID, seq(1, 12), buy("CAD", "Indigo", "2023-06-11", 1699, 1699, 1924, "")))
 	mustErr(addVols(store, enID, []int{14, 16, 17, 18}, buy("CAD", "Book Off", "2024-09-02", 1699, 800, 800, "used")))
 	mustErr(addVols(store, enID, seq(21, 24), buy("CAD", "Amazon", "2025-03-18", 1699, 1499, 1694, "")))
@@ -122,12 +120,12 @@ func main() {
 	mustErr(addVols(store, shyID, []int{2}, buy("CAD", "Book Off", "2025-02-08", 1699, 800, 800, "used")))
 	mustErr(addVols(store, anthID, []int{1}, buy("CAD", "Kinokuniya", "2023-11-04", 1699, 1699, 1924, "")))
 
-	n := applyCovers(store, client, cfg.ImagesDir(), enID, dexMain, mainCovers, []string{"en", "ja"}, enOwned, "rag-en")
-	log.Printf("english covers %d/%d", n, len(enOwned))
-	n = applyCovers(store, client, cfg.ImagesDir(), jpID, dexMain, mainCovers, []string{"ja", "en"}, jpOwned, "rag-jp")
-	log.Printf("japanese covers %d/%d", n, len(jpOwned))
-	n = applyCovers(store, client, cfg.ImagesDir(), shyID, dexShy, shyCovers, []string{"en", "ja"}, []int{1, 2}, "rag-shy")
-	log.Printf("shy covers %d/2", n)
+	n := applyCovers(store, client, cfg.ImagesDir(), enID, dexMain, mainCovers, []string{"en", "ja"}, seq(1, int(enTotal)), "rag-en")
+	log.Printf("english covers %d/%d", n, enTotal)
+	n = applyCovers(store, client, cfg.ImagesDir(), jpID, dexMain, mainCovers, []string{"ja", "en"}, seq(1, int(jpTotal)), "rag-jp")
+	log.Printf("japanese covers %d/%d", n, jpTotal)
+	n = applyCovers(store, client, cfg.ImagesDir(), shyID, dexShy, shyCovers, []string{"en", "ja"}, seq(1, int(shyTotal)), "rag-shy")
+	log.Printf("shy covers %d/%d", n, shyTotal)
 	n = applyCovers(store, client, cfg.ImagesDir(), anthID, dexAnth, anthCovers, []string{"ja", "en"}, []int{1}, "rag-anth")
 	log.Printf("anthology covers %d/1", n)
 

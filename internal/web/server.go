@@ -141,6 +141,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/book-lines/{id}/edit", s.requireAdmin(s.bookLineSaveEdit))
 	mux.HandleFunc("GET /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDeleteForm))
 	mux.HandleFunc("POST /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDelete))
+	mux.HandleFunc("POST /admin/book-lines/{id}/covers", s.requireAdmin(s.bookLineCoverSave))
+	mux.HandleFunc("POST /admin/book-lines/{id}/covers/delete", s.requireAdmin(s.bookLineCoverDelete))
 
 	mux.HandleFunc("GET /admin/book-lines/{id}/volumes/new", s.requireAdmin(s.volumeNewForm))
 	mux.HandleFunc("POST /admin/book-lines/{id}/volumes/new", s.requireAdmin(s.volumeSaveNew))

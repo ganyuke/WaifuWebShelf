@@ -44,6 +44,28 @@
   <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a>
   · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
 </section>
+<section class="panel">
+  <h2>Covers for volumes not owned</h2>
+  {{if .Data.SpareCovers}}
+  <ul class="cover-list">
+    {{range .Data.SpareCovers}}
+    <li>
+      <img class="thumb" src="{{imageURL .Image}}" alt="">
+      <span>Vol. {{.Number}}</span>
+      <form class="inline" method="post" action="/admin/book-lines/{{$.Data.ID}}/covers/delete">
+        <input type="hidden" name="volume_number" value="{{.Number}}">
+        <button type="submit" class="danger-text">Remove</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers" enctype="multipart/form-data">
+    <label>Volume number <input name="volume_number" inputmode="numeric" required></label>
+    <label>Cover <input type="file" name="cover" accept="image/*" required></label>
+    <button type="submit">Add cover</button>
+  </form>
+</section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
 <p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete book line</a></p>
 {{end}}

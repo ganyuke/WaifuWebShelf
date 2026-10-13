@@ -9,7 +9,7 @@
   <div class="box">
     <div class="bar">
       <h2>Wishlist</h2>
-      <a href="/wishlist">{{.Data.WishCount}} wanted</a>
+      <a href="/wishlist">{{.Data.WishCount}} {{if eq .Data.WishCount 1}}item{{else}}items{{end}}</a>
     </div>
     {{template "wish_money" .Data.WishByCurrency}}
   </div>
