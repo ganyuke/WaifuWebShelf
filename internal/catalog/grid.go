@@ -12,6 +12,7 @@ type GridCell struct {
 	Owned  bool
 	Wanted bool
 	Copies []db.Volume
+	Cover  string
 }
 
 type VolumeGrid struct {
@@ -74,6 +75,72 @@ func BuildGrid(line db.BookLine, vols []db.Volume) VolumeGrid {
 	g.Owned = len(numeric)
 	g.Caption = progressCaption(g.Title, g.Owned, g.Total, g.Copies, len(extras))
 	return g
+}
+
+// ApplyCovers sets each cell's cover from a map of volume number to image path.
+func (g *VolumeGrid) ApplyCovers(covers map[string]string) {
+	for i := range g.Cells {
+		g.Cells[i].Cover = covers[strconv.Itoa(g.Cells[i].Number)]
+	}
+}
+
+// ProgressText says how much of the line is owned, e.g. "22 of 37 volumes".
+func (g VolumeGrid) ProgressText() string {
+	text := VolumesOwned(g.Owned, g.Total)
+	if g.Copies > g.Owned+len(g.Extras) {
+		text += ", " + itoa(g.Copies) + " copies in total"
+	}
+	return text
+}
+
+func (g VolumeGrid) Percent() int {
+	return Percent(g.Owned, g.Total)
+}
+
+func (g VolumeGrid) HasWanted() bool {
+	if len(g.WantedExtras) > 0 {
+		return true
+	}
+	for _, c := range g.Cells {
+		if c.Wanted {
+			return true
+		}
+	}
+	return false
+}
+
+func (g VolumeGrid) HasMissing() bool {
+	for _, c := range g.Cells {
+		if !c.Owned && !c.Wanted {
+			return true
+		}
+	}
+	return false
+}
+
+func VolumesOwned(owned int, total *int) string {
+	if total != nil && *total == 1 {
+		return itoa(owned) + " of 1 volume"
+	}
+	if total != nil {
+		return itoa(owned) + " of " + itoa(*total) + " volumes"
+	}
+	if owned == 1 {
+		return "1 volume"
+	}
+	return itoa(owned) + " volumes"
+}
+
+// Percent is how much of a line is owned, or -1 when its length is unknown.
+func Percent(owned int, total *int) int {
+	if total == nil || *total <= 0 {
+		return -1
+	}
+	p := owned * 100 / *total
+	if p > 100 {
+		p = 100
+	}
+	return p
 }
 
 func (g *VolumeGrid) ApplyWishlist(wanted Remaining) {

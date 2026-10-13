@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 const DefaultTrustedProxies = "127.0.0.1,::1"
@@ -14,6 +15,8 @@ type Config struct {
 	AdminPass string
 	// TrustedProxies lists the reverse proxies whose X-Forwarded-* headers are believed.
 	TrustedProxies string
+	// SiteURL is the public address of the site, used for picture links in chat previews.
+	SiteURL string
 }
 
 func FromEnv() Config {
@@ -24,6 +27,7 @@ func FromEnv() Config {
 		AdminPass: os.Getenv("ADMIN_PASS"),
 
 		TrustedProxies: env("TRUSTED_PROXIES", DefaultTrustedProxies),
+		SiteURL:        strings.TrimRight(os.Getenv("SITE_URL"), "/"),
 	}
 }
 

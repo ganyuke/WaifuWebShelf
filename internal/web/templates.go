@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"strconv"
 	"strings"
+	"time"
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
@@ -37,12 +38,23 @@ func funcMap() template.FuncMap {
 		},
 		"moneyInput": moneyVal,
 		"kinds":      func() []string { return []string{"manga", "light_novel", "artbook", "other"} },
-		"money": func(valid bool, amount int64, currency string) string {
-			return money.FormatNull(valid, amount, currency)
+		"money":  money.DisplayNull,
+		"amount": money.Display,
+		"abs": func(n int64) int64 {
+			if n < 0 {
+				return -n
+			}
+			return n
 		},
-		"amount": func(amount int64, currency string) string {
-			return money.FormatAmount(amount, currency)
+		"date":     displayDate,
+		"lineFull": catalog.LineFullTitle,
+		"volumesOwned": func(owned int, total *int) string {
+			return catalog.VolumesOwned(owned, total)
 		},
+		"percent": func(owned int, total *int) int {
+			return catalog.Percent(owned, total)
+		},
+		"merchSub": merchSub,
 		"amountDelta":     money.FormatAmountDelta,
 		"defaultCurrency": func() string { return money.Default },
 		"kindName":        catalog.KindName,
@@ -84,6 +96,28 @@ func funcMap() template.FuncMap {
 			return m, nil
 		},
 	}
+}
+
+// merchSub is the small line under a merch name: its kind and count.
+// The kind is left out when the name already says it.
+func merchSub(name, kind string, quantity int) string {
+	var parts []string
+	if kind != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(kind)) {
+		parts = append(parts, kind)
+	}
+	if quantity > 1 {
+		parts = append(parts, "×"+strconv.Itoa(quantity))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// displayDate turns a stored date like 2026-01-09 into "9 Jan 2026".
+func displayDate(s string) string {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return s
+	}
+	return t.Format("2 Jan 2006")
 }
 
 func flashText(code string) string {

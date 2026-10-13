@@ -2,55 +2,42 @@
 {{template "header" .}}
 <div class="box">
   <h1 class="bar">Spending</h1>
-  <section class="overview">
-    <article class="stat"><h3>Series</h3><p class="big">{{.Data.SeriesCount}}</p></article>
-    <article class="stat"><h3>Volumes</h3><p class="big">{{.Data.VolumeCount}}</p></article>
-    <article class="stat"><h3>Merch pieces</h3><p class="big">{{.Data.MerchPieces}}</p></article>
-    <article class="stat"><h3>Wishlist</h3><p class="big">{{.Data.WishCount}}</p></article>
-  </section>
-  {{template "money_block" .Data.ByCurrency}}
+  {{template "money_block" dict "Totals" .Data.ByCurrency "SignedIn" .SignedIn}}
 </div>
 {{if .Data.WishCount}}
 <div class="box">
-  <h2 class="bar">Wishlist</h2>
+  <div class="bar">
+    <h2>Wishlist</h2>
+    <a href="/wishlist">{{.Data.WishCount}} wanted</a>
+  </div>
   {{template "wish_money" .Data.WishByCurrency}}
 </div>
 {{end}}
 <div class="box">
   <h2 class="bar">Purchases</h2>
-  {{if .Data.Expenditures}}
-  <div class="table-wrap">
-    <table class="catalog">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Item</th>
-          <th>Store</th>
-          <th class="num">MSRP</th>
-          <th class="num">Without tax</th>
-          <th class="num">With tax</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Data.Expenditures}}
-        <tr>
-          <td class="date">{{if .PurchasedAt.Valid}}{{.PurchasedAt.String}}{{else}}—{{end}}</td>
-          <td>
-            {{if eq .Kind "volume"}}
-            <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} · {{lineTitle .LineKind .LineLabel}} · Vol. {{.VolumeNumber}}</a>
-            {{else}}
-            <a href="/merch/{{.ID}}">{{.SeriesName}} · {{.Name}}</a>{{if .MerchKind}} · {{.MerchKind}}{{end}}{{if gt .Quantity 1}} · ×{{.Quantity}}{{end}}
-            {{end}}
-          </td>
-          <td>{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
-          <td class="num">{{money .MSRPCents.Valid .MSRPCents.Int64 .Currency}}</td>
-          <td class="num">{{money .PriceExTaxCents.Valid .PriceExTaxCents.Int64 .Currency}}</td>
-          <td class="num">{{money .PriceIncTaxCents.Valid .PriceIncTaxCents.Int64 .Currency}}</td>
-        </tr>
+  {{if .Data.Trips}}
+  <ol class="trips">
+    {{range .Data.Trips}}
+    <li class="trip">
+      <div class="trip-head">
+        <h3>{{if .Date.Valid}}{{date .Date.String}}{{else}}No date{{end}}{{if .Store}} <span>· {{.Store}}</span>{{end}}</h3>
+        <span class="trip-total"><span>{{.Count}} {{if eq .Count 1}}item{{else}}items{{end}}{{if .Paid}} · {{end}}</span>{{range $i, $p := .Paid}}{{if $i}} + {{end}}{{$p}}{{end}}</span>
+      </div>
+      <ul>
+        {{range $line := .Lines}}
+        <li>
+          {{if .Merch}}
+          <span><a href="/merch/{{.Merch.ID}}">{{.Merch.Name}}</a>{{if gt .Merch.Quantity 1}} ×{{.Merch.Quantity}}{{end}} · {{.SeriesName}}</span>
+          {{else}}
+          <span>{{.SeriesName}} · {{.LineTitle}} · vol. {{range $i, $n := .Volumes}}{{if $i}}, {{end}}<a href="/series/{{$line.SeriesSlug}}/{{$line.LineSlug}}/{{$n.Number}}">{{$n.Number}}</a>{{if gt $n.Copies 1}} ×{{$n.Copies}}{{end}}{{end}}</span>
+          {{end}}
+          {{if .Paid}}<span class="price">{{.Paid}}</span>{{end}}
+        </li>
         {{end}}
-      </tbody>
-    </table>
-  </div>
+      </ul>
+    </li>
+    {{end}}
+  </ol>
   {{else}}
   <p class="muted">No purchases yet.</p>
   {{end}}

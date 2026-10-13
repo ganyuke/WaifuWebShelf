@@ -2,11 +2,10 @@
 {{template "header" .}}
 <div class="box">
   <div class="bar">
-    <h1>Merchandise</h1>
+    <h1>Merch</h1>
   </div>
   {{if not .Data}}<p class="muted">No merch yet.</p>{{end}}
 </div>
-{{if .Data}}
 {{range .Data}}
 <div class="box merch-group">
   <div class="bar">
@@ -15,19 +14,10 @@
   </div>
   <div class="card-grid merch-grid">
     {{range .Items}}
-    <a class="card" href="/merch/{{.ID}}">
-      <div class="cover">
-        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
-      </div>
-      <div class="card-body">
-        <h2>{{.Name}}</h2>
-        {{if .Kind}}<p class="muted">{{.Kind}}{{if gt .Quantity 1}} · ×{{.Quantity}}{{end}}</p>{{end}}
-      </div>
-    </a>
+    {{template "tile" dict "URL" (printf "/merch/%d" .ID) "Image" .ImagePath.String "Name" .Name "Sub" (merchSub .Name .Kind .Quantity)}}
     {{end}}
   </div>
 </div>
-{{end}}
 {{end}}
 {{template "footer" .}}
 {{end}}

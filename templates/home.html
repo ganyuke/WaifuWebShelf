@@ -1,21 +1,89 @@
 {{define "home"}}
 {{template "header" .}}
+<ul class="counts">
+  <li><b>{{.Data.Stats.SeriesCount}}</b> series</li>
+  <li><b>{{.Data.Stats.VolumeCount}}</b> volumes</li>
+  <li><a href="/merch"><b>{{.Data.Stats.MerchPieces}}</b> merch</a></li>
+</ul>
+
 <div class="box">
   <div class="bar">
-    <h1>Series</h1>
+    <h2>Series</h2>
     {{if .SignedIn}}<a href="/admin/series/new">Add series</a>{{end}}
   </div>
-  <p class="subhead">{{.Data.Stats.SeriesCount}} series · {{.Data.Stats.VolumeCount}} volumes · {{.Data.Stats.MerchPieces}} merch · <a href="/stats">Spending</a></p>
   {{if .Data.Series}}
-  <table class="catalog">
-    <thead><tr><th></th><th>Series</th><th>Books</th><th>Merch</th></tr></thead>
-    <tbody>
-      {{range .Data.Series}}{{template "series_card" .}}{{end}}
-    </tbody>
-  </table>
+  <div class="series-list">
+    {{range .Data.Series}}
+    <article class="series-tile">
+      <a class="cover" href="/series/{{.Slug}}">
+        {{if .Cover}}<img src="{{imageURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+      </a>
+      <div>
+        <h3><a href="/series/{{.Slug}}">{{.Name}}</a></h3>
+        {{range .Lines}}
+        <div class="line-progress">
+          <div class="line-name"><span>{{lineFull .Kind .Label}}</span><span>{{volumesOwned .Owned .Total}}</span></div>
+          {{if ge (percent .Owned .Total) 0}}<progress class="meter" max="100" value="{{percent .Owned .Total}}"></progress>{{end}}
+        </div>
+        {{end}}
+        {{if .MerchCount}}<p class="muted">{{.MerchCount}} merch</p>{{end}}
+      </div>
+    </article>
+    {{end}}
+  </div>
   {{else}}
   <p class="muted">No series yet.{{if $.SignedIn}} <a href="/admin/series/new">Add a series</a>.{{end}}</p>
   {{end}}
 </div>
+
+{{if .Data.Recent}}
+<div class="box">
+  <div class="bar">
+    <h2>Latest additions</h2>
+    <a href="/stats">All purchases</a>
+  </div>
+  <div class="card-grid strip">
+    {{range .Data.Recent}}
+    {{if eq .Kind "volume"}}
+    {{template "tile" dict "URL" (printf "/series/%s/%s/%s" .SeriesSlug .LineSlug .VolumeNumber) "Image" .Image.String "Name" (printf "%s vol. %s" .SeriesName .VolumeNumber) "Sub" (printf "%s · %s" (lineFull .LineKind .LineLabel) (date .PurchasedAt.String))}}
+    {{else}}
+    {{template "tile" dict "URL" (printf "/merch/%d" .ID) "Image" .Image.String "Name" .Name "Sub" (date .PurchasedAt.String)}}
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{if .Data.Merch}}
+<div class="box">
+  <div class="bar">
+    <h2>Merch</h2>
+    {{if .Data.MerchMore}}<a href="/merch">All merch</a>{{end}}
+  </div>
+  <div class="card-grid strip">
+    {{range .Data.Merch}}
+    {{template "tile" dict "URL" (printf "/merch/%d" .ID) "Image" .ImagePath.String "Name" .Name "Sub" .SeriesName}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{if .Data.Wanted}}
+<div class="box">
+  <div class="bar">
+    <h2>Wanted</h2>
+    <a href="/wishlist">Wishlist</a>
+  </div>
+  <div class="card-grid strip">
+    {{range .Data.Wanted}}
+    {{if eq .Kind "merch"}}
+    {{template "tile" dict "URL" (printf "/wishlist/%d" .ID) "Image" .ImagePath.String "Name" .Name "Sub" .SeriesName "Wanted" true}}
+    {{else}}
+    {{template "tile" dict "URL" (printf "/wishlist/%d" .ID) "Image" .ImagePath.String "Text" (printf "Vol. %s" .RemainLabel) "Name" (printf "%s %s" .SeriesName .VolumesLabel) "Sub" .LineTitle "Wanted" true}}
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
 {{template "footer" .}}
 {{end}}

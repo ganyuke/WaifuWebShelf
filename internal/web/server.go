@@ -41,7 +41,14 @@ type View struct {
 	Err          string
 	AdminEnabled bool
 	SignedIn     bool
+	Preview      Preview
 	Data         any
+}
+
+// Preview is what chat apps show when a page link is shared.
+type Preview struct {
+	Text  string
+	Image string
 }
 
 func New(cfg config.Config, store *db.DB) (*Server, error) {
@@ -102,6 +109,7 @@ func (s *Server) Handler() http.Handler {
 	})
 
 	mux.HandleFunc("GET /{$}", s.home)
+	mux.HandleFunc("GET /", s.notFound)
 	mux.HandleFunc("GET /series", s.seriesList)
 	mux.HandleFunc("GET /series/{slug}", s.seriesDetail)
 	mux.HandleFunc("GET /series/{slug}/{lineSlug}/{number}", s.volumePage)
@@ -198,6 +206,20 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 }
 
 func (s *Server) renderErr(w http.ResponseWriter, r *http.Request, name, title, formErr string, data any) {
+	s.renderView(w, r, name, title, formErr, Preview{}, data)
+}
+
+func (s *Server) renderPreview(w http.ResponseWriter, r *http.Request, name, title string, preview Preview, data any) {
+	s.renderView(w, r, name, title, "", preview, data)
+}
+
+func (s *Server) renderView(w http.ResponseWriter, r *http.Request, name, title, formErr string, preview Preview, data any) {
+	// Chat apps need a full address for pictures, so there is none without SITE_URL.
+	if preview.Image != "" && s.cfg.SiteURL != "" {
+		preview.Image = s.cfg.SiteURL + "/images/" + preview.Image
+	} else {
+		preview.Image = ""
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	view := View{
 		Title:        title,
@@ -206,6 +228,7 @@ func (s *Server) renderErr(w http.ResponseWriter, r *http.Request, name, title, 
 		Err:          formErr,
 		AdminEnabled: s.cfg.AdminEnabled(),
 		SignedIn:     s.loggedIn(r),
+		Preview:      preview,
 		Data:         data,
 	}
 	if err := s.tmpl.ExecuteTemplate(w, name, view); err != nil {

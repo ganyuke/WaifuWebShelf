@@ -131,7 +131,7 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	}
 
 	body := mustOK("/series/spice-and-wolf")
-	if !strings.Contains(body, "Light novel  1 / 3 · 3 copies") {
+	if !strings.Contains(body, "1 of 3 volumes, 3 copies in total") {
 		t.Fatalf("grid caption missing:\n%s", body)
 	}
 	if !strings.Contains(body, "copy-count") {

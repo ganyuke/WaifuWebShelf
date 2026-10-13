@@ -70,6 +70,18 @@ type Merch struct {
 	Notes            string
 }
 
+// Paid is the price actually paid: with tax when known, otherwise without.
+func (v Volume) Paid() sql.NullInt64 { return paid(v.PriceIncTaxCents, v.PriceExTaxCents) }
+
+func (m Merch) Paid() sql.NullInt64 { return paid(m.PriceIncTaxCents, m.PriceExTaxCents) }
+
+func paid(inc, ex sql.NullInt64) sql.NullInt64 {
+	if inc.Valid {
+		return inc
+	}
+	return ex
+}
+
 type Link struct {
 	ID        int64
 	OwnerType string
@@ -597,6 +609,27 @@ func (d *DB) SetVolumeCover(bookLineID int64, number string, path sql.NullString
 		bookLineID, number, path.String,
 	)
 	return err
+}
+
+// LineCovers maps volume number to cover image for one book line.
+func (d *DB) LineCovers(bookLineID int64) (map[string]string, error) {
+	rows, err := d.SQL.Query(
+		`SELECT volume_number, image_path FROM volume_covers WHERE book_line_id = ? AND image_path != ''`,
+		bookLineID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var number, path string
+		if err := rows.Scan(&number, &path); err != nil {
+			return nil, err
+		}
+		out[number] = path
+	}
+	return out, rows.Err()
 }
 
 func merchCols() string {

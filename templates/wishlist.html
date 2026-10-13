@@ -17,27 +17,28 @@
     </span>
     {{end}}
   </div>
-  <div class="table-wrap">
-    <table class="catalog">
-      <thead><tr><th></th><th>Item</th><th>Left</th><th class="num">MSRP</th></tr></thead>
-      <tbody>
-      {{range .Items}}
-        <tr>
-          <td class="catalog-cover">
-            {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="">{{else}}<span class="cover-letter">{{if .Name}}{{printf "%.1s" .Name}}{{else}}#{{end}}</span>{{end}}
-          </td>
-          <td>
-            <a href="/wishlist/{{.ID}}">{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{end}}</a>
-            {{if and (eq .Kind "merch") .MerchKind}} · {{.MerchKind}}{{end}}
-            {{if $.SignedIn}} · <a href="/admin/wishlist/{{.ID}}/edit">Edit</a>{{end}}
-          </td>
-          <td>{{if eq .Kind "volumes"}}{{.RemainLabel}}{{else if gt .Quantity 1}}×{{.Quantity}}{{else}}—{{end}}</td>
-          <td class="num">{{if .MSRPValid}}{{money true .MSRPAmount .Currency}}{{else}}—{{end}}</td>
-        </tr>
-      {{end}}
-      </tbody>
-    </table>
-  </div>
+  <ul class="wish-list">
+    {{range .Items}}
+    <li>
+      <a class="cover" href="/wishlist/{{.ID}}">
+        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}<span class="cover-text">Vol. {{.RemainLabel}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+      </a>
+      <div class="wish-body">
+        {{if eq .Kind "merch"}}
+        <h3><a href="/wishlist/{{.ID}}">{{.Name}}</a></h3>
+        {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
+        {{else}}
+        <h3><a href="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a></h3>
+        {{if gt .RemainCount 1}}<p class="muted">{{.RemainCount}} volumes</p>{{end}}
+        {{end}}
+        {{template "links_list" .Links}}
+        {{if .Notes}}<p class="notes">{{.Notes}}</p>{{end}}
+        {{if $.SignedIn}}<p><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></p>{{end}}
+      </div>
+      {{if .MSRPValid}}<div class="wish-price"><b>{{amount .MSRPAmount .Currency}}</b><span>list price</span></div>{{end}}
+    </li>
+    {{end}}
+  </ul>
 </div>
 {{end}}
 {{template "footer" .}}

@@ -69,3 +69,23 @@ func TestNegativeRejected(t *testing.T) {
 		t.Fatal("expected error")
 	}
 }
+
+func TestDisplay(t *testing.T) {
+	cases := []struct {
+		amount   int64
+		currency string
+		want     string
+	}{
+		{109940, "JPY", "¥109,940"},
+		{1699, "CAD", "CA$16.99"},
+		{123456789, "usd", "US$1,234,567.89"},
+		{500, "CHF", "CHF 5.00"},
+		{-8992, "CAD", "-CA$89.92"},
+		{0, "JPY", "¥0"},
+	}
+	for _, c := range cases {
+		if got := money.Display(c.amount, c.currency); got != c.want {
+			t.Errorf("Display(%d, %q) = %q, want %q", c.amount, c.currency, got, c.want)
+		}
+	}
+}

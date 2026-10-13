@@ -31,6 +31,14 @@ func (v WishView) Active() bool {
 	return true
 }
 
+// VolumesLabel reads "volume 3" or "volumes 25–29".
+func (v WishView) VolumesLabel() string {
+	if v.RemainCount == 1 {
+		return "volume " + v.RemainLabel
+	}
+	return "volumes " + v.RemainLabel
+}
+
 func (v WishView) MSRPValid() bool {
 	return v.MSRPTotal != nil
 }
@@ -93,7 +101,7 @@ func wishlistFormTitle(data wishlistFormData) string {
 func (s *Server) wishView(row db.WishlistRow, owned map[string]bool) WishView {
 	v := WishView{
 		WishlistRow: row,
-		LineTitle:   catalog.LineTitle(row.LineKind, row.LineLabel),
+		LineTitle:   catalog.LineFullTitle(row.LineKind, row.LineLabel),
 	}
 	if row.Kind == "volumes" {
 		v.Remain = catalog.SpanRemaining(row.VolFrom, row.VolTo, owned)
@@ -200,6 +208,14 @@ func (s *Server) wishlist(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	for i := range items {
+		ll, err := s.db.ListLinks("wishlist", items[i].ID)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		items[i].Links = toLinkViews(ll)
+	}
 	s.render(w, r, "wishlist", "Wishlist", groupWishViews(items))
 }
 
@@ -237,7 +253,7 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v.Links = toLinkViews(ll)
-	s.render(w, r, "wishlist_detail", wishTitle(v), v)
+	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: "Wanted · " + v.SeriesName, Image: nullImage(v.ImagePath)}, v)
 }
 
 func wishTitle(v WishView) string {
@@ -245,7 +261,7 @@ func wishTitle(v WishView) string {
 		return v.Name
 	}
 	if v.RemainLabel != "" {
-		return v.LineTitle + " " + v.RemainLabel
+		return v.LineTitle + ", " + v.VolumesLabel()
 	}
 	return "Wishlist"
 }

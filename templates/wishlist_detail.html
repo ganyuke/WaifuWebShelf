@@ -1,25 +1,26 @@
 {{define "wishlist_detail"}}
 {{template "header" .}}
-<p class="crumb"><a href="/wishlist">Wishlist</a> · <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a>{{if eq .Data.Kind "volumes"}} · {{.Data.LineTitle}}{{end}}</p>
+<p class="crumb"><a href="/wishlist">Wishlist</a> · <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a></p>
 <div class="box">
   <div class="bar">
-    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.LineTitle}} {{.Data.RemainLabel}}{{end}}</h1>
+    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.LineTitle}}, {{.Data.VolumesLabel}}{{end}}</h1>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/wishlist/{{.Data.ID}}/edit">Edit</a>
       {{if eq .Data.Kind "merch"}} · <a href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>{{end}}
-      {{if eq .Data.Kind "volumes"}} · <a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Remain.Numbers}}?n={{index .Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
+      {{if eq .Data.Kind "volumes"}} · <a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Data.Remain.Numbers}}?n={{index .Data.Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
     </span>
     {{end}}
   </div>
   <article class="detail">
-    {{if .Data.ImagePath.Valid}}<img class="hero-img" src="{{imageURL .Data.ImagePath.String}}" alt="">{{end}}
+    {{if .Data.ImagePath.Valid}}<a href="{{imageURL .Data.ImagePath.String}}"><img class="hero-img" src="{{imageURL .Data.ImagePath.String}}" alt=""></a>{{end}}
     <div>
-      {{if and (eq .Data.Kind "merch") .Data.MerchKind}}<p class="muted">{{.Data.MerchKind}}{{if gt .Data.Quantity 1}} · ×{{.Data.Quantity}}{{end}}</p>{{end}}
+      <p><span class="tag">Wanted</span></p>
+      {{if eq .Data.Kind "merch"}}{{with merchSub .Data.Name .Data.MerchKind .Data.Quantity}}<p class="muted">{{.}}</p>{{end}}{{end}}
       {{template "links_list" .Data.Links}}
       <dl class="facts">
-        {{if eq .Data.Kind "volumes"}}<dt>Left</dt><dd>{{.Data.RemainLabel}}</dd>{{end}}
-        <dt>MSRP</dt><dd>{{money .Data.MSRPCents.Valid .Data.MSRPCents.Int64 .Data.Currency}}</dd>
+        {{if and (eq .Data.Kind "volumes") (gt .Data.RemainCount 1)}}<dt>Volumes</dt><dd>{{.Data.RemainCount}}</dd>{{end}}
+        {{if .Data.MSRPValid}}<dt>List price</dt><dd>{{amount .Data.MSRPAmount .Data.Currency}}</dd>{{end}}
       </dl>
       {{if .Data.Notes}}<p class="notes">{{.Data.Notes}}</p>{{end}}
     </div>

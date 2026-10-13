@@ -4,6 +4,18 @@ A personal catalog of manga, light novels, and merch. One Go binary, SQLite, ser
 
 A **series** is a franchise. Manga vs light novels are **book lines** under that series, each with its own owned/missing volume grid. Merch hangs off the series.
 
+## Screenshots
+
+| Shelf | Series |
+| --- | --- |
+| ![Shelf](screenshots/home.png) | ![Series](screenshots/series.png) |
+
+| Wishlist | Spending |
+| --- | --- |
+| ![Wishlist](screenshots/wishlist.png) | ![Spending](screenshots/spending.png) |
+
+More pages, with phone versions, are in `screenshots/`.
+
 ## Run locally
 
 ```bash
@@ -23,6 +35,7 @@ Run from the repository root so `templates/` and `static/` resolve. The SQLite f
 | `DATA_DIR` | `data` | SQLite + `images/` |
 | `ADMIN_USER` | `admin` | Login username |
 | `ADMIN_PASS` | empty | If unset, `/admin` and `/login` return 503 |
+| `SITE_URL` | empty | Public address of the site, like `https://shelf.example.com`. Set it to show a picture when a page link is shared in chat |
 | `TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or ranges of your reverse proxy. Leave as is when the proxy runs on the same machine |
 
 Money is stored as integer minor units (cents for CAD/USD, yen for JPY). Leave MSRP blank when you do not know list price; spending totals skip those rows instead of treating them as $0.

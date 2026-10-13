@@ -134,3 +134,48 @@ func FormatAmountDelta(amount int64, currency string) string {
 	}
 	return sign + FormatAmount(amount, currency)
 }
+
+var symbols = map[string]string{
+	"USD": "US$",
+	"CAD": "CA$",
+	"AUD": "A$",
+	"JPY": "¥",
+	"KRW": "₩",
+	"EUR": "€",
+	"GBP": "£",
+}
+
+// Display formats an amount for reading: currency symbol and thousands
+// separators, e.g. "¥109,940" or "CA$16.99". Unknown currencies keep their code.
+func Display(amount int64, currency string) string {
+	currency = NormalizeCurrency(currency)
+	num := FormatAmount(amount, currency)
+	neg := strings.HasPrefix(num, "-")
+	num = strings.TrimPrefix(num, "-")
+	whole, frac, hasFrac := strings.Cut(num, ".")
+	var b strings.Builder
+	for i, ch := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(ch)
+	}
+	if hasFrac {
+		b.WriteString("." + frac)
+	}
+	sym, ok := symbols[currency]
+	if !ok {
+		sym = currency + " "
+	}
+	if neg {
+		return "-" + sym + b.String()
+	}
+	return sym + b.String()
+}
+
+func DisplayNull(valid bool, amount int64, currency string) string {
+	if !valid {
+		return "—"
+	}
+	return Display(amount, currency)
+}

@@ -5,6 +5,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{if .Title}}{{.Title}} · {{end}}WaifuWebShelf</title>
+<meta property="og:site_name" content="WaifuWebShelf">
+<meta property="og:title" content="{{if .Title}}{{.Title}}{{else}}WaifuWebShelf{{end}}">
+{{with .Preview.Text}}<meta name="description" content="{{.}}">
+<meta property="og:description" content="{{.}}">{{end}}
+{{with .Preview.Image}}<meta property="og:image" content="{{.}}">{{end}}
 <link rel="icon" href="{{assetURL "favicon.svg"}}" type="image/svg+xml">
 <link rel="stylesheet" href="{{assetURL "style.css"}}">
 </head>
@@ -12,17 +17,14 @@
 <header class="site-header">
   <a class="brand" href="/">WaifuWebShelf</a>
   <nav>
-    <a class="{{active .Path "/"}}" href="/">Home</a>
-    <a class="{{active .Path "/series"}}" href="/series">Series</a>
+    <a class="{{if eq .Path "/"}}active{{else}}{{active .Path "/series"}}{{end}}" href="/">Shelf</a>
     <a class="{{active .Path "/merch"}}" href="/merch">Merch</a>
     <a class="{{active .Path "/wishlist"}}" href="/wishlist">Wishlist</a>
     <a class="{{active .Path "/stats"}}" href="/stats">Spending</a>
     {{if .SignedIn}}
-    <a href="/admin/items/new">Add item</a>
-    <a class="{{active .Path "/admin"}}" href="/admin">Admin</a>
-    <form method="post" action="/logout" class="nav-form"><button type="submit">Log out</button></form>
-    {{else if .AdminEnabled}}
-    <a class="{{active .Path "/login"}}" href="/login">Admin</a>
+    <a class="owner" href="/admin/items/new">Add item</a>
+    <a class="owner {{active .Path "/admin"}}" href="/admin">Admin</a>
+    <form method="post" action="/logout" class="nav-form"><button type="submit" class="owner">Log out</button></form>
     {{end}}
   </nav>
 </header>
@@ -33,9 +35,34 @@
 
 {{define "footer"}}
 </main>
+<footer class="site-footer">{{if and .AdminEnabled (not .SignedIn)}}<a href="/login">Log in</a>{{end}}</footer>
 <script src="{{assetURL "forms.js"}}" defer></script>
 </body>
 </html>
+{{end}}
+
+{{define "tile"}}
+<a class="card{{if .Wanted}} wanted{{end}}" href="{{.URL}}">
+  <div class="cover">
+    {{if .Image}}<img src="{{imageURL .Image}}" alt="" loading="lazy">{{else if .Text}}<span class="cover-text">{{.Text}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+  </div>
+  {{if .Wanted}}<span class="tag">Wanted</span>{{end}}
+  <div class="card-body">
+    <h3>{{.Name}}</h3>
+    {{if .Sub}}<p class="muted">{{.Sub}}</p>{{end}}
+  </div>
+</a>
+{{end}}
+
+{{define "purchase_facts"}}
+<dl class="facts">
+  {{with .P}}
+  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} · {{end}}{{.Store}}</dd>{{end}}
+  {{if .Paid.Valid}}<dt>Paid</dt><dd>{{amount .Paid.Int64 .Currency}}</dd>{{end}}
+  {{if .MSRPCents.Valid}}<dt>List price</dt><dd>{{amount .MSRPCents.Int64 .Currency}}</dd>{{end}}
+  {{if and $.SignedIn .PriceExTaxCents.Valid}}<dt>Before tax</dt><dd>{{amount .PriceExTaxCents.Int64 .Currency}}</dd>{{end}}
+  {{end}}
+</dl>
 {{end}}
 
 {{define "links_list"}}
@@ -94,31 +121,13 @@
 {{end}}
 {{end}}
 
-{{define "series_card"}}
-<tr>
-  <td class="catalog-cover">
-    {{if .Cover}}<img src="{{imageURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
-  </td>
-  <td><a href="/series/{{.Slug}}">{{.Name}}</a></td>
-  <td>
-    {{range .Lines}}{{lineTitle .Kind .Label}} · {{progress .Owned .Total}}<br>{{else}}—{{end}}
-  </td>
-  <td>{{if .MerchCount}}{{.MerchCount}}{{else}}—{{end}}</td>
-</tr>
-{{end}}
-
 {{define "wish_money"}}
 <section class="stats-grid">
   {{range .}}
   <article class="spend-card">
     <h3>{{.Currency}}</h3>
-    <dl class="spend-rows">
-      <div>
-        <dt>MSRP</dt>
-        <dd>{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</dd>
-      </div>
-    </dl>
-    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} have no MSRP.</p>{{end}}
+    <p class="spend-big">{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}} <span>at list price</span></p>
+    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} have no list price.</p>{{end}}
   </article>
   {{end}}
 </section>
@@ -126,30 +135,36 @@
 
 {{define "money_block"}}
 <section class="stats-grid">
-  {{range .}}
+  {{range .Totals}}
   <article class="spend-card">
     <h3>{{.Currency}}</h3>
+    <p class="spend-big">{{amount .IncTaxCents .Currency}} <span>paid</span></p>
     <dl class="spend-rows">
-      <div>
-        <dt>MSRP</dt>
-        <dd>{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</dd>
-      </div>
-      <div>
-        <dt>Paid without tax</dt>
-        <dd>{{amount .ExTaxCents .Currency}}</dd>
-      </div>
-      <div>
-        <dt>Paid with tax</dt>
-        <dd>{{amount .IncTaxCents .Currency}}</dd>
-      </div>
       {{if .WithMSRP}}
-      <div class="delta {{if gt .DeltaCents 0}}under{{else if lt .DeltaCents 0}}over{{end}}">
-        <dt>Vs MSRP</dt>
-        <dd>{{amountDelta .DeltaCents .Currency}}</dd>
+      <div>
+        <dt>List price</dt>
+        <dd>{{amount .MSRPCents .Currency}}</dd>
+      </div>
+      {{if gt .DeltaCents 0}}
+      <div class="under">
+        <dt>Saved <span class="hint" title="List price minus the price before tax" tabindex="0">(?)</span></dt>
+        <dd>{{amount .DeltaCents .Currency}}</dd>
+      </div>
+      {{else if lt .DeltaCents 0}}
+      <div class="over">
+        <dt>Over list price <span class="hint" title="Price before tax minus list price" tabindex="0">(?)</span></dt>
+        <dd>{{amount (abs .DeltaCents) .Currency}}</dd>
+      </div>
+      {{end}}
+      {{end}}
+      {{if $.SignedIn}}
+      <div>
+        <dt>Before tax</dt>
+        <dd>{{amount .ExTaxCents .Currency}}</dd>
       </div>
       {{end}}
     </dl>
-    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} items have no MSRP.</p>{{end}}
+    {{if .Incomplete}}<p class="note">{{.MissingMSRP}} of {{.ItemCount}} items have no list price.</p>{{end}}
   </article>
   {{else}}
   <p class="muted">No purchases yet.</p>
