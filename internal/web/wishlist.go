@@ -49,6 +49,14 @@ func (v WishView) Each() string {
 	return money.Display(v.MSRPCents.Int64, v.Currency)
 }
 
+// UnitPrice is the list price of one volume or one merch piece.
+func (v WishView) UnitPrice() string {
+	if !v.MSRPCents.Valid {
+		return ""
+	}
+	return money.Display(v.MSRPCents.Int64, v.Currency)
+}
+
 func (v *WishView) applyCovers(covers map[string]string) {
 	v.Volumes = nil
 	for _, n := range v.Remain.Numbers {
@@ -188,6 +196,17 @@ func (s *Server) activeWishViews(rows []db.WishlistRow) ([]WishView, error) {
 	return out, nil
 }
 
+// Count is how many volumes and merch pieces the group still wants.
+func (g WishGroup) Count() int { return wishCount(g.Items) }
+
+func wishCount(items []WishView) int {
+	n := 0
+	for _, item := range items {
+		n += item.RemainCount
+	}
+	return n
+}
+
 func groupWishViews(items []WishView) []WishGroup {
 	var groups []WishGroup
 	for _, item := range items {
@@ -262,7 +281,7 @@ func (s *Server) wishlist(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, r, "wishlist", "Wishlist", map[string]any{
 		"Groups": groupWishViews(items),
-		"Count":  len(items),
+		"Count":  wishCount(items),
 		"Totals": wishMoneyTotals(items),
 	})
 }

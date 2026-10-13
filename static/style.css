@@ -271,12 +271,14 @@ a.vol-cell.missing:hover, a.vol-cell.wanted:hover { border-color: var(--bar); co
 .wanted-heading { margin: 16px 0 8px; }
 
 /* Wishlist */
-.wish-table .catalog-cover img, .wish-table .catalog-cover .cover-letter, .wish-table .catalog-cover .cover-text { width: 64px; height: 90px; }
-.wish-table .name { font-size: 15px; font-weight: 700; }
-.mini-covers { list-style: none; display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 0; padding: 0; }
-.mini-covers li { position: relative; width: 40px; height: 56px; display: grid; place-items: center; overflow: hidden; background: var(--soft); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 700; }
-.mini-covers img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.mini-covers img + span { position: absolute; left: 0; bottom: 0; padding: 0 4px; background: var(--paper); color: var(--ink); font-size: 10px; line-height: 14px; }
+.wish-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 16px 14px; }
+.wish-grid .cover { aspect-ratio: 5 / 7; border: 1px solid var(--line); }
+.wish-grid .cover:hover { border-color: var(--bar); }
+.card-body .price { font-weight: 700; font-variant-numeric: tabular-nums; }
+.vol-cell.wish { background: #f6e9b8; color: var(--wanted-ink); border-color: var(--wanted); }
+.vol-cell.wish img + .vol-num { position: absolute; left: 0; bottom: 0; min-width: 20px; padding: 0 4px; background: var(--wanted); color: var(--wanted-ink); font-size: 11px; line-height: 16px; text-align: center; }
+.card .ext-links { margin: 2px 0 0; font-size: 12px; }
+.detail .vol-grid { max-width: 480px; margin: 8px 0; }
 .cover-list { list-style: none; display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 0 0 12px; padding: 0; }
 .cover-list li { display: flex; align-items: center; gap: 8px; }
 

@@ -1,70 +1,98 @@
 {{define "wishlist"}}
 {{template "header" .}}
-<div class="cols">
-  <div>
-    <div class="box">
-      <div class="bar">
-        <h1>Wishlist <span class="count">{{.Data.Count}} {{if eq .Data.Count 1}}item{{else}}items{{end}}</span></h1>
-      </div>
-      {{if not .Data.Groups}}<p class="muted">Nothing on the list.</p>{{end}}
-    </div>
-    {{range .Data.Groups}}
-    <div class="box">
-      <div class="bar">
-        <h2><a href="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
-        {{if $.SignedIn}}
-        <span>
-          <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=volumes">Add volume</a>
-          · <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=merch">Add merch</a>
-        </span>
-        {{end}}
-      </div>
-      <div class="table-wrap">
-        <table class="catalog wish-table">
-          <thead><tr><th></th><th>Item</th><th>Shops</th><th class="num">List price</th></tr></thead>
-          <tbody>
-            {{range .Items}}
-            <tr>
-              <td class="catalog-cover">
-                <a href="/wishlist/{{.ID}}">{{if .Picture}}<img src="{{imageURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}<span class="cover-text">Vol. {{.RemainLabel}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
-              </td>
-              <td>
-                {{if eq .Kind "merch"}}
-                <a class="name" href="/wishlist/{{.ID}}">{{.Name}}</a>
-                {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
-                {{else}}
-                <a class="name" href="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a>
-                {{if gt .RemainCount 1}}<p class="muted">{{.RemainCount}} volumes{{with .Each}} · {{.}} each{{end}}</p>{{end}}
-                {{if gt (len .Volumes) 1}}{{template "wish_volumes" .Volumes}}{{end}}
-                {{end}}
-                {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
-                {{if $.SignedIn}}<p><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></p>{{end}}
-              </td>
-              <td>{{if .Links}}{{template "links_list" .Links}}{{else}}—{{end}}</td>
-              <td class="num strong">{{if .MSRPValid}}{{amount .MSRPAmount .Currency}}{{else}}—{{end}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-    </div>
+<div class="cols rail-left">
+<aside class="rail">
+  {{if .Data.Totals}}
+  <div class="box">
+    <h2 class="bar">List price</h2>
+    <ul class="toc">
+      {{range .Data.Totals}}<li>{{.Currency}}<span>{{if .WithMSRP}}{{amount .MSRPCents .Currency}}{{else}}—{{end}}</span></li>{{end}}
+    </ul>
+    {{range .Data.Totals}}{{if .Incomplete}}<p class="note">{{.Currency}}: {{.MissingMSRP}} of {{.ItemCount}} have no list price.</p>{{end}}{{end}}
+  </div>
+  {{end}}
+  {{if .Data.Groups}}
+  <div class="box">
+    <h2 class="bar">Series</h2>
+    <ul class="toc">
+      {{range .Data.Groups}}<li><a href="#{{.SeriesSlug}}">{{.SeriesName}}</a><span>{{.Count}}</span></li>{{end}}
+    </ul>
+  </div>
+  {{end}}
+</aside>
+<div>
+<div class="box">
+  <div class="bar">
+    <h1>Wishlist <span class="count">{{.Data.Count}} {{if eq .Data.Count 1}}item{{else}}items{{end}}</span></h1>
+  </div>
+  {{if not .Data.Groups}}<p class="muted">Nothing on the list.</p>{{end}}
+</div>
+{{range .Data.Groups}}
+<div class="box" id="{{.SeriesSlug}}">
+  <div class="bar">
+    <h2><a href="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
+    {{if $.SignedIn}}
+    <span>
+      <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=volumes">Add volume</a>
+      · <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=merch">Add merch</a>
+    </span>
     {{end}}
   </div>
 
-  {{if .Data.Totals}}
-  <aside class="rail">
-    <div class="box">
-      <h2 class="bar">Total</h2>
-      {{template "wish_money" .Data.Totals}}
+  <div class="card-grid wish-grid">
+    {{range .Items}}
+    {{$item := .}}
+    {{if eq .Kind "merch"}}
+    <div class="card">
+      <a class="cover" href="/wishlist/{{.ID}}">
+        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+      </a>
+      <div class="card-body">
+        <h3><a href="/wishlist/{{.ID}}">{{.Name}}</a></h3>
+        {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
+        {{if .MSRPValid}}<p class="price">{{amount .MSRPAmount .Currency}}</p>{{end}}
+        {{template "links_list" .Links}}
+        {{if $.SignedIn}}<p><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></p>{{end}}
+      </div>
     </div>
-  </aside>
-  {{end}}
+    {{else}}
+    {{range .Volumes}}
+    <div class="card">
+      <a class="cover" href="/wishlist/{{$item.ID}}">
+        {{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}
+      </a>
+      <div class="card-body">
+        <h3><a href="/wishlist/{{$item.ID}}">Volume {{.Number}}</a></h3>
+        <p class="muted">{{$item.LineTitle}}</p>
+        {{with $item.UnitPrice}}<p class="price">{{.}}</p>{{end}}
+        {{template "links_list" $item.Links}}
+        {{if $.SignedIn}}<p><a href="/admin/wishlist/{{$item.ID}}/edit">Edit</a></p>{{end}}
+      </div>
+    </div>
+    {{else}}
+    <div class="card">
+      <a class="cover" href="/wishlist/{{.ID}}"><span class="cover-text">Vol. {{.RemainLabel}}</span></a>
+      <div class="card-body">
+        <h3><a href="/wishlist/{{.ID}}">Volume {{.RemainLabel}}</a></h3>
+        <p class="muted">{{.LineTitle}}</p>
+        {{with .UnitPrice}}<p class="price">{{.}}</p>{{end}}
+      </div>
+    </div>
+    {{end}}
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+</div>
 </div>
 {{template "footer" .}}
 {{end}}
 
 {{define "wish_volumes"}}
-<ul class="mini-covers">
-  {{range .}}<li>{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span>{{.Number}}</span></li>{{end}}
-</ul>
+<ol class="vol-grid">
+  {{range .}}
+  <li><span class="vol-cell wish" title="Volume {{.Number}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></span></li>
+  {{end}}
+</ol>
 {{end}}

@@ -210,7 +210,7 @@ func TestPublicAndAdminFlow(t *testing.T) {
 		t.Fatalf("want merch %d", res.StatusCode)
 	}
 	wish := mustOK("/wishlist")
-	if !strings.Contains(wish, "Holo 1/7") || !strings.Contains(wish, "2–3") {
+	if !strings.Contains(wish, "Holo 1/7") || !strings.Contains(wish, "Volume 2") || !strings.Contains(wish, "Volume 3") {
 		t.Fatalf("wishlist page:\n%s", wish)
 	}
 	stats = mustOK("/stats")
