@@ -8,13 +8,13 @@ A **series** is a franchise. Manga vs light novels are **book lines** under that
 
 | Shelf | Series |
 | --- | --- |
-| ![Shelf](screenshots/home.png) | ![Series](screenshots/series.png) |
+| ![Shelf](screenshots/v3/home.png) | ![Series](screenshots/v3/series.png) |
 
 | Wishlist | Spending |
 | --- | --- |
-| ![Wishlist](screenshots/wishlist.png) | ![Spending](screenshots/spending.png) |
+| ![Wishlist](screenshots/v3/wishlist.png) | ![Spending](screenshots/v3/spending.png) |
 
-More pages, with phone versions, are in `screenshots/`.
+More pages, with phone versions, are in `screenshots/v3/`.
 
 ## Run locally
 
