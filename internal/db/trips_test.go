@@ -182,3 +182,33 @@ func TestBackup(t *testing.T) {
 		t.Fatalf("backup content %v %v", s, err)
 	}
 }
+
+func TestPhotoTags(t *testing.T) {
+	d, lid := tripFixture(t)
+	a, _ := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Book Off"}, VisitedOn: "2026-10-11", Currency: "CAD"})
+	b, _ := d.CreateTrip(TripWrite{StoreID: 1, VisitedOn: "2026-10-18", Currency: "CAD"})
+	if err := d.AddVolumes(a, 0, lid, []string{"1"}, []int{100}, false); err != nil {
+		t.Fatal(err)
+	}
+	vols, _ := d.ListVolumes(lid)
+	if err := d.AddTag(b, "volume", vols[0].ID, 10, 10); !errors.Is(err, ErrNotOnTrip) {
+		t.Fatalf("tagging an item from another trip: %v", err)
+	}
+	if err := d.AddTag(a, "volume", vols[0].ID, 100, 200); err != nil {
+		t.Fatal(err)
+	}
+	// Tagging it again moves the tag.
+	if err := d.AddTag(a, "volume", vols[0].ID, 1500, 300); err != nil {
+		t.Fatal(err)
+	}
+	tags, _ := d.TripTags(a)
+	if len(tags) != 1 || tags[0].X != 1000 || tags[0].Y != 300 {
+		t.Fatalf("tags %+v", tags)
+	}
+	if err := d.TakeOffTrip("volume", vols[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if tags, _ := d.TripTags(a); len(tags) != 0 {
+		t.Fatalf("tag kept after taking the item off the trip: %+v", tags)
+	}
+}

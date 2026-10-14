@@ -128,6 +128,18 @@ CREATE TABLE IF NOT EXISTS wishlist (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- A tag marks where an item is on its trip's haul photo, in thousandths of the width and height.
+CREATE TABLE IF NOT EXISTS photo_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    volume_id INTEGER REFERENCES volumes(id) ON DELETE CASCADE,
+    merch_id INTEGER REFERENCES merch(id) ON DELETE CASCADE,
+    x INTEGER NOT NULL CHECK (x BETWEEN 0 AND 1000),
+    y INTEGER NOT NULL CHECK (y BETWEEN 0 AND 1000),
+    CHECK ((volume_id IS NULL) != (merch_id IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_photo_tags_trip ON photo_tags(trip_id);
 CREATE INDEX IF NOT EXISTS idx_trips_visited ON trips(visited_on);
 CREATE INDEX IF NOT EXISTS idx_receipt_lines_trip ON receipt_lines(trip_id);
 CREATE INDEX IF NOT EXISTS idx_book_lines_series ON book_lines(series_id);

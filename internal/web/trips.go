@@ -18,8 +18,10 @@ import (
 // TripTile is one item on a trip page, drawn with the "tile" template.
 type TripTile struct {
 	Kind, URL, Image, Text, Name, Sub, EditURL string
-	ID                                         int64
-	Wanted                                     bool
+	// Label names the item on its own, for a tag on the haul photo.
+	Label  string
+	ID     int64
+	Wanted bool
 }
 
 type tripLineView struct {
@@ -46,6 +48,8 @@ type tripPageData struct {
 	Subtotal  int64
 	Prev      *db.Trip
 	Next      *db.Trip
+	Tags      []TagView
+	Taggable  []TripTile
 	Choices   []lineChoiceView
 	Form      addBooksForm
 	Errors    map[string]string
@@ -61,17 +65,53 @@ func tripTitle(t db.Trip) string {
 
 func tripTile(i db.TripItem) TripTile {
 	if i.Kind == "merch" {
-		return TripTile{Kind: "merch", ID: i.ID, URL: fmt.Sprintf("/merch/%d", i.ID), Image: nullImage(i.Image),
+		return TripTile{Kind: "merch", ID: i.ID, URL: fmt.Sprintf("/merch/%d", i.ID), Image: nullImage(i.Image), Label: i.Name,
 			Name: i.Name, Sub: merchSub(i.Name, "", i.Quantity), EditURL: fmt.Sprintf("/admin/merch/%d/edit", i.ID)}
 	}
 	return TripTile{Kind: "volume", ID: i.ID, URL: "/series/" + i.SeriesSlug + "/" + i.LineSlug + "/" + i.VolumeNumber,
 		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: "Vol. " + i.VolumeNumber,
-		Sub: i.SeriesName + " · " + catalog.LineTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
+		Label: i.SeriesName + " " + catalog.LineTitle(i.LineKind, i.LineLabel) + " vol. " + i.VolumeNumber,
+		Sub:   i.SeriesName + " · " + catalog.LineTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
 }
 
 type sameTripView struct {
 	Trip  db.Trip
 	Tiles []TripTile
+	Tags  []TagView
+	// Tagged is set when the item itself is tagged on the trip's photo.
+	Tagged bool
+}
+
+// TagView is a tag drawn on a haul photo, placed in whole percent of its size.
+// The page's security policy allows no inline styles, so the stylesheet has a class per percent.
+type TagView struct {
+	ID        int64
+	Left, Top int
+	Label     string
+	URL       string
+	Highlight bool
+}
+
+// tagViews lists the trip's photo tags. The tag on the item given by kind and id is highlighted.
+func (s *Server) tagViews(tripID int64, items []db.TripItem, kind string, id int64) ([]TagView, error) {
+	tags, err := s.db.TripTags(tripID)
+	if err != nil {
+		return nil, err
+	}
+	tiles := map[string]TripTile{}
+	for _, it := range items {
+		tiles[it.Kind+":"+formatID(it.ID)] = tripTile(it)
+	}
+	var out []TagView
+	for _, t := range tags {
+		tile, ok := tiles[t.Kind+":"+formatID(t.ItemID)]
+		if !ok {
+			continue
+		}
+		out = append(out, TagView{ID: t.ID, Left: (t.X + 5) / 10, Top: (t.Y + 5) / 10,
+			Label: tile.Label, URL: tile.URL, Highlight: t.Kind == kind && t.ItemID == id})
+	}
+	return out, nil
 }
 
 // sameTrips lists what else was bought on each of the given trips, leaving out the item itself.
@@ -92,6 +132,22 @@ func (s *Server) sameTrips(tripIDs []sql.NullInt64, kind string, self map[int64]
 			return nil, err
 		}
 		v := sameTripView{Trip: t}
+		if t.PhotoPath.Valid {
+			for selfID := range self {
+				tags, err := s.tagViews(t.ID, items, kind, selfID)
+				if err != nil {
+					return nil, err
+				}
+				for _, tag := range tags {
+					if tag.Highlight {
+						v.Tags, v.Tagged = tags, true
+					}
+				}
+				if v.Tagged {
+					break
+				}
+			}
+		}
 		for _, it := range items {
 			if it.Kind == kind && self[it.ID] {
 				continue
@@ -174,7 +230,16 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 		d.Lines = append(d.Lines, tripLineView{ReceiptLine: l})
 		d.Subtotal += l.TotalCents()
 	}
+	if trip.PhotoPath.Valid {
+		if d.Tags, err = s.tagViews(id, items, "", 0); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+	}
 	for _, it := range items {
+		if trip.PhotoPath.Valid {
+			d.Taggable = append(d.Taggable, tripTile(it))
+		}
 		d.ItemCount += it.Quantity
 		if i, ok := byLine[it.ReceiptLineID.Int64]; ok && it.ReceiptLineID.Valid {
 			d.Lines[i].Items = append(d.Lines[i].Items, tripTile(it))
@@ -802,4 +867,52 @@ func (s *Server) saveItemReceiptLine(r *http.Request, kind string, id int64, tri
 	}
 	lineID, _ := parseID(r.FormValue("receipt_line"))
 	return s.db.SetReceiptLine(kind, id, lineID)
+}
+
+func (s *Server) tagAdd(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "could not read form", http.StatusBadRequest)
+		return
+	}
+	kind, item, _ := strings.Cut(r.FormValue("item"), ":")
+	itemID, err1 := parseID(item)
+	x, err2 := strconv.Atoi(r.FormValue("x"))
+	y, err3 := strconv.Atoi(r.FormValue("y"))
+	if err1 != nil || err2 != nil || err3 != nil {
+		s.renderTrip(w, r, id, addBooksForm{}, nil, "Tap the photo where the item is, then choose it.")
+		return
+	}
+	err = s.db.AddTag(id, kind, itemID, x, y)
+	if errors.Is(err, db.ErrNotOnTrip) {
+		s.renderTrip(w, r, id, addBooksForm{}, nil, err.Error())
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/trips/%d", id), http.StatusSeeOther)
+}
+
+func (s *Server) tagDelete(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	trip, err := s.db.DeleteTag(id)
+	if db.IsNotFound(err) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/trips/%d", trip), http.StatusSeeOther)
 }

@@ -173,6 +173,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/trips/{id}/delete", s.requireAdmin(s.tripDeleteForm))
 	mux.HandleFunc("POST /admin/trips/{id}/delete", s.requireAdmin(s.tripDelete))
 	mux.HandleFunc("POST /admin/trips/{id}/books", s.requireAdmin(s.tripAddBooks))
+	mux.HandleFunc("POST /admin/trips/{id}/tags", s.requireAdmin(s.tagAdd))
+	mux.HandleFunc("POST /admin/tags/{id}/delete", s.requireAdmin(s.tagDelete))
 	mux.HandleFunc("GET /admin/trips/group", s.requireAdmin(s.groupTripsForm))
 	mux.HandleFunc("POST /admin/trips/group", s.requireAdmin(s.groupTrips))
 	mux.HandleFunc("POST /admin/volumes/{id}/take-off", s.requireAdmin(s.itemTakeOff("volume")))

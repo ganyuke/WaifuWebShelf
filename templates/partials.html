@@ -66,6 +66,13 @@
 </dl>
 {{end}}
 
+{{define "haul_photo"}}
+<div class="haul{{if .Tagging}} tagging{{end}}" data-haul>
+  {{if .Tagging}}<img class="hero-img" src="{{imageURL .Photo}}" alt="Everything bought on this trip">{{else}}<a href="{{imageURL .Photo}}"><img class="hero-img" src="{{imageURL .Photo}}" alt="Everything bought on this trip"></a>{{end}}
+  {{range .Tags}}<a class="tag-dot tx-{{.Left}} ty-{{.Top}}{{if .Highlight}} highlight{{end}}" href="{{.URL}}"><span>{{.Label}}</span></a>{{end}}
+</div>
+{{end}}
+
 {{define "same_trips"}}
 {{range .}}
 {{if .Tiles}}
@@ -74,7 +81,10 @@
     <h2>Same trip</h2>
     <a href="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} · {{.Trip.StoreName}}{{end}}</a>
   </div>
-  <div class="card-grid">{{range .Tiles}}{{template "tile" .}}{{end}}</div>
+  <div class="same-trip{{if .Tagged}} with-photo{{end}}">
+    {{if .Tagged}}{{template "haul_photo" dict "Photo" .Trip.PhotoPath.String "Tags" .Tags "Tagging" false}}{{end}}
+    <div class="card-grid">{{range .Tiles}}{{template "tile" .}}{{end}}</div>
+  </div>
 </div>
 {{end}}
 {{end}}

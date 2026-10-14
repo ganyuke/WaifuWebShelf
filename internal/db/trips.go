@@ -495,6 +495,14 @@ func (d *DB) TakeOffTrip(kind string, id int64) error {
 	if err != nil {
 		return err
 	}
+	col := "volume_id"
+	if kind == "merch" {
+		col = "merch_id"
+	}
+	// A tag on the trip's photo only makes sense while the item is on the trip.
+	if _, err := d.SQL.Exec(`DELETE FROM photo_tags WHERE `+col+` = ?`, id); err != nil {
+		return err
+	}
 	_, err = d.SQL.Exec(`UPDATE `+table+` SET trip_id = NULL, receipt_line_id = NULL, updated_at = ? WHERE id = ?`, nowUTC(), id)
 	return err
 }

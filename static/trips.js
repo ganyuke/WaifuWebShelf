@@ -66,3 +66,33 @@
  });
  update();
 })();
+
+// Tagging on a trip's haul photo: a tap places the tag, then the form picks the item.
+(() => {
+ const haul = document.querySelector('.haul.tagging');
+ const form = document.querySelector('[data-tag-form]');
+ if (!haul || !form) return;
+ const hint = document.querySelector('[data-tag-hint]');
+ let marker = null;
+ hint.hidden = false;
+ haul.querySelector('img').addEventListener('click', e => {
+  const box = e.target.getBoundingClientRect();
+  const x = Math.round((e.clientX - box.left) / box.width * 1000);
+  const y = Math.round((e.clientY - box.top) / box.height * 1000);
+  form.elements.x.value = x;
+  form.elements.y.value = y;
+  if (!marker) {
+   marker = document.createElement('span');
+  }
+  marker.className = `tag-dot pending tx-${Math.round(x / 10)} ty-${Math.round(y / 10)}`;
+  haul.append(marker);
+  form.hidden = false;
+  hint.hidden = true;
+  form.elements.item.focus();
+ });
+ form.querySelector('[data-tag-cancel]').addEventListener('click', () => {
+  form.hidden = true;
+  hint.hidden = false;
+  marker?.remove();
+ });
+})();

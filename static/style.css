@@ -355,10 +355,231 @@ button.danger { background: var(--danger); border-color: var(--danger); }
 .compact-links { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .spend td:last-child { white-space: nowrap; }
 .rail .box:first-child { margin-top: 20px; }
+/* Haul photo tags */
+.haul { position: relative; width: fit-content; max-width: 100%; }
+.haul .hero-img { display: block; }
+.haul.tagging img { cursor: crosshair; }
+.tag-dot { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fff; border-radius: 50%; background: rgba(143, 45, 60, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45); }
+.tag-dot span { display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 1px 6px; background: var(--bar); color: var(--bar-ink); font-size: 12px; line-height: 18px; z-index: 1; }
+.tag-dot:hover, .tag-dot:focus { text-decoration: none; z-index: 2; }
+.tag-dot:hover span, .tag-dot:focus span, .tag-dot.highlight span { display: block; }
+.haul-wrap:has([data-show-tags]:checked) .tag-dot span { display: block; }
+.tag-dot.highlight, .tag-dot.pending { background: var(--wanted); }
+.tag-dot.pending { pointer-events: none; }
+.show-tags-label { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+.tag-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 0; }
+.tag-form select { min-height: 32px; max-width: 100%; }
+.tag-list { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; }
+.tag-list li { padding: 2px 0; }
+/* Tag positions in whole percent. Inline styles are blocked by the page's security policy. */
+.tx-0 { left: 0%; }
+.tx-1 { left: 1%; }
+.tx-2 { left: 2%; }
+.tx-3 { left: 3%; }
+.tx-4 { left: 4%; }
+.tx-5 { left: 5%; }
+.tx-6 { left: 6%; }
+.tx-7 { left: 7%; }
+.tx-8 { left: 8%; }
+.tx-9 { left: 9%; }
+.tx-10 { left: 10%; }
+.tx-11 { left: 11%; }
+.tx-12 { left: 12%; }
+.tx-13 { left: 13%; }
+.tx-14 { left: 14%; }
+.tx-15 { left: 15%; }
+.tx-16 { left: 16%; }
+.tx-17 { left: 17%; }
+.tx-18 { left: 18%; }
+.tx-19 { left: 19%; }
+.tx-20 { left: 20%; }
+.tx-21 { left: 21%; }
+.tx-22 { left: 22%; }
+.tx-23 { left: 23%; }
+.tx-24 { left: 24%; }
+.tx-25 { left: 25%; }
+.tx-26 { left: 26%; }
+.tx-27 { left: 27%; }
+.tx-28 { left: 28%; }
+.tx-29 { left: 29%; }
+.tx-30 { left: 30%; }
+.tx-31 { left: 31%; }
+.tx-32 { left: 32%; }
+.tx-33 { left: 33%; }
+.tx-34 { left: 34%; }
+.tx-35 { left: 35%; }
+.tx-36 { left: 36%; }
+.tx-37 { left: 37%; }
+.tx-38 { left: 38%; }
+.tx-39 { left: 39%; }
+.tx-40 { left: 40%; }
+.tx-41 { left: 41%; }
+.tx-42 { left: 42%; }
+.tx-43 { left: 43%; }
+.tx-44 { left: 44%; }
+.tx-45 { left: 45%; }
+.tx-46 { left: 46%; }
+.tx-47 { left: 47%; }
+.tx-48 { left: 48%; }
+.tx-49 { left: 49%; }
+.tx-50 { left: 50%; }
+.tx-51 { left: 51%; }
+.tx-52 { left: 52%; }
+.tx-53 { left: 53%; }
+.tx-54 { left: 54%; }
+.tx-55 { left: 55%; }
+.tx-56 { left: 56%; }
+.tx-57 { left: 57%; }
+.tx-58 { left: 58%; }
+.tx-59 { left: 59%; }
+.tx-60 { left: 60%; }
+.tx-61 { left: 61%; }
+.tx-62 { left: 62%; }
+.tx-63 { left: 63%; }
+.tx-64 { left: 64%; }
+.tx-65 { left: 65%; }
+.tx-66 { left: 66%; }
+.tx-67 { left: 67%; }
+.tx-68 { left: 68%; }
+.tx-69 { left: 69%; }
+.tx-70 { left: 70%; }
+.tx-71 { left: 71%; }
+.tx-72 { left: 72%; }
+.tx-73 { left: 73%; }
+.tx-74 { left: 74%; }
+.tx-75 { left: 75%; }
+.tx-76 { left: 76%; }
+.tx-77 { left: 77%; }
+.tx-78 { left: 78%; }
+.tx-79 { left: 79%; }
+.tx-80 { left: 80%; }
+.tx-81 { left: 81%; }
+.tx-82 { left: 82%; }
+.tx-83 { left: 83%; }
+.tx-84 { left: 84%; }
+.tx-85 { left: 85%; }
+.tx-86 { left: 86%; }
+.tx-87 { left: 87%; }
+.tx-88 { left: 88%; }
+.tx-89 { left: 89%; }
+.tx-90 { left: 90%; }
+.tx-91 { left: 91%; }
+.tx-92 { left: 92%; }
+.tx-93 { left: 93%; }
+.tx-94 { left: 94%; }
+.tx-95 { left: 95%; }
+.tx-96 { left: 96%; }
+.tx-97 { left: 97%; }
+.tx-98 { left: 98%; }
+.tx-99 { left: 99%; }
+.tx-100 { left: 100%; }
+.ty-0 { top: 0%; }
+.ty-1 { top: 1%; }
+.ty-2 { top: 2%; }
+.ty-3 { top: 3%; }
+.ty-4 { top: 4%; }
+.ty-5 { top: 5%; }
+.ty-6 { top: 6%; }
+.ty-7 { top: 7%; }
+.ty-8 { top: 8%; }
+.ty-9 { top: 9%; }
+.ty-10 { top: 10%; }
+.ty-11 { top: 11%; }
+.ty-12 { top: 12%; }
+.ty-13 { top: 13%; }
+.ty-14 { top: 14%; }
+.ty-15 { top: 15%; }
+.ty-16 { top: 16%; }
+.ty-17 { top: 17%; }
+.ty-18 { top: 18%; }
+.ty-19 { top: 19%; }
+.ty-20 { top: 20%; }
+.ty-21 { top: 21%; }
+.ty-22 { top: 22%; }
+.ty-23 { top: 23%; }
+.ty-24 { top: 24%; }
+.ty-25 { top: 25%; }
+.ty-26 { top: 26%; }
+.ty-27 { top: 27%; }
+.ty-28 { top: 28%; }
+.ty-29 { top: 29%; }
+.ty-30 { top: 30%; }
+.ty-31 { top: 31%; }
+.ty-32 { top: 32%; }
+.ty-33 { top: 33%; }
+.ty-34 { top: 34%; }
+.ty-35 { top: 35%; }
+.ty-36 { top: 36%; }
+.ty-37 { top: 37%; }
+.ty-38 { top: 38%; }
+.ty-39 { top: 39%; }
+.ty-40 { top: 40%; }
+.ty-41 { top: 41%; }
+.ty-42 { top: 42%; }
+.ty-43 { top: 43%; }
+.ty-44 { top: 44%; }
+.ty-45 { top: 45%; }
+.ty-46 { top: 46%; }
+.ty-47 { top: 47%; }
+.ty-48 { top: 48%; }
+.ty-49 { top: 49%; }
+.ty-50 { top: 50%; }
+.ty-51 { top: 51%; }
+.ty-52 { top: 52%; }
+.ty-53 { top: 53%; }
+.ty-54 { top: 54%; }
+.ty-55 { top: 55%; }
+.ty-56 { top: 56%; }
+.ty-57 { top: 57%; }
+.ty-58 { top: 58%; }
+.ty-59 { top: 59%; }
+.ty-60 { top: 60%; }
+.ty-61 { top: 61%; }
+.ty-62 { top: 62%; }
+.ty-63 { top: 63%; }
+.ty-64 { top: 64%; }
+.ty-65 { top: 65%; }
+.ty-66 { top: 66%; }
+.ty-67 { top: 67%; }
+.ty-68 { top: 68%; }
+.ty-69 { top: 69%; }
+.ty-70 { top: 70%; }
+.ty-71 { top: 71%; }
+.ty-72 { top: 72%; }
+.ty-73 { top: 73%; }
+.ty-74 { top: 74%; }
+.ty-75 { top: 75%; }
+.ty-76 { top: 76%; }
+.ty-77 { top: 77%; }
+.ty-78 { top: 78%; }
+.ty-79 { top: 79%; }
+.ty-80 { top: 80%; }
+.ty-81 { top: 81%; }
+.ty-82 { top: 82%; }
+.ty-83 { top: 83%; }
+.ty-84 { top: 84%; }
+.ty-85 { top: 85%; }
+.ty-86 { top: 86%; }
+.ty-87 { top: 87%; }
+.ty-88 { top: 88%; }
+.ty-89 { top: 89%; }
+.ty-90 { top: 90%; }
+.ty-91 { top: 91%; }
+.ty-92 { top: 92%; }
+.ty-93 { top: 93%; }
+.ty-94 { top: 94%; }
+.ty-95 { top: 95%; }
+.ty-96 { top: 96%; }
+.ty-97 { top: 97%; }
+.ty-98 { top: 98%; }
+.ty-99 { top: 99%; }
+.ty-100 { top: 100%; }
+.same-trip.with-photo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 0 20px; align-items: start; }
 
 @media (max-width: 860px) {
   .cols, .cols.rail-left, .detail, .detail.book, .detail.trip { grid-template-columns: minmax(0, 1fr); }
-  .trip-grid, .trip-grid.three { grid-template-columns: minmax(0, 1fr); }
+  .trip-grid, .trip-grid.three, .same-trip.with-photo { grid-template-columns: minmax(0, 1fr); }
+  .same-trip .haul, .haul-wrap { margin-bottom: 12px; }
   .rail-left > .rail { position: static; }
   .rail-left .series-cover { width: 120px; }
   .wrap { padding: 1px 12px 24px; border-left: 0; border-right: 0; }

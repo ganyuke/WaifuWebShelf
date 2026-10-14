@@ -8,7 +8,29 @@
     {{if $.SignedIn}}<a href="/admin/trips/{{$t.ID}}/edit">Edit trip</a>{{end}}
   </div>
   <article class="detail trip{{if not $t.PhotoPath.Valid}} no-pic{{end}}">
-    {{if $t.PhotoPath.Valid}}<a href="{{imageURL $t.PhotoPath.String}}"><img class="hero-img" src="{{imageURL $t.PhotoPath.String}}" alt="Everything bought on this trip"></a>{{end}}
+    {{if $t.PhotoPath.Valid}}
+    <div class="haul-wrap">
+      {{template "haul_photo" dict "Photo" $t.PhotoPath.String "Tags" .Data.Tags "Tagging" $.SignedIn}}
+      {{if .Data.Tags}}<label class="check show-tags-label"><input type="checkbox" data-show-tags> Show tags</label>{{end}}
+      {{if $.SignedIn}}
+      {{if .Data.Taggable}}
+      <form class="tag-form" method="post" action="/admin/trips/{{$t.ID}}/tags" data-tag-form hidden>
+        <input type="hidden" name="x"><input type="hidden" name="y">
+        <select name="item" aria-label="Item">{{range .Data.Taggable}}<option value="{{.Kind}}:{{.ID}}">{{.Label}}</option>{{end}}</select>
+        <button type="submit">Tag</button>
+        <button type="button" class="link-button" data-tag-cancel>Cancel</button>
+      </form>
+      <p class="muted" data-tag-hint hidden>Tap the photo to tag an item.</p>
+      <noscript><p class="muted">Turn on JavaScript to tag items on the photo.</p></noscript>
+      {{end}}
+      {{if .Data.Tags}}
+      <ul class="tag-list">
+        {{range .Data.Tags}}<li>{{.Label}} <form class="inline" method="post" action="/admin/tags/{{.ID}}/delete"><button type="submit" class="danger-text">Remove tag</button></form></li>{{end}}
+      </ul>
+      {{end}}
+      {{end}}
+    </div>
+    {{end}}
     <div>
       {{if or .Data.Lines .Data.ItemCount $t.PaidCents.Valid}}
       <dl class="facts">
@@ -104,6 +126,7 @@
   {{with .Data.Next}}<a class="next" href="/trips/{{.ID}}">{{date .VisitedOn}}{{if .StoreName}} · {{.StoreName}}{{end}} →</a>{{end}}
 </nav>
 {{end}}
+{{if $.SignedIn}}<script src="{{assetURL "trips.js"}}" defer></script>{{end}}
 {{template "footer" .}}
 {{end}}
 

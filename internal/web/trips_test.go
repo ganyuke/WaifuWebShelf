@@ -114,6 +114,18 @@ func TestTripFlow(t *testing.T) {
 		t.Fatal("volume page should link its trip and show what else was bought")
 	}
 
+	// Tags only show on a trip with a photo, so tag through the store and check the item page.
+	vols, _ := store.ListVolumesByNumber(lid, "2")
+	if err := store.AddTag(tripID, "volume", vols[0].ID, 250, 400); err != nil {
+		t.Fatal(err)
+	}
+	if res, _ := post("/admin/trips/"+trip+"/tags", url.Values{"item": {"volume:" + strconv.FormatInt(vols[0].ID, 10)}, "x": {"300"}, "y": {"410"}}); res.StatusCode != 303 {
+		t.Fatalf("tag %d", res.StatusCode)
+	}
+	if tags, _ := store.TripTags(tripID); len(tags) != 1 || tags[0].X != 300 {
+		t.Fatalf("tags %+v", tags)
+	}
+
 	// A visit with nothing bought still counts as a trip.
 	if res, _ := post("/admin/trips/new", url.Values{"visited_on": {"2026-10-04"}, "store": {"1"}}); res.StatusCode != 303 {
 		t.Fatalf("empty visit %d", res.StatusCode)
