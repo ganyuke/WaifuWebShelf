@@ -39,6 +39,11 @@ func (c Config) DBPath() string {
 	return c.DataDir + "/shelf.db"
 }
 
+// ReceiptsDir holds receipt photos. Unlike ImagesDir it is never served publicly.
+func (c Config) ReceiptsDir() string {
+	return c.DataDir + "/receipts"
+}
+
 func (c Config) ImagesDir() string {
 	return c.DataDir + "/images"
 }

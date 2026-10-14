@@ -68,10 +68,10 @@
       {{if $d.Photo}}<p class="thumb-row"><img src="{{imageURL $d.Photo}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove</label></p>{{end}}
     </div>
     <div>
-      <label for="receipt">Receipt photo <span class="hint" title="Not shown to visitors" tabindex="0">(?)</span></label>
+      <label for="receipt">Receipt photo <span class="hint" title="Only you can open it, when logged in" tabindex="0">(?)</span></label>
       <input id="receipt" type="file" name="receipt" accept="image/jpeg,image/png,image/webp,image/gif">
       {{template "item_error" dict "Key" "receipt" "Errors" $d.Errors}}
-      {{if $d.Receipt}}<p class="thumb-row"><img src="{{imageURL $d.Receipt}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_receipt" value="1"> Remove</label></p>{{end}}
+      {{if $d.Receipt}}<p class="thumb-row"><img src="/admin/trips/{{$d.ID}}/receipt" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_receipt" value="1"> Remove</label></p>{{end}}
     </div>
   </div>
 

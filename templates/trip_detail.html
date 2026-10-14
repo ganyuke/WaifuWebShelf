@@ -37,7 +37,7 @@
         <dt>Paid</dt><dd class="strong">{{if $t.PaidCents.Valid}}{{amount $t.PaidCents.Int64 $t.Currency}}{{else}}—{{end}}</dd>
         {{if .Data.Lines}}<dt>Before tax</dt><dd>{{amount .Data.Subtotal $t.Currency}}</dd>{{end}}
         <dt>Items</dt><dd>{{.Data.ItemCount}}</dd>
-        {{if and $.SignedIn $t.ReceiptPath.Valid}}<dt>Receipt</dt><dd><a href="{{imageURL $t.ReceiptPath.String}}">Photo</a></dd>{{end}}
+        {{if and $.SignedIn $t.ReceiptPath.Valid}}<dt>Receipt</dt><dd><a href="/admin/trips/{{$t.ID}}/receipt">Photo</a></dd>{{end}}
       </dl>
       {{end}}
       {{if .Data.Lines}}

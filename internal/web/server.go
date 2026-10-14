@@ -25,13 +25,15 @@ type Server struct {
 	tmpl      *template.Template
 	assets    staticAssets
 	imagesDir string
-	sessions  map[string]time.Time
-	sessionMu sync.Mutex
-	proxies   proxyList
-	throttle  *loginThrottle
-	pageMu    sync.Mutex
-	pageGen   uint64
-	pageHTML  map[string][]byte
+	// receiptsDir is only served to the signed-in owner.
+	receiptsDir string
+	sessions    map[string]time.Time
+	sessionMu   sync.Mutex
+	proxies     proxyList
+	throttle    *loginThrottle
+	pageMu      sync.Mutex
+	pageGen     uint64
+	pageHTML    map[string][]byte
 }
 
 type View struct {
@@ -73,6 +75,9 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 	if err := os.MkdirAll(cfg.ImagesDir(), 0o755); err != nil {
 		return nil, err
 	}
+	if err := os.MkdirAll(cfg.ReceiptsDir(), 0o700); err != nil {
+		return nil, err
+	}
 	trusted := cfg.TrustedProxies
 	if trusted == "" {
 		trusted = config.DefaultTrustedProxies
@@ -82,15 +87,16 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
-		proxies:   proxies,
-		throttle:  newLoginThrottle(),
-		cfg:       cfg,
-		db:        store,
-		tmpl:      tmpl,
-		assets:    assets,
-		imagesDir: cfg.ImagesDir(),
-		sessions:  map[string]time.Time{},
-		pageHTML:  map[string][]byte{},
+		proxies:     proxies,
+		throttle:    newLoginThrottle(),
+		cfg:         cfg,
+		db:          store,
+		tmpl:        tmpl,
+		assets:      assets,
+		imagesDir:   cfg.ImagesDir(),
+		receiptsDir: cfg.ReceiptsDir(),
+		sessions:    map[string]time.Time{},
+		pageHTML:    map[string][]byte{},
 	}, nil
 }
 
@@ -173,6 +179,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/trips/{id}/delete", s.requireAdmin(s.tripDeleteForm))
 	mux.HandleFunc("POST /admin/trips/{id}/delete", s.requireAdmin(s.tripDelete))
 	mux.HandleFunc("POST /admin/trips/{id}/books", s.requireAdmin(s.tripAddBooks))
+	mux.HandleFunc("GET /admin/trips/{id}/receipt", s.requireAdmin(s.tripReceipt))
 	mux.HandleFunc("POST /admin/trips/{id}/tags", s.requireAdmin(s.tagAdd))
 	mux.HandleFunc("POST /admin/tags/{id}/delete", s.requireAdmin(s.tagDelete))
 	mux.HandleFunc("GET /admin/trips/group", s.requireAdmin(s.groupTripsForm))

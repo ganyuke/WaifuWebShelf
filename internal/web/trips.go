@@ -584,7 +584,7 @@ func (s *Server) tripSaveNew(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if in.Photo, err = s.applyImageField(r, "photo", "remove_photo", sql.NullString{}); err != nil {
 		d.Errors["photo"] = err.Error()
-	} else if in.Receipt, err = s.applyImageField(r, "receipt", "remove_receipt", sql.NullString{}); err != nil {
+	} else if in.Receipt, err = s.applyImageFieldIn(s.receiptsDir, r, "receipt", "remove_receipt", sql.NullString{}); err != nil {
 		s.deleteImage(in.Photo)
 		d.Errors["receipt"] = err.Error()
 	}
@@ -596,7 +596,7 @@ func (s *Server) tripSaveNew(w http.ResponseWriter, r *http.Request) {
 	id, err := s.db.CreateTrip(in)
 	if err != nil {
 		s.deleteImage(in.Photo)
-		s.deleteImage(in.Receipt)
+		deleteFileIn(s.receiptsDir, in.Receipt)
 		s.serverError(w, r, err)
 		return
 	}
@@ -634,7 +634,7 @@ func (s *Server) tripSaveEdit(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Photo, err = s.applyImageField(r, "photo", "remove_photo", t.PhotoPath); err != nil {
 		d.Errors["photo"] = err.Error()
-	} else if in.Receipt, err = s.applyImageField(r, "receipt", "remove_receipt", t.ReceiptPath); err != nil {
+	} else if in.Receipt, err = s.applyImageFieldIn(s.receiptsDir, r, "receipt", "remove_receipt", t.ReceiptPath); err != nil {
 		d.Errors["receipt"] = err.Error()
 	}
 	if len(d.Errors) > 0 {
@@ -692,7 +692,7 @@ func (s *Server) tripDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.deleteImage(t.PhotoPath)
-	s.deleteImage(t.ReceiptPath)
+	deleteFileIn(s.receiptsDir, t.ReceiptPath)
 	http.Redirect(w, r, "/stats?ok=deleted", http.StatusSeeOther)
 }
 
@@ -915,4 +915,24 @@ func (s *Server) tagDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, fmt.Sprintf("/trips/%d", trip), http.StatusSeeOther)
+}
+
+// tripReceipt shows a trip's receipt photo to the signed-in owner only.
+func (s *Server) tripReceipt(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.PathValue("id"))
+	if err != nil {
+		s.notFound(w, r)
+		return
+	}
+	t, err := s.db.GetTrip(id)
+	if db.IsNotFound(err) || (err == nil && !t.ReceiptPath.Valid) {
+		s.notFound(w, r)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	http.ServeFile(w, r, filepath.Join(s.receiptsDir, filepath.Base(t.ReceiptPath.String)))
 }

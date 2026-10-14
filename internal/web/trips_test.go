@@ -1,8 +1,10 @@
 package web
 
 import (
+	"bytes"
 	"database/sql"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -147,5 +149,80 @@ func TestTripFlow(t *testing.T) {
 	}
 	if n, _, _ := store.UngroupedPurchases(); n != 0 {
 		t.Fatalf("still ungrouped: %d", n)
+	}
+}
+
+func TestReceiptPhotoIsPrivate(t *testing.T) {
+	dir := t.TempDir()
+	store, err := db.Open(filepath.Join(dir, "shelf.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	srv, err := New(config.Config{DataDir: dir, AdminUser: "admin", AdminPass: "secret"}, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+	jar, _ := cookiejar.New(nil)
+	owner := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	visitor := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	login := url.Values{"username": {"admin"}, "password": {"secret"}}
+	req, _ := http.NewRequest(http.MethodPost, ts.URL+"/login", strings.NewReader(login.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", ts.URL)
+	if res, err := owner.Do(req); err != nil || res.StatusCode != 303 {
+		t.Fatalf("login %v", err)
+	}
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	for k, v := range map[string]string{"visited_on": "2026-10-11", "store": "new", "store_name": "Book Off", "currency": "CAD"} {
+		_ = mw.WriteField(k, v)
+	}
+	fw, _ := mw.CreateFormFile("receipt", "receipt.png")
+	png := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
+	_, _ = fw.Write(png)
+	_ = mw.Close()
+	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/admin/trips/new", &body)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("Origin", ts.URL)
+	res, err := owner.Do(req)
+	if err != nil || res.StatusCode != 303 {
+		t.Fatalf("create trip %v %d", err, res.StatusCode)
+	}
+	trips, _ := store.ListTrips()
+	if len(trips) != 1 || !trips[0].ReceiptPath.Valid {
+		t.Fatalf("receipt not saved: %+v", trips)
+	}
+	name := trips[0].ReceiptPath.String
+	path := "/admin/trips/" + strconv.FormatInt(trips[0].ID, 10) + "/receipt"
+
+	for _, c := range []struct {
+		client *http.Client
+		path   string
+		want   int
+	}{
+		{visitor, "/images/" + name, 404},
+		{owner, "/images/" + name, 404},
+		{visitor, path, 303},
+		{owner, path, 200},
+	} {
+		res, err := c.client.Get(ts.URL + c.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != c.want {
+			t.Errorf("%s: got %d, want %d", c.path, res.StatusCode, c.want)
+		}
+	}
+	if page, _ := visitor.Get(ts.URL + "/trips/" + strconv.FormatInt(trips[0].ID, 10)); page != nil {
+		b, _ := io.ReadAll(page.Body)
+		page.Body.Close()
+		if strings.Contains(string(b), name) {
+			t.Error("trip page shows the receipt file to visitors")
+		}
 	}
 }

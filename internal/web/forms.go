@@ -56,22 +56,31 @@ func (s *Server) applyImage(r *http.Request, existing sql.NullString) (sql.NullS
 }
 
 func (s *Server) applyImageField(r *http.Request, fileField, removeField string, existing sql.NullString) (sql.NullString, error) {
+	return s.applyImageFieldIn(s.imagesDir, r, fileField, removeField, existing)
+}
+
+// applyImageFieldIn is applyImageField for pictures kept in dir instead of the public images folder.
+func (s *Server) applyImageFieldIn(dir string, r *http.Request, fileField, removeField string, existing sql.NullString) (sql.NullString, error) {
 	if r.FormValue(removeField) == "1" {
-		s.deleteImage(existing)
+		deleteFileIn(dir, existing)
 		return sql.NullString{}, nil
 	}
-	name, ok, err := s.saveUpload(r, fileField)
+	name, ok, err := saveUploadIn(dir, r, fileField)
 	if err != nil {
 		return existing, err
 	}
 	if !ok {
 		return existing, nil
 	}
-	s.deleteImage(existing)
+	deleteFileIn(dir, existing)
 	return sql.NullString{String: name, Valid: true}, nil
 }
 
 func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error) {
+	return saveUploadIn(s.imagesDir, r, field)
+}
+
+func saveUploadIn(dir string, r *http.Request, field string) (string, bool, error) {
 	file, header, err := r.FormFile(field)
 	if err == http.ErrMissingFile || err == http.ErrNotMultipart {
 		return "", false, nil
@@ -112,7 +121,7 @@ func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error)
 		return "", false, err
 	}
 	name := hex.EncodeToString(buf[:]) + ext
-	dest := filepath.Join(s.imagesDir, name)
+	dest := filepath.Join(dir, name)
 	out, err := os.Create(dest)
 	if err != nil {
 		return "", false, err
@@ -130,11 +139,15 @@ func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error)
 }
 
 func (s *Server) deleteImage(existing sql.NullString) {
+	deleteFileIn(s.imagesDir, existing)
+}
+
+func deleteFileIn(dir string, existing sql.NullString) {
 	if !existing.Valid || existing.String == "" {
 		return
 	}
 	name := filepath.Base(existing.String)
-	_ = os.Remove(filepath.Join(s.imagesDir, name))
+	_ = os.Remove(filepath.Join(dir, name))
 }
 
 func (s *Server) imageServer() http.Handler {

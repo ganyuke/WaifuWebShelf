@@ -119,7 +119,7 @@ If your reverse proxy runs on a different machine, add its address to `TRUSTED_P
 
 ### Backups
 
-Nothing is backed up for you. Keep a copy of the `DATA_DIR` folder, which holds `shelf.db` and the `images/` folder.
+Nothing is backed up for you. Keep a copy of the `DATA_DIR` folder, which holds `shelf.db` and the `images/` and `receipts/` folders.
 
 Stop the service before copying so the copy is complete, then start it again:
 
