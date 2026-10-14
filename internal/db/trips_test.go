@@ -1,0 +1,184 @@
+package db
+
+import (
+	"database/sql"
+	"errors"
+	"path/filepath"
+	"testing"
+)
+
+func tripFixture(t *testing.T) (*DB, int64) {
+	t.Helper()
+	d, err := Open(filepath.Join(t.TempDir(), "shelf.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	sid, err := d.CreateSeries("Rent-A-Girlfriend", "rag", "", sql.NullString{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	msrp := int64(1699)
+	lid, err := d.CreateBookLine(sid, BookLineWrite{Kind: "manga", Label: "English", DefaultMSRPCents: &msrp, DefaultCurrency: "CAD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d, lid
+}
+
+func ptr(n int64) *int64 { return &n }
+
+func TestTripReceiptPricesAndTotals(t *testing.T) {
+	d, lid := tripFixture(t)
+	tax := int64(1200)
+	tid, err := d.CreateTrip(TripWrite{
+		NewStore:  &StoreWrite{Name: "Book Off Robson", Currency: "CAD", TaxBP: &tax},
+		VisitedOn: "2026-10-11", Currency: "CAD", PaidCents: ptr(1792),
+		Lines: []ReceiptLineWrite{{Label: "Book", UnitCents: 200, Count: 8}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines, err := d.ReceiptLines(tid)
+	if err != nil || len(lines) != 1 {
+		t.Fatalf("lines %v %v", lines, err)
+	}
+	if err := d.AddVolumes(tid, lines[0].ID, lid, []string{"14", "15"}, []int{1400, 1500}, false); err != nil {
+		t.Fatal(err)
+	}
+	vols, err := d.ListVolumes(lid)
+	if err != nil || len(vols) != 2 {
+		t.Fatalf("vols %v %v", vols, err)
+	}
+	v := vols[0]
+	if v.Store != "Book Off Robson" || v.PurchasedAt.String != "2026-10-11" || v.Currency != "CAD" {
+		t.Fatalf("trip fields not copied: %+v", v)
+	}
+	if v.PriceExTaxCents.Int64 != 200 || v.PriceIncTaxCents.Valid || !v.PlusTax() {
+		t.Fatalf("receipt price: %+v", v)
+	}
+	if v.MSRPCents.Int64 != 1699 {
+		t.Fatalf("list price from the book line: %+v", v)
+	}
+
+	lines, _ = d.ReceiptLines(tid)
+	if lines[0].Entered != 2 {
+		t.Fatalf("entered %d", lines[0].Entered)
+	}
+
+	err = d.AddVolumes(tid, lines[0].ID, lid, []string{"15", "16"}, []int{1500, 1600}, false)
+	var owned *OwnedError
+	if !errors.As(err, &owned) || len(owned.Numbers) != 1 || owned.Numbers[0] != "15" {
+		t.Fatalf("want owned 15, got %v", err)
+	}
+	if vols, _ := d.ListVolumes(lid); len(vols) != 2 {
+		t.Fatalf("nothing should be saved when one is owned, have %d", len(vols))
+	}
+
+	st, err := d.ShelfStats()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st.ByCurrency) != 1 || st.ByCurrency[0].IncTaxCents != 1792 || st.ByCurrency[0].ExTaxCents != 400 {
+		t.Fatalf("paid is the trip total, before tax the receipt prices: %+v", st.ByCurrency)
+	}
+
+	// Changing the line's price and the trip's date moves its items with it.
+	if err := d.UpdateTrip(tid, TripWrite{StoreID: 1, VisitedOn: "2026-10-12", Currency: "CAD", PaidCents: ptr(1792),
+		Lines: []ReceiptLineWrite{{ID: lines[0].ID, Label: "Book", UnitCents: 300, Count: 8}}}); err != nil {
+		t.Fatal(err)
+	}
+	vols, _ = d.ListVolumes(lid)
+	if vols[0].PriceExTaxCents.Int64 != 300 || vols[0].PurchasedAt.String != "2026-10-12" {
+		t.Fatalf("not synced: %+v", vols[0])
+	}
+
+	months, err := d.SpendingByMonth()
+	if err != nil || len(months) != 1 || months[0].Key != "2026-10" || months[0].Paid != 1792 || months[0].Visits != 1 {
+		t.Fatalf("months %+v %v", months, err)
+	}
+	totals, err := d.ReceiptTotals()
+	if err != nil || len(totals) != 1 || totals[0].Count != 8 || totals[0].Cents != 2400 {
+		t.Fatalf("receipt totals %+v %v", totals, err)
+	}
+
+	// Deleting the trip keeps the books.
+	if err := d.DeleteTrip(tid); err != nil {
+		t.Fatal(err)
+	}
+	vols, _ = d.ListVolumes(lid)
+	if len(vols) != 2 || vols[0].TripID.Valid || vols[0].ReceiptLineID.Valid || vols[0].PriceExTaxCents.Int64 != 300 {
+		t.Fatalf("after delete: %+v", vols)
+	}
+}
+
+func TestEmptyVisitAndMissingTotal(t *testing.T) {
+	d, _ := tripFixture(t)
+	if _, err := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Book Off", Currency: "CAD"}, VisitedOn: "2026-10-04", Currency: "CAD"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "book off", Currency: "CAD"}, VisitedOn: "2026-10-11", Currency: "CAD",
+		Lines: []ReceiptLineWrite{{Label: "Keychain", UnitCents: 1200, Count: 1}}}); err != nil {
+		t.Fatal(err)
+	}
+	stores, err := d.ListStores()
+	if err != nil || len(stores) != 1 || stores[0].Visits != 2 {
+		t.Fatalf("same store by name: %+v %v", stores, err)
+	}
+	st, _ := d.ShelfStats()
+	if len(st.ByCurrency) != 1 || st.ByCurrency[0].TripsWithoutTotal != 1 {
+		t.Fatalf("one trip has a receipt with no total: %+v", st.ByCurrency)
+	}
+	byStore, _ := d.SpendingByStore()
+	if len(byStore) != 1 || byStore[0].Visits != 2 || byStore[0].NoTotal != 1 {
+		t.Fatalf("by store %+v", byStore)
+	}
+}
+
+func TestGroupIntoTrips(t *testing.T) {
+	d, lid := tripFixture(t)
+	for _, n := range []string{"1", "2"} {
+		if _, err := d.CreateVolume(lid, n, 0, Purchase{PurchasedAt: "2024-09-02", Store: "Book Off", Currency: "CAD",
+			PriceExTaxCents: ptr(800), PriceIncTaxCents: ptr(896)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := d.CreateVolume(lid, "3", 0, Purchase{Store: "Book Off", Currency: "CAD"}); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := d.ShelfStats()
+	items, trips, err := d.UngroupedPurchases()
+	if err != nil || items != 2 || trips != 1 {
+		t.Fatalf("ungrouped %d %d %v", items, trips, err)
+	}
+	if tn, in, err := d.GroupIntoTrips(); err != nil || tn != 1 || in != 2 {
+		t.Fatalf("group %d %d %v", tn, in, err)
+	}
+	all, _ := d.ListTrips()
+	if len(all) != 1 || all[0].StoreName != "Book Off" || all[0].PaidCents.Int64 != 1792 {
+		t.Fatalf("trip %+v", all)
+	}
+	after, _ := d.ShelfStats()
+	if before.ByCurrency[0].IncTaxCents != after.ByCurrency[0].IncTaxCents {
+		t.Fatalf("grouping changed the total paid: %d -> %d", before.ByCurrency[0].IncTaxCents, after.ByCurrency[0].IncTaxCents)
+	}
+	if items, _, _ := d.UngroupedPurchases(); items != 0 {
+		t.Fatalf("still ungrouped: %d", items)
+	}
+}
+
+func TestBackup(t *testing.T) {
+	d, _ := tripFixture(t)
+	path := filepath.Join(t.TempDir(), "backups", "copy.db")
+	if err := d.Backup(path); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if s, err := c.ListSeries(); err != nil || len(s) != 1 {
+		t.Fatalf("backup content %v %v", s, err)
+	}
+}

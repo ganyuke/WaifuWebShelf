@@ -1,7 +1,7 @@
 {{define "item_error"}}{{with index .Errors .Key}}<p class="field-error" id="{{$.Key}}-error" role="alert">{{.}}</p>{{end}}{{end}}
 {{define "item_form"}}
 {{template "header" .}}
-<p class="crumb"><a href="/">Collection</a>{{if .Data.SeriesSlug}} · <a href="/series/{{.Data.SeriesSlug}}">Series</a>{{end}} · Add item</p>
+<p class="crumb">{{if .Data.Trip.TripID}}<a href="/trips/{{.Data.Trip.TripID}}">{{.Data.Trip.TripTitle}}</a>{{else}}<a href="/">Collection</a>{{if .Data.SeriesSlug}} · <a href="/series/{{.Data.SeriesSlug}}">Series</a>{{end}}{{end}} · Add item</p>
 <div class="box">
 <h1>Add item</h1>
 <noscript><p>Choose a series and its format, or select New series and New format. For books, use “Use format defaults” to fill in currency and list price. Leave the merch fields unused.</p></noscript>
@@ -36,6 +36,20 @@
 <label for="merch_kind">Kind (optional)</label><input id="merch_kind" name="merch_kind" type="text" value="{{.Data.MerchKind}}" aria-describedby="merch_kind-error">{{template "item_error" dict "Key" "merch_kind" "Errors" .Data.Errors}}
 <label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" value="{{.Data.Quantity}}" aria-describedby="quantity-error">{{template "item_error" dict "Key" "quantity" "Errors" .Data.Errors}}
 </section>
+{{if .Data.Trip.TripID}}
+<fieldset class="trip-box">
+<legend>Trip</legend>
+<p>{{.Data.Trip.TripTitle}}</p>
+<input type="hidden" name="trip_id" value="{{.Data.Trip.TripID}}">
+<input type="hidden" name="currency" value="{{.Data.Currency}}">
+{{if .Data.Trip.ReceiptLines}}
+<label for="receipt_line">Receipt line</label>
+<select id="receipt_line" name="receipt_line">{{range .Data.Trip.ReceiptLines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Trip.ReceiptLine}}selected{{end}}>{{.Label}} {{amount .UnitCents $.Data.Currency}} · {{.Entered}} of {{.Count}}</option>{{end}}<option value="" {{if eq .Data.Trip.ReceiptLine ""}}selected{{end}}>Not on the receipt</option></select>
+{{template "item_error" dict "Key" "receipt_line" "Errors" .Data.Errors}}
+{{end}}
+<label for="msrp">MSRP / list price</label><input id="msrp" name="msrp" type="text" value="{{.Data.MSRP}}" aria-describedby="msrp-error">{{template "item_error" dict "Key" "msrp" "Errors" .Data.Errors}}
+</fieldset>
+{{else}}
 <details {{if or .Data.PurchasedAt .Data.Store .Data.MSRP .Data.PriceEx .Data.PriceInc .Data.Errors}}open{{end}}>
 <summary>Purchase details (optional)</summary>
 <label for="purchased_at">Bought on</label><input id="purchased_at" name="purchased_at" type="date" value="{{.Data.PurchasedAt}}" aria-describedby="purchased_at-error">{{template "item_error" dict "Key" "purchased_at" "Errors" .Data.Errors}}
@@ -45,13 +59,14 @@
 <label for="price_ex_tax">Paid without tax</label><input id="price_ex_tax" name="price_ex_tax" type="text" value="{{.Data.PriceEx}}" aria-describedby="price_ex_tax-error">{{template "item_error" dict "Key" "price_ex_tax" "Errors" .Data.Errors}}
 <label for="price_inc_tax">Paid with tax</label><input id="price_inc_tax" name="price_inc_tax" type="text" value="{{.Data.PriceInc}}" aria-describedby="price_inc_tax-error">{{template "item_error" dict "Key" "price_inc_tax" "Errors" .Data.Errors}}
 </details>
+{{end}}
 <details {{if .Data.Errors}}open{{end}}><summary>Images (optional)</summary>
 <div data-book><label for="cover">Volume cover (shared by all copies)</label><input id="cover" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="cover-error">{{template "item_error" dict "Key" "cover" "Errors" .Data.Errors}}</div>
 <label for="image">Photo of this item</label><input id="image" type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="image-error">{{template "item_error" dict "Key" "image" "Errors" .Data.Errors}}
 <p class="muted">JPEG, PNG, WebP or GIF, up to 8 MB. After a validation error, select the file again.</p>
 </details>
 <details {{if .Data.Notes}}open{{end}}><summary>Additional details</summary><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3">{{.Data.Notes}}</textarea></details>
-<div class="form-actions"><button name="action" value="save">Save</button><button name="action" value="again">Save and add another</button><a href="{{if .Data.SeriesSlug}}/series/{{.Data.SeriesSlug}}{{else}}/{{end}}">Cancel</a></div>
+<div class="form-actions"><button name="action" value="save">Save</button><button name="action" value="again">Save and add another</button><a href="{{if .Data.Trip.TripID}}/trips/{{.Data.Trip.TripID}}{{else if .Data.SeriesSlug}}/series/{{.Data.SeriesSlug}}{{else}}/{{end}}">Cancel</a></div>
 </form></div>
 <script src="{{assetURL "items.js"}}" defer></script>
 {{template "footer" .}}

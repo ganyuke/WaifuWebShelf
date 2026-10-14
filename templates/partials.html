@@ -22,7 +22,8 @@
     <a class="{{active .Path "/wishlist"}}" href="/wishlist">Wishlist</a>
     <a class="{{active .Path "/stats"}}" href="/stats">Spending</a>
     {{if .SignedIn}}
-    <a class="owner-first" href="/admin/items/new">Add item</a>
+    <a class="owner-first" href="/admin/trips/new">Add trip</a>
+    <a href="/admin/items/new">Add item</a>
     <a class="{{active .Path "/admin"}}" href="/admin">Admin</a>
     <form method="post" action="/logout" class="nav-form"><button type="submit">Log out</button></form>
     {{end}}
@@ -57,12 +58,26 @@
 {{define "purchase_facts"}}
 <dl class="facts">
   {{with .P}}
-  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} · {{end}}{{.Store}}</dd>{{end}}
-  {{if .Paid.Valid}}<dt>Paid</dt><dd>{{amount .Paid.Int64 .Currency}}</dd>{{end}}
+  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{end}}{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} · {{end}}{{.Store}}{{if .TripID.Valid}}</a>{{end}}</dd>{{end}}
+  {{if .Paid.Valid}}<dt>Paid</dt><dd>{{amount .Paid.Int64 .Currency}}{{if .PlusTax}} <span class="muted">+ tax</span>{{end}}</dd>{{end}}
   {{if .MSRPCents.Valid}}<dt>List price</dt><dd>{{amount .MSRPCents.Int64 .Currency}}</dd>{{end}}
   {{if and $.SignedIn .PriceExTaxCents.Valid}}<dt>Before tax</dt><dd>{{amount .PriceExTaxCents.Int64 .Currency}}</dd>{{end}}
   {{end}}
 </dl>
+{{end}}
+
+{{define "same_trips"}}
+{{range .}}
+{{if .Tiles}}
+<div class="box">
+  <div class="bar">
+    <h2>Same trip</h2>
+    <a href="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} · {{.Trip.StoreName}}{{end}}</a>
+  </div>
+  <div class="card-grid">{{range .Tiles}}{{template "tile" .}}{{end}}</div>
+</div>
+{{end}}
+{{end}}
 {{end}}
 
 {{define "links_list"}}
@@ -121,6 +136,36 @@
 {{end}}
 {{end}}
 
+{{define "trip_purchase_fields"}}
+{{with .Data}}
+<fieldset class="trip-box">
+  <legend>Trip</legend>
+  <p><a href="/trips/{{.Trip.TripID}}">{{.Trip.TripTitle}}</a></p>
+  <input type="hidden" name="currency" value="{{.Currency}}">
+  {{if .Trip.ReceiptLines}}
+  <label>Receipt line
+    <select name="receipt_line">
+      {{range .Trip.ReceiptLines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Trip.ReceiptLine}}selected{{end}}>{{.Label}} {{amount .UnitCents $.Data.Currency}}</option>{{end}}
+      <option value="" {{if eq .Trip.ReceiptLine ""}}selected{{end}}>Not on the receipt</option>
+    </select>
+  </label>
+  {{end}}
+  <label>MSRP <input name="msrp" {{if fieldError $.Err "msrp"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.MSRP}}" placeholder="list price"></label>
+  {{if not .Trip.OnLine}}
+  <label>Paid without tax <input name="price_ex_tax" {{if fieldError $.Err "price_ex_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceEx}}"></label>
+  <label>Paid with tax <input name="price_inc_tax" {{if fieldError $.Err "price_inc_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceInc}}"></label>
+  {{end}}
+</fieldset>
+<details {{if .Notes}}open{{end}}><summary>Additional details</summary><label>Notes <textarea name="notes" rows="3">{{.Notes}}</textarea></label></details>
+{{end}}
+{{end}}
+
+{{define "take_off_trip"}}
+{{if .Trip.TripID}}
+<form class="inline" method="post" action="{{.Action}}"><button type="submit" class="danger-text">Take off this trip</button></form> · 
+{{end}}
+{{end}}
+
 {{define "wish_money"}}
 <table class="catalog stack-sm">
   <thead><tr><th>Currency</th><th class="num">Items</th><th class="num">List price</th></tr></thead>
@@ -164,6 +209,7 @@
   </tbody>
 </table>
 {{range .Totals}}{{if .Incomplete}}<p class="note">{{.Currency}}: {{.MissingMSRP}} of {{.ItemCount}} items have no list price.</p>{{end}}{{end}}
+{{range .Totals}}{{if .TripsWithoutTotal}}<p class="note">{{.Currency}}: {{.TripsWithoutTotal}} {{if eq .TripsWithoutTotal 1}}trip has{{else}}trips have{{end}} no total yet.</p>{{end}}{{end}}
 {{else}}
 <p class="muted">No purchases yet.</p>
 {{end}}

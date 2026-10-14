@@ -18,7 +18,19 @@ func (s *Server) adminHome(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, "admin_home", "Admin", cards)
+	stores, err := s.db.ListStores()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	items, trips, err := s.db.UngroupedPurchases()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	s.render(w, r, "admin_home", "Admin", map[string]any{
+		"Series": cards, "Stores": stores, "Ungrouped": items, "UngroupedTrips": trips,
+	})
 }
 
 type seriesFormData struct {

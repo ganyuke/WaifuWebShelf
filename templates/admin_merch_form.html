@@ -21,7 +21,7 @@
       <option value="other">
     </datalist>
     <label>Quantity <input name="quantity" {{if fieldError .Err "quantity"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="numeric" value="{{.Data.Quantity}}"></label>
-    {{template "purchase_fields" .}}
+    {{if .Data.Trip.TripID}}{{template "trip_purchase_fields" .}}{{else}}{{template "purchase_fields" .}}{{end}}
     <details {{if or .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>
     <label>Photo <input type="file" name="image" {{if fieldError .Err "image"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>
     {{if .Data.Image}}
@@ -41,7 +41,7 @@
   · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a></p>
 </section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "merch" "OwnerID" .Data.ID "Next" (printf "/admin/merch/%d/edit" .Data.ID)}}
-<p class="admin-actions"><a class="danger-text" href="/admin/merch/{{.Data.ID}}/delete">Delete merch</a></p>
+<div class="admin-actions">{{template "take_off_trip" dict "Trip" .Data.Trip "Action" (printf "/admin/merch/%d/take-off" .Data.ID)}}<a class="danger-text" href="/admin/merch/{{.Data.ID}}/delete">Delete merch</a></div>
 {{end}}
 {{template "footer" .}}
 {{end}}

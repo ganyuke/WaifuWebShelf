@@ -329,8 +329,36 @@ button.danger { background: var(--danger); border-color: var(--danger); }
 .thumb-row { display: flex; gap: 0.8rem; align-items: center; }
 .admin-actions { margin: 12px 0; }
 
+/* Trips */
+.trip-form { max-width: 720px; }
+.trip-form label, .trip-books label { display: block; font-weight: 700; }
+.trip-form h2 { margin: 12px 0 0; }
+.trip-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.trip-grid.three { grid-template-columns: 2fr 1fr 1fr; }
+.trip-grid > div { display: grid; gap: 4px; align-content: start; }
+.trip-form input:not([type=checkbox]), .trip-form select, .trip-form textarea, .trip-books input:not([type=checkbox]), .trip-books select { width: 100%; min-height: 36px; }
+.new-store, .trip-box { margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: 4px; display: grid; gap: 6px; }
+.new-store legend, .trip-box legend { font-weight: 700; padding: 0 4px; }
+.trip-box p { margin: 0; }
+.receipt-rows td { padding: 4px 6px; border-bottom: 0; }
+.receipt-rows td:first-child { width: 60%; }
+.receipt-rows input { text-align: inherit; }
+.receipt-rows .num input { text-align: right; }
+.link-button { background: none; border: 0; padding: 0; color: var(--link); text-decoration: underline; font: inherit; cursor: pointer; }
+.trip-books .check { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.detail.trip { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.detail.trip.no-pic { grid-template-columns: minmax(0, 1fr); }
+.receipt { margin-top: 8px; }
+.trip-tile { display: flex; flex-direction: column; }
+.tile-edit { font-size: 12px; margin-top: 2px; }
+.thumb.haul { float: right; width: 72px; height: 54px; margin: 0 0 4px 8px; }
+.compact-links { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.spend td:last-child { white-space: nowrap; }
+.rail .box:first-child { margin-top: 20px; }
+
 @media (max-width: 860px) {
-  .cols, .cols.rail-left, .detail, .detail.book { grid-template-columns: minmax(0, 1fr); }
+  .cols, .cols.rail-left, .detail, .detail.book, .detail.trip { grid-template-columns: minmax(0, 1fr); }
+  .trip-grid, .trip-grid.three { grid-template-columns: minmax(0, 1fr); }
   .rail-left > .rail { position: static; }
   .rail-left .series-cover { width: 120px; }
   .wrap { padding: 1px 12px 24px; border-left: 0; border-right: 0; }

@@ -4,6 +4,10 @@ A personal catalog of manga, light novels, and merch. One Go binary, SQLite, ser
 
 A **series** is a franchise. Manga vs light novels are **book lines** under that series, each with its own owned/missing volume grid. Merch hangs off the series.
 
+A **trip** is one store visit with its receipt. Enter the receipt lines as printed ("Book $2 × 8"), what you paid, and a photo of the haul if you took one, then add the books and merch onto the lines. Spending totals use what you paid on each trip. Item prices are the receipt prices, before tax. A visit where you bought nothing is a trip with no receipt.
+
+Purchases entered before trips existed can be grouped into trips from the admin page, one per day and store. A copy of your data goes in `backups/` in the data folder first.
+
 ## Screenshots
 
 | Shelf | Series |

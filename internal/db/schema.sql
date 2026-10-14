@@ -25,6 +25,41 @@ CREATE TABLE IF NOT EXISTS book_lines (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- A store keeps the currency and tax that new trips there start with.
+CREATE TABLE IF NOT EXISTS stores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    -- Sales tax in hundredths of a percent (1200 = 12%), only used to suggest a trip total.
+    tax_bp INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- A trip is one store visit: one receipt, possibly with nothing bought.
+CREATE TABLE IF NOT EXISTS trips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id INTEGER REFERENCES stores(id),
+    visited_on TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    -- What was actually paid, tax included. Never split across items.
+    paid_cents INTEGER,
+    photo_path TEXT,
+    receipt_path TEXT,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- One printed receipt row, like "Book $2 x 8". Items on it take its unit price, before tax.
+CREATE TABLE IF NOT EXISTS receipt_lines (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    unit_cents INTEGER NOT NULL CHECK (unit_cents >= 0),
+    count INTEGER NOT NULL CHECK (count >= 1),
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS volumes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     book_line_id INTEGER NOT NULL REFERENCES book_lines(id) ON DELETE CASCADE,
@@ -38,6 +73,8 @@ CREATE TABLE IF NOT EXISTS volumes (
     currency TEXT NOT NULL DEFAULT 'USD',
     image_path TEXT,
     notes TEXT NOT NULL DEFAULT '',
+    trip_id INTEGER REFERENCES trips(id) ON DELETE SET NULL,
+    receipt_line_id INTEGER REFERENCES receipt_lines(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -56,6 +93,8 @@ CREATE TABLE IF NOT EXISTS merch (
     currency TEXT NOT NULL DEFAULT 'USD',
     image_path TEXT,
     notes TEXT NOT NULL DEFAULT '',
+    trip_id INTEGER REFERENCES trips(id) ON DELETE SET NULL,
+    receipt_line_id INTEGER REFERENCES receipt_lines(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -89,6 +128,8 @@ CREATE TABLE IF NOT EXISTS wishlist (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_trips_visited ON trips(visited_on);
+CREATE INDEX IF NOT EXISTS idx_receipt_lines_trip ON receipt_lines(trip_id);
 CREATE INDEX IF NOT EXISTS idx_book_lines_series ON book_lines(series_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_book_lines_slug ON book_lines(series_id, slug);
 CREATE INDEX IF NOT EXISTS idx_volumes_book_line ON volumes(book_line_id);

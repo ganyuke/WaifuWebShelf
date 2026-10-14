@@ -5,11 +5,11 @@
     <h1>Admin</h1>
     <a href="/admin/series/new">Add series</a>
   </div>
-  {{if .Data}}
+  {{if .Data.Series}}
   <table class="admin-table">
     <thead><tr><th>Series</th><th>Books</th><th>Merch</th><th></th></tr></thead>
     <tbody>
-    {{range .Data}}
+    {{range .Data.Series}}
       <tr>
         <td><a href="/admin/series/{{.ID}}/edit">{{.Name}}</a></td>
         <td>
@@ -28,6 +28,40 @@
   </table>
   {{else}}
   <p class="muted">No series yet. <a href="/admin/series/new">Add one</a>, then book lines, volumes, and merch hang off that series.</p>
+  {{end}}
+</div>
+{{if .Data.Ungrouped}}
+<div class="box">
+  <div class="bar">
+    <h2>Earlier purchases</h2>
+    <a href="/admin/trips/group">Group into trips</a>
+  </div>
+  <p>{{.Data.Ungrouped}} {{if eq .Data.Ungrouped 1}}item{{else}}items{{end}} with a purchase date {{if eq .Data.Ungrouped 1}}isn't{{else}}aren't{{end}} on a trip.</p>
+</div>
+{{end}}
+<div class="box">
+  <div class="bar">
+    <h2>Stores</h2>
+    <a href="/admin/trips/new">Add trip</a>
+  </div>
+  {{if .Data.Stores}}
+  <table class="admin-table">
+    <thead><tr><th>Store</th><th>Currency</th><th>Tax</th><th>Trips</th><th>Last trip</th><th></th></tr></thead>
+    <tbody>
+    {{range .Data.Stores}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td>{{.Currency}}</td>
+        <td>{{if .TaxBP.Valid}}{{taxPercent .TaxBP.Int64}}%{{else}}—{{end}}</td>
+        <td>{{.Visits}}</td>
+        <td>{{if .LastVisit.Valid}}{{date .LastVisit.String}}{{else}}—{{end}}</td>
+        <td><a href="/admin/stores/{{.ID}}/edit">Edit</a></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No stores yet.</p>
   {{end}}
 </div>
 {{template "footer" .}}

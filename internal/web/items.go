@@ -26,6 +26,8 @@ type itemForm struct {
 	Lines                                                                                 []itemLine
 	Errors                                                                                map[string]string
 	AnotherCopy                                                                           bool
+	// Trip is set when the item is being added to a trip, which supplies its date, store and currency.
+	Trip itemTripFields
 }
 
 func (s *Server) itemForm(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +60,12 @@ func (s *Server) itemForm(w http.ResponseWriter, r *http.Request) {
 			d.SeriesChoice = formatID(line.SeriesID)
 			d.Currency = line.DefaultCurrency
 			d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+		}
+	}
+	if id, e := parseID(q.Get("trip")); e == nil {
+		if !s.setItemFormTrip(&d, id, q.Get("receipt_line"), !q.Has("receipt_line")) {
+			s.notFound(w, r)
+			return
 		}
 	}
 	if q.Get("again") == "1" {
@@ -119,11 +127,22 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	d.PriceInc = f("price_inc_tax")
 	d.Notes = f("notes")
 	d.WishlistID, _ = parseID(f("wishlist_id"))
+	if id, e := parseID(f("trip_id")); e == nil {
+		if !s.setItemFormTrip(&d, id, f("receipt_line"), false) {
+			s.notFound(w, r)
+			return
+		}
+	}
 	if f("action") == "defaults" {
 		if id, e := parseID(d.LineChoice); e == nil {
 			if line, e := s.db.GetBookLine(id); e == nil && formatID(line.SeriesID) == d.SeriesChoice {
-				d.Currency = line.DefaultCurrency
-				d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+				// On a trip the currency is the trip's, and a list price in another currency doesn't fit.
+				if d.Trip.TripID == 0 {
+					d.Currency = line.DefaultCurrency
+				}
+				if d.Currency == line.DefaultCurrency {
+					d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+				}
 			}
 		}
 		s.renderItem(w, r, d, "")
@@ -213,6 +232,10 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		d.Errors[key] = e.Error()
 	}
 	in.Purchase = p
+	if d.Trip.TripID != 0 {
+		in.TripID = d.Trip.TripID
+		in.ReceiptLineID, _ = parseID(d.Trip.ReceiptLine)
+	}
 	fail := func() {
 		s.renderItem(w, r, d, "Check the highlighted fields. If you selected a photo, select it again.")
 	}
@@ -254,6 +277,9 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(e, db.ErrOwned) {
 			d.Errors["another_copy"] = e.Error()
 			fail()
+		} else if errors.Is(e, db.ErrWrongTrip) {
+			d.Errors["receipt_line"] = e.Error()
+			fail()
 		} else {
 			s.serverError(w, r, e)
 		}
@@ -264,9 +290,35 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		code = "merch-added"
 	}
 	dest := "/series/" + slug + "?ok=" + code
+	if d.Trip.TripID != 0 {
+		dest = "/trips/" + formatID(d.Trip.TripID) + "?ok=" + code
+	}
 	if f("action") == "again" {
 		q := url.Values{"type": {d.Type}, "series": {strconv.FormatInt(sid, 10)}, "line": {strconv.FormatInt(lid, 10)}, "again": {"1"}, "date": {d.PurchasedAt}, "store": {d.Store}, "currency": {p.Currency}, "ok": {code}}
+		if d.Trip.TripID != 0 {
+			q.Set("trip", formatID(d.Trip.TripID))
+			q.Set("receipt_line", d.Trip.ReceiptLine)
+		}
 		dest = "/admin/items/new?" + q.Encode()
 	}
 	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// setItemFormTrip fills in the trip an item is being added to, on the receipt line
+// in choice. With pickLine it starts on the first line with items still to enter.
+func (s *Server) setItemFormTrip(d *itemForm, tripID int64, choice string, pickLine bool) bool {
+	t, err := s.db.GetTrip(tripID)
+	if err != nil {
+		return false
+	}
+	lines, err := s.db.ReceiptLines(tripID)
+	if err != nil {
+		return false
+	}
+	d.Trip = itemTripFields{TripID: t.ID, TripTitle: tripTitle(t), ReceiptLines: lines, ReceiptLine: choice}
+	d.Currency = t.Currency
+	if pickLine {
+		d.Trip.ReceiptLine = openLine(lines, d.Type != "merch")
+	}
+	return true
 }

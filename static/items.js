@@ -23,10 +23,14 @@
  field('line').addEventListener('change', () => {
   update();
   const opt = field('line').selectedOptions[0];
-  if (opt?.dataset.currency) {
-   field('currency').value = opt.dataset.currency;
-   field('msrp').value = opt.dataset.msrp || '';
+  if (!opt?.dataset.currency) return;
+  // On a trip the currency is the trip's, so only a list price in that currency fits.
+  if (field('currency').type === 'hidden') {
+   field('msrp').value = opt.dataset.currency === field('currency').value ? opt.dataset.msrp || '' : '';
+   return;
   }
+  field('currency').value = opt.dataset.currency;
+  field('msrp').value = opt.dataset.msrp || '';
  });
  update();
  form.querySelectorAll('.field-error').forEach(error => {

@@ -28,6 +28,7 @@ type merchFormData struct {
 	New         bool
 	Links       []LinkView
 	WishlistID  int64
+	Trip        itemTripFields
 }
 
 func (s *Server) merchNewForm(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +127,12 @@ func (s *Server) loadMerchForm(id int64) (merchFormData, error) {
 	if err != nil {
 		return merchFormData{}, err
 	}
+	trip, err := s.loadItemTrip(m.TripID, m.ReceiptLineID)
+	if err != nil {
+		return merchFormData{}, err
+	}
 	return merchFormData{
+		Trip:        trip,
 		ID:          m.ID,
 		SeriesID:    m.SeriesID,
 		SeriesName:  ser.Name,
@@ -218,7 +224,15 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.ImagePath = img
+	if m.TripID.Valid {
+		keepTripPurchase(&p, m.PurchasedAt, m.Store, m.ReceiptLineID, m.PriceExTaxCents, m.PriceIncTaxCents)
+	}
 	if err := s.db.UpdateMerch(id, strings.TrimSpace(data.Name), strings.TrimSpace(data.Kind), qty, p); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	// Saving the line again also prices a changed quantity at the line's price.
+	if err := s.saveItemReceiptLine(r, "merch", id, m.TripID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}

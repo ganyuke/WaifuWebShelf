@@ -1,0 +1,86 @@
+{{define "admin_trip_form"}}
+{{template "header" .}}
+{{$d := .Data}}
+<p class="crumb"><a href="/stats">Spending</a>{{if not $d.New}} · <a href="/trips/{{$d.ID}}">Trip</a>{{end}}</p>
+<div class="box">
+<h1 class="bar">{{if $d.New}}Add trip{{else}}Edit trip{{end}}</h1>
+<form method="post" enctype="multipart/form-data" class="stack trip-form">
+  <div class="trip-grid">
+    <div>
+      <label for="visited_on">Date</label>
+      <input id="visited_on" name="visited_on" type="date" value="{{$d.VisitedOn}}" required>
+      {{template "item_error" dict "Key" "visited_on" "Errors" $d.Errors}}
+    </div>
+    <div>
+      <label for="store">Store</label>
+      <select id="store" name="store">
+        {{range $d.Stores}}<option value="{{.ID}}" data-currency="{{.Currency}}" data-tax="{{if .TaxBP.Valid}}{{.TaxBP.Int64}}{{end}}" {{if eq (printf "%d" .ID) $d.StoreChoice}}selected{{end}}>{{.Name}}</option>{{end}}
+        <option value="new" {{if eq $d.StoreChoice "new"}}selected{{end}}>New store…</option>
+      </select>
+      {{template "item_error" dict "Key" "store" "Errors" $d.Errors}}
+    </div>
+  </div>
+  <fieldset class="new-store" data-new-store>
+    <legend>New store</legend>
+    <div class="trip-grid three">
+      <div><label for="store_name">Name</label><input id="store_name" name="store_name" value="{{$d.StoreName}}" placeholder="Book Off Robson">{{template "item_error" dict "Key" "store_name" "Errors" $d.Errors}}</div>
+      <div><label for="store_currency">Currency</label><input id="store_currency" name="store_currency" value="{{$d.StoreCurrency}}" list="currencies" maxlength="8"></div>
+      <div><label for="store_tax">Tax % <span class="hint" title="Used to suggest the total when you enter a receipt" tabindex="0">(?)</span></label><input id="store_tax" name="store_tax" value="{{$d.StoreTax}}" inputmode="decimal" placeholder="12">{{template "item_error" dict "Key" "store_tax" "Errors" $d.Errors}}</div>
+    </div>
+  </fieldset>
+  <datalist id="currencies"><option value="CAD"><option value="USD"><option value="JPY"><option value="EUR"></datalist>
+
+  <h2>Receipt</h2>
+  <table class="catalog receipt-rows">
+    <thead><tr><th>Line</th><th class="num">Price</th><th class="num">Count</th></tr></thead>
+    <tbody data-receipt>
+      {{range $i, $l := $d.Lines}}
+      <tr>
+        <td><input type="hidden" name="line_id" value="{{.ID}}"><input name="line_label" value="{{.Label}}" list="receipt-labels" {{if eq $i 0}}placeholder="Book" {{end}}aria-label="Line"></td>
+        <td class="num"><input name="line_price" value="{{.Price}}" inputmode="decimal" {{if eq $i 0}}placeholder="2.00" {{end}}aria-label="Price"></td>
+        <td class="num"><input name="line_count" value="{{.Count}}" inputmode="numeric" {{if eq $i 0}}placeholder="8" {{end}}aria-label="Count"></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <datalist id="receipt-labels">{{range $d.Labels}}<option value="{{.}}">{{end}}</datalist>
+  {{template "item_error" dict "Key" "lines" "Errors" $d.Errors}}
+  <p><button type="button" class="secondary" data-add-line hidden>Add line</button></p>
+
+  <div class="trip-grid">
+    <div>
+      <label for="paid">Paid</label>
+      <input id="paid" name="paid" value="{{$d.Paid}}" inputmode="decimal" placeholder="Total on the receipt">
+      {{template "item_error" dict "Key" "paid" "Errors" $d.Errors}}
+      <p class="muted" data-suggest hidden><span data-suggest-text></span> <button type="button" class="link-button" data-suggest-use>Use</button></p>
+    </div>
+    <div>
+      <label for="currency">Currency</label>
+      <input id="currency" name="currency" value="{{$d.Currency}}" list="currencies" maxlength="8">
+    </div>
+  </div>
+
+  <div class="trip-grid">
+    <div>
+      <label for="photo">Haul photo</label>
+      <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
+      {{template "item_error" dict "Key" "photo" "Errors" $d.Errors}}
+      {{if $d.Photo}}<p class="thumb-row"><img src="{{imageURL $d.Photo}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove</label></p>{{end}}
+    </div>
+    <div>
+      <label for="receipt">Receipt photo <span class="hint" title="Not shown to visitors" tabindex="0">(?)</span></label>
+      <input id="receipt" type="file" name="receipt" accept="image/jpeg,image/png,image/webp,image/gif">
+      {{template "item_error" dict "Key" "receipt" "Errors" $d.Errors}}
+      {{if $d.Receipt}}<p class="thumb-row"><img src="{{imageURL $d.Receipt}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_receipt" value="1"> Remove</label></p>{{end}}
+    </div>
+  </div>
+
+  <label for="notes">Notes</label>
+  <textarea id="notes" name="notes" rows="2">{{$d.Notes}}</textarea>
+
+  <div class="form-actions"><button type="submit">Save</button><a href="{{if $d.New}}/stats{{else}}/trips/{{$d.ID}}{{end}}">Cancel</a></div>
+</form>
+</div>
+<script src="{{assetURL "trips.js"}}" defer></script>
+{{template "footer" .}}
+{{end}}

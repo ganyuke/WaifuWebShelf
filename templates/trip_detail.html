@@ -1,0 +1,115 @@
+{{define "trip_detail"}}
+{{template "header" .}}
+{{$t := .Data.Trip}}
+<p class="crumb"><a href="/stats">Spending</a></p>
+<div class="box">
+  <div class="bar">
+    <h1>{{date $t.VisitedOn}}{{if $t.StoreName}} · {{$t.StoreName}}{{end}}</h1>
+    {{if $.SignedIn}}<a href="/admin/trips/{{$t.ID}}/edit">Edit trip</a>{{end}}
+  </div>
+  <article class="detail trip{{if not $t.PhotoPath.Valid}} no-pic{{end}}">
+    {{if $t.PhotoPath.Valid}}<a href="{{imageURL $t.PhotoPath.String}}"><img class="hero-img" src="{{imageURL $t.PhotoPath.String}}" alt="Everything bought on this trip"></a>{{end}}
+    <div>
+      {{if or .Data.Lines .Data.ItemCount $t.PaidCents.Valid}}
+      <dl class="facts">
+        <dt>Paid</dt><dd class="strong">{{if $t.PaidCents.Valid}}{{amount $t.PaidCents.Int64 $t.Currency}}{{else}}—{{end}}</dd>
+        {{if .Data.Lines}}<dt>Before tax</dt><dd>{{amount .Data.Subtotal $t.Currency}}</dd>{{end}}
+        <dt>Items</dt><dd>{{.Data.ItemCount}}</dd>
+        {{if and $.SignedIn $t.ReceiptPath.Valid}}<dt>Receipt</dt><dd><a href="{{imageURL $t.ReceiptPath.String}}">Photo</a></dd>{{end}}
+      </dl>
+      {{end}}
+      {{if .Data.Lines}}
+      <table class="catalog receipt">
+        <thead><tr><th>Receipt</th><th class="num">Price</th><th class="num">Count</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {{range .Data.Lines}}
+          <tr>
+            <td>{{.Label}}</td>
+            <td class="num">{{amount .UnitCents $t.Currency}}</td>
+            <td class="num">×{{.Count}}</td>
+            <td class="num">{{amount .TotalCents $t.Currency}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+      {{else if not .Data.ItemCount}}
+      <p class="muted">Bought nothing.</p>
+      {{end}}
+      {{if $t.Notes}}<p class="notes">{{$t.Notes}}</p>{{end}}
+    </div>
+  </article>
+</div>
+
+{{range .Data.Lines}}
+<div class="box">
+  <div class="bar">
+    <h2>{{.Label}} · {{amount .UnitCents $t.Currency}}</h2>
+    <span class="muted">{{.Entered}} of {{.Count}}</span>
+  </div>
+  {{if .Items}}
+  <div class="card-grid">{{range .Items}}{{template "trip_tile" dict "Tile" . "SignedIn" $.SignedIn}}{{end}}</div>
+  {{else}}
+  <p class="muted">None entered yet.</p>
+  {{end}}
+</div>
+{{end}}
+
+{{if .Data.Loose}}
+<div class="box">
+  <h2 class="bar">{{if .Data.Lines}}Not on the receipt{{else}}Items{{end}}</h2>
+  <div class="card-grid">{{range .Data.Loose}}{{template "trip_tile" dict "Tile" . "SignedIn" $.SignedIn}}{{end}}</div>
+</div>
+{{end}}
+
+{{if $.SignedIn}}
+<div class="cols">
+  <section class="box">
+    <h2 class="bar">Add books</h2>
+    <form class="stack trip-books" method="post" action="/admin/trips/{{$t.ID}}/books">
+      {{if .Data.Lines}}
+      <label for="receipt_line">Receipt line</label>
+      <select id="receipt_line" name="receipt_line">
+        {{range .Data.Lines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.ReceiptLine}}selected{{end}}>{{.Label}} {{amount .UnitCents $t.Currency}} · {{.Entered}} of {{.Count}}</option>{{end}}
+        <option value="" {{if eq $.Data.Form.ReceiptLine ""}}selected{{end}}>Not on the receipt</option>
+      </select>
+      {{template "item_error" dict "Key" "receipt_line" "Errors" .Data.Errors}}
+      {{end}}
+      <label for="book_line">Series and format</label>
+      <select id="book_line" name="book_line">
+        <option value="">Choose</option>
+        {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.BookLine}}selected{{end}}>{{.Title}}{{if .Next}} · next {{.Next}}{{end}}</option>{{end}}
+      </select>
+      {{template "item_error" dict "Key" "book_line" "Errors" .Data.Errors}}
+      <label for="volumes">Volumes</label>
+      <input id="volumes" name="volumes" value="{{.Data.Form.Numbers}}" placeholder="14, 15, 17-19" autocomplete="off">
+      {{template "item_error" dict "Key" "volumes" "Errors" .Data.Errors}}
+      <label class="check"><input type="checkbox" name="another_copy" value="1" {{if .Data.Form.AnotherCopy}}checked{{end}}> Add another copy if already owned</label>
+      <div class="form-actions"><button type="submit">Add books</button></div>
+    </form>
+  </section>
+  <section class="box">
+    <h2 class="bar">More</h2>
+    <ul class="compact-links">
+      <li><a href="/admin/items/new?type=merch&amp;trip={{$t.ID}}">Add merch</a></li>
+      <li><a href="/admin/items/new?type=book&amp;series=new&amp;trip={{$t.ID}}">Add a book from a new series</a></li>
+      <li><a class="danger-text" href="/admin/trips/{{$t.ID}}/delete">Delete trip</a></li>
+    </ul>
+  </section>
+</div>
+{{end}}
+
+{{if or .Data.Prev .Data.Next}}
+<nav class="pager">
+  {{with .Data.Prev}}<a href="/trips/{{.ID}}">← {{date .VisitedOn}}{{if .StoreName}} · {{.StoreName}}{{end}}</a>{{end}}
+  {{with .Data.Next}}<a class="next" href="/trips/{{.ID}}">{{date .VisitedOn}}{{if .StoreName}} · {{.StoreName}}{{end}} →</a>{{end}}
+</nav>
+{{end}}
+{{template "footer" .}}
+{{end}}
+
+{{define "trip_tile"}}
+<div class="trip-tile">
+  {{template "tile" .Tile}}
+  {{if .SignedIn}}<a class="tile-edit" href="{{.Tile.EditURL}}">Edit</a>{{end}}
+</div>
+{{end}}

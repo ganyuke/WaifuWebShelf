@@ -28,6 +28,7 @@ type volumeFormData struct {
 	New          bool
 	VolumeLinks  []LinkView
 	CopyLinks    []LinkView
+	Trip         itemTripFields
 }
 
 func (s *Server) volumeContext(bookLineID int64) (db.BookLine, db.Series, error) {
@@ -131,7 +132,12 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 	if err != nil {
 		return volumeFormData{}, err
 	}
+	trip, err := s.loadItemTrip(v.TripID, v.ReceiptLineID)
+	if err != nil {
+		return volumeFormData{}, err
+	}
 	return volumeFormData{
+		Trip:         trip,
 		ID:           v.ID,
 		BookLineID:   v.BookLineID,
 		SeriesID:     ser.ID,
@@ -229,7 +235,14 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.ImagePath = img
+	if v.TripID.Valid {
+		keepTripPurchase(&p, v.PurchasedAt, v.Store, v.ReceiptLineID, v.PriceExTaxCents, v.PriceIncTaxCents)
+	}
 	if err := s.db.UpdateVolume(id, number, volumeSortOrder(number), p); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	if err := s.saveItemReceiptLine(r, "volume", id, v.TripID); err != nil {
 		s.serverError(w, r, err)
 		return
 	}

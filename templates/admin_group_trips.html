@@ -1,0 +1,15 @@
+{{define "admin_group_trips"}}
+{{template "header" .}}
+<p class="crumb"><a href="/admin">Admin</a></p>
+<div class="box">
+  <h1 class="bar">Group into trips</h1>
+  {{if .Data.Items}}
+  <p>Makes {{.Data.Trips}} {{if eq .Data.Trips 1}}trip{{else}}trips{{end}} from {{.Data.Items}} {{if eq .Data.Items 1}}item{{else}}items{{end}}, one for each day and store. Prices stay as they are.</p>
+  <p>A copy of your data is saved in the backups folder first.</p>
+  <form method="post"><div class="form-actions"><button type="submit">Group into trips</button><a href="/admin">Cancel</a></div></form>
+  {{else}}
+  <p>Everything with a purchase date is already on a trip.</p>
+  {{end}}
+</div>
+{{template "footer" .}}
+{{end}}

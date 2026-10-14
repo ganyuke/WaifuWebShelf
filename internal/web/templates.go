@@ -47,6 +47,7 @@ func funcMap() template.FuncMap {
 			return n
 		},
 		"date":     displayDate,
+		"month":    displayMonth,
 		"lineFull": catalog.LineFullTitle,
 		"volumesOwned": func(owned int, total *int) string {
 			return catalog.VolumesOwned(owned, total)
@@ -80,7 +81,8 @@ func funcMap() template.FuncMap {
 			}
 			return ""
 		},
-		"flashText": flashText,
+		"flashText":  flashText,
+		"taxPercent": func(bp int64) string { return taxVal(sql.NullInt64{Int64: bp, Valid: true}) },
 		"dict": func(values ...any) (map[string]any, error) {
 			if len(values)%2 != 0 {
 				return nil, fmt.Errorf("dict: odd number of args")
@@ -118,6 +120,15 @@ func displayDate(s string) string {
 		return s
 	}
 	return t.Format("2 Jan 2006")
+}
+
+// displayMonth turns 2026-10 into "Oct 2026".
+func displayMonth(s string) string {
+	t, err := time.Parse("2006-01", s)
+	if err != nil {
+		return s
+	}
+	return t.Format("Jan 2006")
 }
 
 func flashText(code string) string {

@@ -52,6 +52,8 @@ type Volume struct {
 	Currency         string
 	ImagePath        sql.NullString
 	Notes            string
+	TripID           sql.NullInt64
+	ReceiptLineID    sql.NullInt64
 }
 
 type Merch struct {
@@ -68,12 +70,23 @@ type Merch struct {
 	Currency         string
 	ImagePath        sql.NullString
 	Notes            string
+	TripID           sql.NullInt64
+	ReceiptLineID    sql.NullInt64
 }
 
 // Paid is the price actually paid: with tax when known, otherwise without.
 func (v Volume) Paid() sql.NullInt64 { return paid(v.PriceIncTaxCents, v.PriceExTaxCents) }
 
 func (m Merch) Paid() sql.NullInt64 { return paid(m.PriceIncTaxCents, m.PriceExTaxCents) }
+
+// PlusTax is true when the only price is the receipt price, with the tax paid on the trip as a whole.
+func (v Volume) PlusTax() bool { return plusTax(v.TripID, v.PriceIncTaxCents, v.PriceExTaxCents) }
+
+func (m Merch) PlusTax() bool { return plusTax(m.TripID, m.PriceIncTaxCents, m.PriceExTaxCents) }
+
+func plusTax(trip, inc, ex sql.NullInt64) bool {
+	return trip.Valid && !inc.Valid && ex.Valid
+}
 
 func paid(inc, ex sql.NullInt64) sql.NullInt64 {
 	if inc.Valid {
@@ -464,13 +477,14 @@ func (d *DB) DeleteBookLine(id int64) error {
 
 func volumeCols() string {
 	return `id, book_line_id, volume_number, sort_order, purchased_at, store,
-		msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes`
+		msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes, trip_id, receipt_line_id`
 }
 
 func scanVolume(v *Volume) []any {
 	return []any{
 		&v.ID, &v.BookLineID, &v.VolumeNumber, &v.SortOrder, &v.PurchasedAt, &v.Store,
 		&v.MSRPCents, &v.PriceExTaxCents, &v.PriceIncTaxCents, &v.Currency, &v.ImagePath, &v.Notes,
+		&v.TripID, &v.ReceiptLineID,
 	}
 }
 
@@ -634,13 +648,14 @@ func (d *DB) LineCovers(bookLineID int64) (map[string]string, error) {
 
 func merchCols() string {
 	return `id, series_id, name, kind, quantity, purchased_at, store,
-		msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes`
+		msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes, trip_id, receipt_line_id`
 }
 
 func scanMerch(m *Merch) []any {
 	return []any{
 		&m.ID, &m.SeriesID, &m.Name, &m.Kind, &m.Quantity, &m.PurchasedAt, &m.Store,
 		&m.MSRPCents, &m.PriceExTaxCents, &m.PriceIncTaxCents, &m.Currency, &m.ImagePath, &m.Notes,
+		&m.TripID, &m.ReceiptLineID,
 	}
 }
 
@@ -665,7 +680,7 @@ func (d *DB) ListAllMerch() ([]MerchRow, error) {
 	rows, err := d.SQL.Query(`
 		SELECT m.id, m.series_id, m.name, m.kind, m.quantity, m.purchased_at, m.store,
 			m.msrp_cents, m.price_ex_tax_cents, m.price_inc_tax_cents, m.currency, m.image_path, m.notes,
-			s.name, s.slug
+			m.trip_id, m.receipt_line_id, s.name, s.slug
 		FROM merch m
 		JOIN series s ON s.id = m.series_id
 		ORDER BY s.name COLLATE NOCASE, m.name COLLATE NOCASE, m.id`)
@@ -679,7 +694,7 @@ func (d *DB) ListAllMerch() ([]MerchRow, error) {
 		if err := rows.Scan(
 			&r.ID, &r.SeriesID, &r.Name, &r.Kind, &r.Quantity, &r.PurchasedAt, &r.Store,
 			&r.MSRPCents, &r.PriceExTaxCents, &r.PriceIncTaxCents, &r.Currency, &r.ImagePath, &r.Notes,
-			&r.SeriesName, &r.SeriesSlug,
+			&r.TripID, &r.ReceiptLineID, &r.SeriesName, &r.SeriesSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -699,13 +714,13 @@ func (d *DB) GetMerchRow(id int64) (MerchRow, error) {
 	err := d.SQL.QueryRow(`
 		SELECT m.id, m.series_id, m.name, m.kind, m.quantity, m.purchased_at, m.store,
 			m.msrp_cents, m.price_ex_tax_cents, m.price_inc_tax_cents, m.currency, m.image_path, m.notes,
-			s.name, s.slug
+			m.trip_id, m.receipt_line_id, s.name, s.slug
 		FROM merch m
 		JOIN series s ON s.id = m.series_id
 		WHERE m.id = ?`, id).Scan(
 		&r.ID, &r.SeriesID, &r.Name, &r.Kind, &r.Quantity, &r.PurchasedAt, &r.Store,
 		&r.MSRPCents, &r.PriceExTaxCents, &r.PriceIncTaxCents, &r.Currency, &r.ImagePath, &r.Notes,
-		&r.SeriesName, &r.SeriesSlug,
+		&r.TripID, &r.ReceiptLineID, &r.SeriesName, &r.SeriesSlug,
 	)
 	return r, err
 }

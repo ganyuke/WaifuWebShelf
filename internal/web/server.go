@@ -118,6 +118,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /wishlist", s.wishlist)
 	mux.HandleFunc("GET /wishlist/{id}", s.wishlistDetail)
 	mux.HandleFunc("GET /stats", s.statsPage)
+	mux.HandleFunc("GET /trips/{id}", s.tripPage)
 
 	mux.HandleFunc("GET /login", s.loginForm)
 	mux.HandleFunc("POST /login", s.loginSubmit)
@@ -164,6 +165,20 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/wishlist/{id}/edit", s.requireAdmin(s.wishlistSaveEdit))
 	mux.HandleFunc("GET /admin/wishlist/{id}/delete", s.requireAdmin(s.wishlistDeleteForm))
 	mux.HandleFunc("POST /admin/wishlist/{id}/delete", s.requireAdmin(s.wishlistDelete))
+
+	mux.HandleFunc("GET /admin/trips/new", s.requireAdmin(s.tripNewForm))
+	mux.HandleFunc("POST /admin/trips/new", s.requireAdmin(s.tripSaveNew))
+	mux.HandleFunc("GET /admin/trips/{id}/edit", s.requireAdmin(s.tripEdit))
+	mux.HandleFunc("POST /admin/trips/{id}/edit", s.requireAdmin(s.tripSaveEdit))
+	mux.HandleFunc("GET /admin/trips/{id}/delete", s.requireAdmin(s.tripDeleteForm))
+	mux.HandleFunc("POST /admin/trips/{id}/delete", s.requireAdmin(s.tripDelete))
+	mux.HandleFunc("POST /admin/trips/{id}/books", s.requireAdmin(s.tripAddBooks))
+	mux.HandleFunc("GET /admin/trips/group", s.requireAdmin(s.groupTripsForm))
+	mux.HandleFunc("POST /admin/trips/group", s.requireAdmin(s.groupTrips))
+	mux.HandleFunc("POST /admin/volumes/{id}/take-off", s.requireAdmin(s.itemTakeOff("volume")))
+	mux.HandleFunc("POST /admin/merch/{id}/take-off", s.requireAdmin(s.itemTakeOff("merch")))
+	mux.HandleFunc("GET /admin/stores/{id}/edit", s.requireAdmin(s.storeEdit))
+	mux.HandleFunc("POST /admin/stores/{id}/edit", s.requireAdmin(s.storeSaveEdit))
 
 	mux.HandleFunc("POST /admin/links", s.requireAdmin(s.linkCreate))
 	mux.HandleFunc("POST /admin/links/{id}/delete", s.requireAdmin(s.linkDelete))

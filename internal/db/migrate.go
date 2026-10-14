@@ -9,7 +9,51 @@ func migrate(sqlDB *sql.DB) error {
 	if err := ensureLinksAllowWishlist(sqlDB); err != nil {
 		return err
 	}
-	return ensureWishlistMSRP(sqlDB)
+	if err := ensureWishlistMSRP(sqlDB); err != nil {
+		return err
+	}
+	return ensureTripColumns(sqlDB)
+}
+
+// ensureTripColumns links volumes and merch to trips in databases made before trips existed.
+func ensureTripColumns(sqlDB *sql.DB) error {
+	for _, table := range []string{"volumes", "merch"} {
+		cols, err := columnNames(sqlDB, table)
+		if err != nil {
+			return err
+		}
+		if !cols["trip_id"] {
+			if _, err := sqlDB.Exec(`ALTER TABLE ` + table + ` ADD COLUMN trip_id INTEGER REFERENCES trips(id) ON DELETE SET NULL`); err != nil {
+				return err
+			}
+		}
+		if !cols["receipt_line_id"] {
+			if _, err := sqlDB.Exec(`ALTER TABLE ` + table + ` ADD COLUMN receipt_line_id INTEGER REFERENCES receipt_lines(id) ON DELETE SET NULL`); err != nil {
+				return err
+			}
+		}
+		if _, err := sqlDB.Exec(`CREATE INDEX IF NOT EXISTS idx_` + table + `_trip ON ` + table + `(trip_id)`); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func columnNames(sqlDB *sql.DB, table string) (map[string]bool, error) {
+	rows, err := sqlDB.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		out[name] = true
+	}
+	return out, rows.Err()
 }
 
 func ensureWishlistMSRP(sqlDB *sql.DB) error {

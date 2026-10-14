@@ -3,6 +3,7 @@ package web
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"waifuwebshelf/internal/catalog"
@@ -233,6 +234,17 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prev, next := neighbours(ownedNumbers(all), number)
+	var tripIDs []sql.NullInt64
+	self := map[int64]bool{}
+	for _, c := range copies {
+		tripIDs = append(tripIDs, c.TripID)
+		self[c.ID] = true
+	}
+	same, err := s.sameTrips(tripIDs, "volume", self)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	title := catalog.LineFullTitle(line.Kind, line.Label)
 	s.renderPreview(w, r, "volume_detail", ser.Name+" vol. "+number, Preview{Text: title, Image: nullImage(cover)}, map[string]any{
 		"Series": ser,
@@ -244,6 +256,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		"Cover":  nullImage(cover),
 		"Prev":   prev,
 		"Next":   next,
+		"Same":   same,
 	})
 }
 
@@ -331,7 +344,13 @@ func (s *Server) merchDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		break
 	}
+	same, err := s.sameTrips([]sql.NullInt64{row.TripID}, "merch", map[int64]bool{row.ID: true})
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	s.renderPreview(w, r, "merch_detail", row.Name, Preview{Text: row.SeriesName, Image: nullImage(row.ImagePath)}, map[string]any{
+		"Same":  same,
 		"Merch": row,
 		"Links": toLinkViews(ll),
 		"Prev":  prev,
@@ -339,13 +358,18 @@ func (s *Server) merchDetail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Trip is everything bought on one day at one store.
+// Trip is one row of the purchases list: a saved trip, or everything bought on
+// one day at one store that is not on a trip yet.
 type Trip struct {
+	ID    int64
 	Date  sql.NullString
 	Store string
 	Count int
 	Paid  []string
 	Lines []TripLine
+	Photo string
+	// Receipt is set when a saved trip has receipt lines or a total, so it isn't a visit with nothing bought.
+	Receipt bool
 
 	paid  map[string]int64
 	order []string
@@ -434,9 +458,12 @@ func groupTrips(purchases []db.Expenditure) []Trip {
 	byKey := map[string]*Trip{}
 	for _, e := range purchases {
 		key := e.PurchasedAt.String + "\x00" + e.Store
+		if e.TripID.Valid {
+			key = "trip\x00" + strconv.FormatInt(e.TripID.Int64, 10)
+		}
 		t, ok := byKey[key]
 		if !ok {
-			t = &Trip{Date: e.PurchasedAt, Store: e.Store, paid: map[string]int64{}}
+			t = &Trip{ID: e.TripID.Int64, Date: e.PurchasedAt, Store: e.Store, paid: map[string]int64{}}
 			byKey[key] = t
 			trips = append(trips, t)
 		}
@@ -484,10 +511,71 @@ func (s *Server) statsPage(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	saved, err := s.db.ListTrips()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	months, err := s.db.SpendingByMonth()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	stores, err := s.db.SpendingByStore()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	receipts, err := s.db.ReceiptTotals()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	s.render(w, r, "stats", "Spending", struct {
 		db.ShelfStats
 		Trips          []Trip
+		ByMonth        []db.SpendRow
+		ByStore        []db.SpendRow
+		Receipts       []db.ReceiptTotal
 		WishCount      int
 		WishByCurrency []db.MoneyTotals
-	}{stats, groupTrips(purchases), len(wishItems), wishMoneyTotals(wishItems)})
+	}{stats, mergeTrips(groupTrips(purchases), saved), months, stores, receipts, len(wishItems), wishMoneyTotals(wishItems)})
+}
+
+// mergeTrips puts saved trips into the purchases list. A saved trip shows its own
+// store and photo, and only its receipt total as paid, never its items added up.
+// Trips where nothing was bought get a row too.
+func mergeTrips(rows []Trip, saved []db.Trip) []Trip {
+	byID := map[int64]int{}
+	for i, t := range rows {
+		if t.ID != 0 {
+			byID[t.ID] = i
+		}
+	}
+	for _, st := range saved {
+		i, ok := byID[st.ID]
+		if !ok {
+			rows = append(rows, Trip{ID: st.ID})
+			i = len(rows) - 1
+		}
+		t := &rows[i]
+		t.Date = sql.NullString{String: st.VisitedOn, Valid: true}
+		t.Store = st.StoreName
+		t.Photo = nullImage(st.PhotoPath)
+		t.Receipt = st.LineCount > 0 || st.PaidCents.Valid
+		t.Paid = nil
+		if st.PaidCents.Valid {
+			t.Paid = []string{money.Display(st.PaidCents.Int64, st.Currency)}
+		}
+		for j := range t.Lines {
+			t.Lines[j].Paid = ""
+		}
+	}
+	sort.SliceStable(rows, func(a, b int) bool {
+		if rows[a].Date.String != rows[b].Date.String {
+			return rows[a].Date.String > rows[b].Date.String
+		}
+		return rows[a].ID > rows[b].ID
+	})
+	return rows
 }

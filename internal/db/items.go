@@ -11,6 +11,7 @@ var ErrOwned = errors.New("This volume is already owned. Select Add another copy
 
 type ItemWrite struct {
 	WishlistID                                       int64
+	TripID, ReceiptLineID                            int64
 	SeriesID, LineID                                 int64
 	SeriesName, Kind, Label, Number, Name, MerchKind string
 	Quantity, SortOrder                              int
@@ -100,10 +101,27 @@ func (d *DB) CreateItem(in ItemWrite) (seriesID, lineID int64, seriesSlug string
 		}
 	}
 	p := in.Purchase
+	var trip, receiptLine sql.NullInt64
+	if in.TripID != 0 {
+		qty := 1
+		if in.Merch {
+			qty = in.Quantity
+		}
+		var tp Purchase
+		tp, receiptLine, err = tripPurchase(tx, in.TripID, in.ReceiptLineID, qty)
+		if err != nil {
+			return
+		}
+		trip = sql.NullInt64{Int64: in.TripID, Valid: true}
+		p.PurchasedAt, p.Store, p.Currency = tp.PurchasedAt, tp.Store, tp.Currency
+		if receiptLine.Valid {
+			p.PriceExTaxCents, p.PriceIncTaxCents = tp.PriceExTaxCents, nil
+		}
+	}
 	if in.Merch {
-		_, err = tx.Exec(`INSERT INTO merch(series_id,name,kind,quantity,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, seriesID, in.Name, in.MerchKind, in.Quantity, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes)
+		_, err = tx.Exec(`INSERT INTO merch(series_id,name,kind,quantity,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes,trip_id,receipt_line_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, seriesID, in.Name, in.MerchKind, in.Quantity, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes, trip, receiptLine)
 	} else {
-		_, err = tx.Exec(`INSERT INTO volumes(book_line_id,volume_number,sort_order,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)`, lineID, in.Number, in.SortOrder, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes)
+		_, err = tx.Exec(`INSERT INTO volumes(book_line_id,volume_number,sort_order,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes,trip_id,receipt_line_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, lineID, in.Number, in.SortOrder, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes, trip, receiptLine)
 		if err == nil && in.Cover.Valid {
 			_, err = tx.Exec(`INSERT INTO volume_covers(book_line_id,volume_number,image_path) VALUES(?,?,?) ON CONFLICT(book_line_id,volume_number) DO UPDATE SET image_path=excluded.image_path`, lineID, in.Number, in.Cover)
 		}

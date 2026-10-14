@@ -31,12 +31,12 @@
               <td class="date head">{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{else}}—{{end}}</td>
               <td class="wide">
                 {{if .ImagePath.Valid}}<img class="thumb" src="{{imageURL .ImagePath.String}}" alt="">{{end}}
-                {{if .Store}}{{.Store}}{{else}}—{{end}}
+                {{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{if .Store}}{{.Store}}{{else}}Trip{{end}}</a>{{else if .Store}}{{.Store}}{{else}}—{{end}}
                 {{if $.SignedIn}} · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>{{end}}
                 {{template "links_list" .Links}}
                 {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
               </td>
-              <td class="num strong" data-label="Paid">{{money .Paid.Valid .Paid.Int64 .Currency}}</td>
+              <td class="num strong" data-label="Paid">{{money .Paid.Valid .Paid.Int64 .Currency}}{{if .PlusTax}} <span class="muted">+ tax</span>{{end}}</td>
               {{if $.SignedIn}}<td class="num" data-label="Before tax">{{money .PriceExTaxCents.Valid .PriceExTaxCents.Int64 .Currency}}</td>{{end}}
               <td class="num" data-label="List price">{{money .MSRPCents.Valid .MSRPCents.Int64 .Currency}}</td>
             </tr>
@@ -53,5 +53,6 @@
   </nav>
   {{end}}
 </div>
+{{template "same_trips" .Data.Same}}
 {{template "footer" .}}
 {{end}}
