@@ -12,13 +12,17 @@ Purchases entered before trips existed can be grouped into trips from the admin 
 
 | Shelf | Series |
 | --- | --- |
-| ![Shelf](screenshots/v3/home.png) | ![Series](screenshots/v3/series.png) |
+| ![Shelf](screenshots/v4/home.png) | ![Series](screenshots/v4/series.png) |
 
 | Wishlist | Spending |
 | --- | --- |
-| ![Wishlist](screenshots/v3/wishlist.png) | ![Spending](screenshots/v3/spending.png) |
+| ![Wishlist](screenshots/v4/wishlist.png) | ![Spending](screenshots/v4/spending.png) |
 
-More pages, with phone versions, are in `screenshots/v3/`.
+| Trip | Add trip |
+| --- | --- |
+| ![Trip](screenshots/v4/trip.png) | ![Add trip](screenshots/v4/add-trip.png) |
+
+More pages, with phone versions, are in `screenshots/v4/`.
 
 ## Run locally
 
