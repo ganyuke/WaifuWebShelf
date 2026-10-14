@@ -16,6 +16,7 @@ func TestTemplatesParse(t *testing.T) {
 		"merch_detail", "stats", "notfound", "admin_home", "admin_series_form",
 		"admin_bookline_form", "admin_volume_form", "admin_merch_form", "admin_confirm_delete",
 		"login", "header", "footer", "links_list", "links_editor", "purchase_fields", "series_card", "money_block",
+		"wish_money", "wishlist", "wishlist_detail", "admin_wishlist_form",
 	}
 	for _, name := range needed {
 		if s.tmpl.Lookup(name) == nil {

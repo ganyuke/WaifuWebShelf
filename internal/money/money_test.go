@@ -16,6 +16,15 @@ func TestParseCAD(t *testing.T) {
 	}
 }
 
+func TestNormalizeEmpty(t *testing.T) {
+	if money.NormalizeCurrency("") != money.Default {
+		t.Fatalf("empty %q", money.NormalizeCurrency(""))
+	}
+	if money.Default != "USD" {
+		t.Fatalf("default %q", money.Default)
+	}
+}
+
 func TestParseEmpty(t *testing.T) {
 	got, err := money.Parse("  ", "CAD")
 	if err != nil || got != nil {

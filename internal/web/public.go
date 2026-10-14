@@ -76,6 +76,12 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 			VolumeGrid: catalog.BuildGrid(line, vols),
 			Links:      toLinkViews(ll),
 		})
+		wanted, err := s.lineWanted(line.ID)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		grids[len(grids)-1].ApplyWishlist(wanted)
 	}
 	merch, err := s.db.ListMerch(series.ID)
 	if err != nil {
@@ -87,12 +93,29 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	wants, err := s.db.ListOpenWishlistForSeries(series.ID)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	wishItems, err := s.activeWishViews(wants)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	var wantMerch []WishView
+	for _, item := range wishItems {
+		if item.Kind == "merch" {
+			wantMerch = append(wantMerch, item)
+		}
+	}
 	s.render(w, r, "series_detail", series.Name, map[string]any{
-		"Series": series,
-		"Links":  toLinkViews(slinks),
-		"Grids":  grids,
-		"Merch":  merch,
-		"Cover":  nullImage(series.ImagePath),
+		"Series":    series,
+		"Links":     toLinkViews(slinks),
+		"Grids":     grids,
+		"Merch":     merch,
+		"WantMerch": wantMerch,
+		"Cover":     nullImage(series.ImagePath),
 	})
 }
 
@@ -213,8 +236,20 @@ func (s *Server) statsPage(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	wants, err := s.db.ListOpenWishlist()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	wishItems, err := s.activeWishViews(wants)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	s.render(w, r, "stats", "Spending", struct {
 		db.ShelfStats
-		Expenditures []db.Expenditure
-	}{stats, purchases})
+		Expenditures   []db.Expenditure
+		WishCount      int
+		WishByCurrency []db.MoneyTotals
+	}{stats, purchases, len(wishItems), wishMoneyTotals(wishItems)})
 }

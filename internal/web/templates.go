@@ -15,15 +15,38 @@ import (
 
 func funcMap() template.FuncMap {
 	return template.FuncMap{
+		"fieldError": func(message, field string) bool {
+			m := strings.ToLower(message)
+			switch field {
+			case "volume_number":
+				return strings.HasPrefix(m, "volume number")
+			case "name":
+				return strings.HasPrefix(m, "name")
+			case "quantity":
+				return strings.Contains(m, "quantity")
+			case "msrp":
+				return strings.HasPrefix(m, "msrp:")
+			case "price_ex_tax":
+				return strings.HasPrefix(m, "price without tax:")
+			case "price_inc_tax":
+				return strings.HasPrefix(m, "price with tax:")
+			case "image", "cover":
+				return strings.Contains(m, "image")
+			}
+			return false
+		},
+		"moneyInput": moneyVal,
+		"kinds":      func() []string { return []string{"manga", "light_novel", "artbook", "other"} },
 		"money": func(valid bool, amount int64, currency string) string {
 			return money.FormatNull(valid, amount, currency)
 		},
 		"amount": func(amount int64, currency string) string {
 			return money.FormatAmount(amount, currency)
 		},
-		"amountDelta": money.FormatAmountDelta,
-		"kindName":    catalog.KindName,
-		"lineTitle":   catalog.LineTitle,
+		"amountDelta":     money.FormatAmountDelta,
+		"defaultCurrency": func() string { return money.Default },
+		"kindName":        catalog.KindName,
+		"lineTitle":       catalog.LineTitle,
 		"progress": func(owned int, total *int) string {
 			return catalog.ProgressLabel(owned, total)
 		},
@@ -65,6 +88,10 @@ func funcMap() template.FuncMap {
 
 func flashText(code string) string {
 	switch code {
+	case "book-added":
+		return "Book added to your collection."
+	case "merch-added":
+		return "Merch added to your collection."
 	case "created":
 		return "Created."
 	case "updated":

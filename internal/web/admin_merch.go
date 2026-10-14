@@ -27,31 +27,15 @@ type merchFormData struct {
 	Image       string
 	New         bool
 	Links       []LinkView
+	WishlistID  int64
 }
 
 func (s *Server) merchNewForm(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	ser, err := s.db.GetSeries(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_merch_form", "Add merch", merchFormData{
-		New:        true,
-		SeriesID:   ser.ID,
-		SeriesName: ser.Name,
-		SeriesSlug: ser.Slug,
-		Quantity:   "1",
-		Currency:   "CAD",
-	})
+	q := r.URL.Query()
+	q.Set("type", "merch")
+	q.Set("series", r.PathValue("id"))
+	r.URL.RawQuery = q.Encode()
+	s.itemForm(w, r)
 }
 
 func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +64,9 @@ func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
 		MSRP: r.FormValue("msrp"), PriceEx: r.FormValue("price_ex_tax"), PriceInc: r.FormValue("price_inc_tax"),
 		Notes: r.FormValue("notes"),
 	}
+	if wishID, err := parseID(r.FormValue("wishlist_id")); err == nil {
+		data.WishlistID = wishID
+	}
 	if strings.TrimSpace(data.Name) == "" {
 		s.renderErr(w, r, "admin_merch_form", "Add merch", "Name is required.", data)
 		return
@@ -104,7 +91,26 @@ func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	if wishID, err := parseID(r.FormValue("wishlist_id")); err == nil && wishID > 0 {
+		if wish, err := s.db.GetWishlist(wishID); err == nil && wish.SeriesID == ser.ID && wish.Kind == "merch" && wish.Status == "open" {
+			_ = s.db.MarkWishlistBought(wishID)
+		}
+	}
 	http.Redirect(w, r, "/admin/series/"+formatID(ser.ID)+"/edit?ok=created", http.StatusSeeOther)
+}
+
+func (s *Server) applyWishToMerchForm(data *merchFormData, wishID int64) {
+	wish, err := s.db.GetWishlist(wishID)
+	if err != nil || wish.SeriesID != data.SeriesID || wish.Kind != "merch" || wish.Status != "open" {
+		return
+	}
+	data.WishlistID = wish.ID
+	data.Name = wish.Name
+	data.Kind = wish.MerchKind
+	data.Quantity = strconv.Itoa(wish.Quantity)
+	data.Currency = wish.Currency
+	data.MSRP = moneyVal(wish.MSRPCents, wish.Currency)
+	data.Notes = wish.Notes
 }
 
 func (s *Server) loadMerchForm(id int64) (merchFormData, error) {
@@ -216,7 +222,7 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/admin/merch/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
+	http.Redirect(w, r, "/series/"+data.SeriesSlug+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) merchDeleteForm(w http.ResponseWriter, r *http.Request) {

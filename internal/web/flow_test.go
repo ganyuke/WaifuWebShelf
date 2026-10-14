@@ -51,6 +51,7 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	mustOK("/")
 	mustOK("/series")
 	mustOK("/merch")
+	mustOK("/wishlist")
 	mustOK("/stats")
 	mustOK("/healthz")
 	mustOK("/login")
@@ -188,6 +189,35 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	}
 	mustOK("/merch/" + strconv.FormatInt(merch[0].ID, 10))
 
+	res = post("/admin/series/"+strconv.FormatInt(ser.ID, 10)+"/wishlist/new", url.Values{
+		"kind": {"volumes"}, "book_line_id": {strconv.FormatInt(lines[0].ID, 10)},
+		"vol_from": {"2"}, "vol_to": {"3"}, "currency": {"CAD"}, "msrp": {"14.99"},
+	})
+	res.Body.Close()
+	if res.StatusCode != 303 {
+		t.Fatalf("want volumes %d", res.StatusCode)
+	}
+	seriesPage := mustOK("/series/spice-and-wolf")
+	if !strings.Contains(seriesPage, "vol-cell wanted") {
+		t.Fatalf("expected wanted cells:\n%s", seriesPage)
+	}
+	res = post("/admin/series/"+strconv.FormatInt(ser.ID, 10)+"/wishlist/new", url.Values{
+		"kind": {"merch"}, "name": {"Holo 1/7"}, "merch_kind": {"figure"}, "quantity": {"1"},
+		"currency": {"JPY"}, "msrp": {"18000"},
+	})
+	res.Body.Close()
+	if res.StatusCode != 303 {
+		t.Fatalf("want merch %d", res.StatusCode)
+	}
+	wish := mustOK("/wishlist")
+	if !strings.Contains(wish, "Holo 1/7") || !strings.Contains(wish, "2–3") {
+		t.Fatalf("wishlist page:\n%s", wish)
+	}
+	stats = mustOK("/stats")
+	if !strings.Contains(stats, "Wishlist") || !strings.Contains(stats, "JPY") {
+		t.Fatalf("stats wishlist:\n%s", stats)
+	}
+
 	adminGet := func(path string) string {
 		t.Helper()
 		req, err := http.NewRequest(http.MethodGet, ts.URL+path, nil)
@@ -207,7 +237,10 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	}
 	adminGet("/admin")
 	adminGet("/admin/series/new")
-	adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/edit")
+	seriesEdit := adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/edit")
+	if !strings.Contains(seriesEdit, "Holo 1/7") || !strings.Contains(seriesEdit, "2–3") {
+		t.Fatalf("series admin missing wishlist:\n%s", seriesEdit)
+	}
 	adminGet("/admin/book-lines/" + strconv.FormatInt(lines[0].ID, 10) + "/edit")
 	newVol := adminGet("/admin/book-lines/" + strconv.FormatInt(lines[0].ID, 10) + "/volumes/new")
 	if !strings.Contains(newVol, `value="14.99"`) {
@@ -215,6 +248,11 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	}
 	adminGet("/admin/volumes/" + strconv.FormatInt(vols[0].ID, 10) + "/edit")
 	adminGet("/admin/merch/" + strconv.FormatInt(merch[0].ID, 10) + "/edit")
+	adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/wishlist/new?kind=volumes&line=" + strconv.FormatInt(lines[0].ID, 10))
+	newWishMerch := adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/wishlist/new?kind=merch")
+	if !strings.Contains(newWishMerch, `value="USD"`) {
+		t.Fatalf("new merch want missing USD default:\n%s", newWishMerch)
+	}
 
 	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/admin", nil)
 	anon := &http.Client{

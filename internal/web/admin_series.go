@@ -7,6 +7,7 @@ import (
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
+	"waifuwebshelf/internal/money"
 	"waifuwebshelf/internal/slug"
 )
 
@@ -20,15 +21,16 @@ func (s *Server) adminHome(w http.ResponseWriter, r *http.Request) {
 }
 
 type seriesFormData struct {
-	ID    int64
-	Name  string
-	Slug  string
-	Notes string
-	Image string
-	New   bool
-	Lines []db.BookLine
-	Merch []db.Merch
-	Links []LinkView
+	ID       int64
+	Name     string
+	Slug     string
+	Notes    string
+	Image    string
+	New      bool
+	Lines    []db.BookLine
+	Merch    []db.Merch
+	Wishlist []WishView
+	Links    []LinkView
 }
 
 func (s *Server) seriesForm(w http.ResponseWriter, r *http.Request) {
@@ -86,15 +88,24 @@ func (s *Server) loadSeriesForm(id int64) (seriesFormData, error) {
 	if err != nil {
 		return seriesFormData{}, err
 	}
+	wants, err := s.db.ListOpenWishlistForSeries(id)
+	if err != nil {
+		return seriesFormData{}, err
+	}
+	wishItems, err := s.activeWishViews(wants)
+	if err != nil {
+		return seriesFormData{}, err
+	}
 	return seriesFormData{
-		ID:    ser.ID,
-		Name:  ser.Name,
-		Slug:  ser.Slug,
-		Notes: ser.Notes,
-		Image: nullImage(ser.ImagePath),
-		Lines: lines,
-		Merch: merch,
-		Links: toLinkViews(ll),
+		ID:       ser.ID,
+		Name:     ser.Name,
+		Slug:     ser.Slug,
+		Notes:    ser.Notes,
+		Image:    nullImage(ser.ImagePath),
+		Lines:    lines,
+		Merch:    merch,
+		Wishlist: wishItems,
+		Links:    toLinkViews(ll),
 	}, nil
 }
 
@@ -239,7 +250,7 @@ func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
 		SeriesName:      ser.Name,
 		SeriesSlug:      ser.Slug,
 		Kind:            "manga",
-		DefaultCurrency: "CAD",
+		DefaultCurrency: money.Default,
 	})
 }
 

@@ -204,7 +204,10 @@ func (d *DB) deleteSeriesLinks(seriesID int64) error {
 		)`, seriesID); err != nil {
 		return err
 	}
-	_, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'merch' AND owner_id IN (SELECT id FROM merch WHERE series_id = ?)`, seriesID)
+	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'merch' AND owner_id IN (SELECT id FROM merch WHERE series_id = ?)`, seriesID); err != nil {
+		return err
+	}
+	_, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'wishlist' AND owner_id IN (SELECT id FROM wishlist WHERE series_id = ?)`, seriesID)
 	return err
 }
 
@@ -438,6 +441,9 @@ func (d *DB) DeleteBookLine(id int64) error {
 		return err
 	}
 	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id = ?`, id); err != nil {
+		return err
+	}
+	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'wishlist' AND owner_id IN (SELECT id FROM wishlist WHERE book_line_id = ?)`, id); err != nil {
 		return err
 	}
 	_, err := d.SQL.Exec(`DELETE FROM book_lines WHERE id = ?`, id)

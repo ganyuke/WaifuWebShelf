@@ -5,11 +5,15 @@ import (
 	"os"
 )
 
+const DefaultTrustedProxies = "127.0.0.1,::1"
+
 type Config struct {
 	Port      string
 	DataDir   string
 	AdminUser string
 	AdminPass string
+	// TrustedProxies lists the reverse proxies whose X-Forwarded-* headers are believed.
+	TrustedProxies string
 }
 
 func FromEnv() Config {
@@ -18,6 +22,8 @@ func FromEnv() Config {
 		DataDir:   env("DATA_DIR", "data"),
 		AdminUser: env("ADMIN_USER", "admin"),
 		AdminPass: os.Getenv("ADMIN_PASS"),
+
+		TrustedProxies: env("TRUSTED_PROXIES", DefaultTrustedProxies),
 	}
 }
 

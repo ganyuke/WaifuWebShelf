@@ -6,9 +6,16 @@
     <article class="stat"><h3>Series</h3><p class="big">{{.Data.SeriesCount}}</p></article>
     <article class="stat"><h3>Volumes</h3><p class="big">{{.Data.VolumeCount}}</p></article>
     <article class="stat"><h3>Merch pieces</h3><p class="big">{{.Data.MerchPieces}}</p></article>
+    <article class="stat"><h3>Wishlist</h3><p class="big">{{.Data.WishCount}}</p></article>
   </section>
   {{template "money_block" .Data.ByCurrency}}
 </div>
+{{if .Data.WishCount}}
+<div class="box">
+  <h2 class="bar">Wishlist</h2>
+  {{template "wish_money" .Data.WishByCurrency}}
+</div>
+{{end}}
 <div class="box">
   <h2 class="bar">Purchases</h2>
   {{if .Data.Expenditures}}

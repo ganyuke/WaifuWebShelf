@@ -1,0 +1,44 @@
+{{define "wishlist"}}
+{{template "header" .}}
+<div class="box">
+  <div class="bar">
+    <h1>Wishlist</h1>
+  </div>
+  {{if not .Data}}<p class="muted">Nothing on the list.</p>{{end}}
+</div>
+{{range .Data}}
+<div class="box">
+  <div class="bar">
+    <h2><a href="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
+    {{if $.SignedIn}}
+    <span>
+      <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=volumes">Add volume</a>
+      · <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=merch">Add merch</a>
+    </span>
+    {{end}}
+  </div>
+  <div class="table-wrap">
+    <table class="catalog">
+      <thead><tr><th></th><th>Item</th><th>Left</th><th class="num">MSRP</th></tr></thead>
+      <tbody>
+      {{range .Items}}
+        <tr>
+          <td class="catalog-cover">
+            {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="">{{else}}<span class="cover-letter">{{if .Name}}{{printf "%.1s" .Name}}{{else}}#{{end}}</span>{{end}}
+          </td>
+          <td>
+            <a href="/wishlist/{{.ID}}">{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{end}}</a>
+            {{if and (eq .Kind "merch") .MerchKind}} · {{.MerchKind}}{{end}}
+            {{if $.SignedIn}} · <a href="/admin/wishlist/{{.ID}}/edit">Edit</a>{{end}}
+          </td>
+          <td>{{if eq .Kind "volumes"}}{{.RemainLabel}}{{else if gt .Quantity 1}}×{{.Quantity}}{{else}}—{{end}}</td>
+          <td class="num">{{if .MSRPValid}}{{money true .MSRPAmount .Currency}}{{else}}—{{end}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+{{template "footer" .}}
+{{end}}

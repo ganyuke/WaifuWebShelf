@@ -1,0 +1,79 @@
+{{define "admin_wishlist_form"}}
+{{template "header" .}}
+<p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a>{{if and (eq .Data.Kind "volumes") .Data.BookLineID}} · <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a>{{end}}</p>
+<div class="box">
+  <h1 class="bar">{{if .Data.New}}Add to wishlist{{else}}Edit wishlist{{end}}</h1>
+  <form class="stack" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="kind" value="{{.Data.Kind}}">
+    {{if eq .Data.Kind "volumes"}}
+    {{if gt (len .Data.Lines) 1}}
+    <label>Book line
+      <select name="book_line_id">
+        {{range .Data.Lines}}
+        <option value="{{.ID}}" {{if eq .ID $.Data.BookLineID}}selected{{end}}>{{lineTitle .Kind .Label}}</option>
+        {{end}}
+      </select>
+    </label>
+    {{else if .Data.Lines}}
+    <input type="hidden" name="book_line_id" value="{{(index .Data.Lines 0).ID}}">
+    {{end}}
+    <label>Volumes
+      <span class="pair">
+        <input name="vol_from" value="{{.Data.VolFrom}}" required placeholder="4">
+        <span class="dash">–</span>
+        <input name="vol_to" value="{{.Data.VolTo}}" placeholder="12">
+      </span>
+    </label>
+    {{else}}
+    <label>Name <input name="name" value="{{.Data.Name}}" required></label>
+    <label>Kind
+      <input name="merch_kind" value="{{.Data.MerchKind}}" list="merch-kinds" placeholder="figure, nendoroid…">
+    </label>
+    <datalist id="merch-kinds">
+      <option value="figure">
+      <option value="nendoroid">
+      <option value="figma">
+      <option value="acrylic stand">
+      <option value="poster">
+      <option value="plush">
+      <option value="dakimakura">
+      <option value="apparel">
+      <option value="soundtrack">
+      <option value="other">
+    </datalist>
+    <label>Quantity <input name="quantity" inputmode="numeric" value="{{.Data.Quantity}}"></label>
+    <label>Photo <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+    {{if .Data.Image}}
+    <p class="thumb-row"><img src="{{imageURL .Data.Image}}" alt="" class="thumb">
+    <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
+    {{end}}
+    {{end}}
+    <label>Currency
+      <input name="currency" value="{{if .Data.Currency}}{{.Data.Currency}}{{else}}{{defaultCurrency}}{{end}}" list="currencies" maxlength="8">
+    </label>
+    <datalist id="currencies">
+      <option value="USD"><option value="JPY"><option value="EUR"><option value="CAD">
+    </datalist>
+    <label>MSRP <input name="msrp" inputmode="decimal" value="{{.Data.MSRP}}"></label>
+    <label>Notes <textarea name="notes" rows="3">{{.Data.Notes}}</textarea></label>
+    <button type="submit">Save</button>
+  </form>
+</div>
+{{if not .Data.New}}
+<section class="panel">
+  <h2>More</h2>
+  <p>
+    {{if eq .Data.Kind "merch"}}
+    <a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>
+    · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a>
+    {{else}}
+    <a class="btn" href="/admin/book-lines/{{.Data.BookLineID}}/volumes/new{{if .Data.VolFrom}}?n={{.Data.VolFrom}}{{end}}">Add volume</a>
+    · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.BookLineID}}">Add to wishlist</a>
+    {{end}}
+  </p>
+</section>
+{{template "links_editor" dict "Links" .Data.Links "OwnerType" "wishlist" "OwnerID" .Data.ID "Next" (printf "/admin/wishlist/%d/edit" .Data.ID)}}
+<p class="admin-actions"><a class="danger-text" href="/admin/wishlist/{{.Data.ID}}/delete">Delete</a></p>
+{{end}}
+{{template "footer" .}}
+{{end}}

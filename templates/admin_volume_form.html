@@ -4,25 +4,29 @@
 <div class="box">
   <h1 class="bar">{{if .Data.New}}Add volume{{else}}Edit volume {{.Data.VolumeNumber}}{{end}}</h1>
   <form class="stack" method="post" enctype="multipart/form-data">
-    <label>Volume number <input name="volume_number" value="{{.Data.VolumeNumber}}" required placeholder="1, 8.5, omake…"></label>
-    <label>Cover <input type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+    <label>Volume number <input name="volume_number" {{if fieldError .Err "volume_number"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.VolumeNumber}}" required placeholder="1, 8.5, omake…"></label>
+    <details {{if or .Data.Cover .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>
+    <label>Cover <input type="file" name="cover" {{if fieldError .Err "cover"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>
     {{if .Data.Cover}}
     <p class="thumb-row"><img src="{{imageURL .Data.Cover}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_cover" value="1"> Remove cover</label></p>
     {{end}}
-    {{template "purchase_fields" .Data}}
-    <label>This copy photo <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+    <label>This copy photo <input type="file" name="image" {{if fieldError .Err "image"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>
     {{if .Data.Image}}
     <p class="thumb-row"><img src="{{imageURL .Data.Image}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove copy photo</label></p>
     {{end}}
+    <p class="muted">After a validation error, select any new files again.</p></details>
+    {{template "purchase_fields" .}}
     <button type="submit">Save</button>
+    <a href="/series/{{.Data.SeriesSlug}}">Cancel</a>
   </form>
 </div>
 {{if not .Data.New}}
 <section class="panel">
   <h2>More</h2>
-  <p><a class="btn" href="/admin/book-lines/{{.Data.BookLineID}}/volumes/new">Add another volume</a></p>
+  <p><a class="btn" href="/admin/book-lines/{{.Data.BookLineID}}/volumes/new">Add another volume</a>
+  · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.BookLineID}}&from={{.Data.VolumeNumber}}">Add to wishlist</a></p>
 </section>
 {{template "links_editor" dict "Title" "Volume links" "Links" .Data.VolumeLinks "OwnerType" "volume_number" "OwnerID" .Data.BookLineID "OwnerKey" .Data.VolumeNumber "Next" (printf "/admin/volumes/%d/edit" .Data.ID)}}
 {{template "links_editor" dict "Title" "This copy" "Links" .Data.CopyLinks "OwnerType" "volume" "OwnerID" .Data.ID "Next" (printf "/admin/volumes/%d/edit" .Data.ID)}}

@@ -23,12 +23,15 @@ Run from the repository root so `templates/` and `static/` resolve. The SQLite f
 | `DATA_DIR` | `data` | SQLite + `images/` |
 | `ADMIN_USER` | `admin` | Login username |
 | `ADMIN_PASS` | empty | If unset, `/admin` and `/login` return 503 |
+| `TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or ranges of your reverse proxy. Leave as is when the proxy runs on the same machine |
 
 Money is stored as integer minor units (cents for CAD/USD, yen for JPY). Leave MSRP blank when you do not know list price; spending totals skip those rows instead of treating them as $0.
 
 ## Deploy on a VPS
 
 Build a binary, copy `templates/` and `static/` next to it, and point `DATA_DIR` at a writable directory.
+
+Restart the service after deploying the binary, templates, or static files. Templates and static assets are loaded at startup; CSS, JavaScript, and icons use content-hashed URLs so browsers fetch changed assets automatically. Public HTML revalidates using a hash of the rendered page, including across restarts.
 
 ```bash
 go build -o waifuwebshelf ./cmd/waifuwebshelf
@@ -86,3 +89,23 @@ server {
 ```
 
 Health check: `GET /healthz`.
+
+### Login attempts
+
+After 5 wrong passwords in a row from one address, further logins from it are refused for 15 minutes. A correct login clears the count.
+
+If your reverse proxy runs on a different machine, add its address to `TRUSTED_PROXIES`. Otherwise every visitor looks like the proxy and shares one lockout.
+
+### Backups
+
+Nothing is backed up for you. Keep a copy of the `DATA_DIR` folder, which holds `shelf.db` and the `images/` folder.
+
+Stop the service before copying so the copy is complete, then start it again:
+
+```bash
+sudo systemctl stop waifuwebshelf
+sudo cp -a /var/lib/waifuwebshelf /path/to/backup/
+sudo systemctl start waifuwebshelf
+```
+
+To restore, stop the service, put the folder back, make sure the `waifuwebshelf` user owns it, and start the service.

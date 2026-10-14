@@ -1,0 +1,58 @@
+{{define "item_error"}}{{with index .Errors .Key}}<p class="field-error" id="{{$.Key}}-error" role="alert">{{.}}</p>{{end}}{{end}}
+{{define "item_form"}}
+{{template "header" .}}
+<p class="crumb"><a href="/">Collection</a>{{if .Data.SeriesSlug}} · <a href="/series/{{.Data.SeriesSlug}}">Series</a>{{end}} · Add item</p>
+<div class="box">
+<h1>Add item</h1>
+<noscript><p>Choose a series and its format, or select New series and New format. For books, use “Use format defaults” to fill in currency and list price. Leave the merch fields unused.</p></noscript>
+<form method="post" action="/admin/items/new" enctype="multipart/form-data" class="stack item-form">
+{{if .Data.WishlistID}}<input type="hidden" name="wishlist_id" value="{{.Data.WishlistID}}"><p>This purchase will mark the wishlist item as bought.</p>{{end}}
+<label for="type">Item type</label>
+<select id="type" name="type"><option value="book" {{if eq .Data.Type "book"}}selected{{end}}>Books</option><option value="merch" {{if eq .Data.Type "merch"}}selected{{end}}>Merch</option></select>
+{{template "item_error" dict "Key" "type" "Errors" .Data.Errors}}
+<label for="series">Series</label>
+<select id="series" name="series"><option value="">Choose a series</option>{{range .Data.Series}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.SeriesChoice}}selected{{end}}>{{.Name}}</option>{{end}}<option value="new" {{if eq .Data.SeriesChoice "new"}}selected{{end}}>New series…</option></select>
+{{template "item_error" dict "Key" "series" "Errors" .Data.Errors}}
+<div data-new-series>
+<label for="series_name">New series name</label><input id="series_name" name="series_name" type="text" value="{{.Data.SeriesNameNew}}" aria-describedby="series_name-error">{{template "item_error" dict "Key" "series_name" "Errors" .Data.Errors}}
+</div>
+<section data-book>
+<label for="line">Format / edition</label>
+<select id="line" name="line"><option value="">Choose a format</option>{{range .Data.Lines}}<option value="{{.ID}}" data-series="{{.SeriesID}}" data-currency="{{.DefaultCurrency}}" data-msrp="{{moneyInput .DefaultMSRPCents .DefaultCurrency}}" {{if eq (printf "%d" .ID) $.Data.LineChoice}}selected{{end}}>{{lineTitle .Kind .Label}} — {{.SeriesName}}</option>{{end}}<option value="new" {{if eq .Data.LineChoice "new"}}selected{{end}}>New format…</option></select>
+{{template "item_error" dict "Key" "line" "Errors" .Data.Errors}}
+<div data-new-format>
+<label for="kind">New format</label><select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>
+{{template "item_error" dict "Key" "kind" "Errors" .Data.Errors}}
+<label for="label">Edition label (optional)</label><input id="label" name="label" type="text" value="{{.Data.Label}}" aria-describedby="label-error">{{template "item_error" dict "Key" "label" "Errors" .Data.Errors}}
+</div>
+<button type="submit" name="action" value="defaults" formnovalidate>Use format defaults</button>
+<p class="muted">Applies the selected format’s currency and list price.</p>
+<label for="volume_number">Volume number</label><input id="volume_number" name="volume_number" type="text" value="{{.Data.VolumeNumber}}" aria-describedby="volume_number-error">{{template "item_error" dict "Key" "volume_number" "Errors" .Data.Errors}}
+<label class="check"><input name="another_copy" type="checkbox" value="1" {{if .Data.AnotherCopy}}checked{{end}} aria-describedby="another_copy-error"> Add another copy if already owned</label>
+{{template "item_error" dict "Key" "another_copy" "Errors" .Data.Errors}}
+</section>
+<section data-merch>
+<label for="name">Item name</label><input id="name" name="name" type="text" value="{{.Data.Name}}" aria-describedby="name-error">{{template "item_error" dict "Key" "name" "Errors" .Data.Errors}}
+<label for="merch_kind">Kind (optional)</label><input id="merch_kind" name="merch_kind" type="text" value="{{.Data.MerchKind}}" aria-describedby="merch_kind-error">{{template "item_error" dict "Key" "merch_kind" "Errors" .Data.Errors}}
+<label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" value="{{.Data.Quantity}}" aria-describedby="quantity-error">{{template "item_error" dict "Key" "quantity" "Errors" .Data.Errors}}
+</section>
+<details {{if or .Data.PurchasedAt .Data.Store .Data.MSRP .Data.PriceEx .Data.PriceInc .Data.Errors}}open{{end}}>
+<summary>Purchase details (optional)</summary>
+<label for="purchased_at">Bought on</label><input id="purchased_at" name="purchased_at" type="date" value="{{.Data.PurchasedAt}}" aria-describedby="purchased_at-error">{{template "item_error" dict "Key" "purchased_at" "Errors" .Data.Errors}}
+<label for="store">Store</label><input id="store" name="store" type="text" value="{{.Data.Store}}" aria-describedby="store-error">{{template "item_error" dict "Key" "store" "Errors" .Data.Errors}}
+<label for="currency">Currency</label><input id="currency" name="currency" type="text" value="{{.Data.Currency}}" aria-describedby="currency-error">{{template "item_error" dict "Key" "currency" "Errors" .Data.Errors}}
+<label for="msrp">MSRP / list price</label><input id="msrp" name="msrp" type="text" value="{{.Data.MSRP}}" aria-describedby="msrp-error">{{template "item_error" dict "Key" "msrp" "Errors" .Data.Errors}}
+<label for="price_ex_tax">Paid without tax</label><input id="price_ex_tax" name="price_ex_tax" type="text" value="{{.Data.PriceEx}}" aria-describedby="price_ex_tax-error">{{template "item_error" dict "Key" "price_ex_tax" "Errors" .Data.Errors}}
+<label for="price_inc_tax">Paid with tax</label><input id="price_inc_tax" name="price_inc_tax" type="text" value="{{.Data.PriceInc}}" aria-describedby="price_inc_tax-error">{{template "item_error" dict "Key" "price_inc_tax" "Errors" .Data.Errors}}
+</details>
+<details {{if .Data.Errors}}open{{end}}><summary>Images (optional)</summary>
+<div data-book><label for="cover">Volume cover (shared by all copies)</label><input id="cover" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="cover-error">{{template "item_error" dict "Key" "cover" "Errors" .Data.Errors}}</div>
+<label for="image">Photo of this item</label><input id="image" type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" aria-describedby="image-error">{{template "item_error" dict "Key" "image" "Errors" .Data.Errors}}
+<p class="muted">JPEG, PNG, WebP or GIF, up to 8 MB. After a validation error, select the file again.</p>
+</details>
+<details {{if .Data.Notes}}open{{end}}><summary>Additional details</summary><label for="notes">Notes</label><textarea id="notes" name="notes" rows="3">{{.Data.Notes}}</textarea></details>
+<div class="form-actions"><button name="action" value="save">Save</button><button name="action" value="again">Save and add another</button><a href="{{if .Data.SeriesSlug}}/series/{{.Data.SeriesSlug}}{{else}}/{{end}}">Cancel</a></div>
+</form></div>
+<script src="{{assetURL "items.js"}}" defer></script>
+{{template "footer" .}}
+{{end}}

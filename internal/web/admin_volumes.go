@@ -3,7 +3,6 @@ package web
 import (
 	"database/sql"
 	"net/http"
-	"strings"
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
@@ -41,46 +40,10 @@ func (s *Server) volumeContext(bookLineID int64) (db.BookLine, db.Series, error)
 }
 
 func (s *Server) volumeNewForm(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	line, ser, err := s.volumeContext(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	currency := line.DefaultCurrency
-	if currency == "" {
-		currency = "CAD"
-	}
-	number := strings.TrimSpace(r.URL.Query().Get("n"))
-	cover := ""
-	if number != "" {
-		path, err := s.db.VolumeCover(line.ID, normalizeVolumeNumber(number))
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		cover = nullImage(path)
-	}
-	s.render(w, r, "admin_volume_form", "Add volume", volumeFormData{
-		New:          true,
-		BookLineID:   line.ID,
-		SeriesID:     ser.ID,
-		SeriesName:   ser.Name,
-		SeriesSlug:   ser.Slug,
-		LineTitle:    catalog.LineTitle(line.Kind, line.Label),
-		VolumeNumber: number,
-		Currency:     currency,
-		MSRP:         moneyVal(line.DefaultMSRPCents, currency),
-		Cover:        cover,
-	})
+	q := r.URL.Query()
+	q.Set("line", r.PathValue("id"))
+	r.URL.RawQuery = q.Encode()
+	s.itemForm(w, r)
 }
 
 func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +237,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/admin/volumes/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
+	http.Redirect(w, r, "/series/"+data.SeriesSlug+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) volumeDeleteForm(w http.ResponseWriter, r *http.Request) {

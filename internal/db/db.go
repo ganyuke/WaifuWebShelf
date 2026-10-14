@@ -41,6 +41,10 @@ func Open(path string) (*DB, error) {
 		_ = sqlDB.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
+	if err := migrate(sqlDB); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	return &DB{SQL: sqlDB}, nil
 }
 

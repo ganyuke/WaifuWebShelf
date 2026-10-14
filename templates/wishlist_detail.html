@@ -1,0 +1,29 @@
+{{define "wishlist_detail"}}
+{{template "header" .}}
+<p class="crumb"><a href="/wishlist">Wishlist</a> · <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a>{{if eq .Data.Kind "volumes"}} · {{.Data.LineTitle}}{{end}}</p>
+<div class="box">
+  <div class="bar">
+    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.LineTitle}} {{.Data.RemainLabel}}{{end}}</h1>
+    {{if $.SignedIn}}
+    <span>
+      <a href="/admin/wishlist/{{.Data.ID}}/edit">Edit</a>
+      {{if eq .Data.Kind "merch"}} · <a href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>{{end}}
+      {{if eq .Data.Kind "volumes"}} · <a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Remain.Numbers}}?n={{index .Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
+    </span>
+    {{end}}
+  </div>
+  <article class="detail">
+    {{if .Data.ImagePath.Valid}}<img class="hero-img" src="{{imageURL .Data.ImagePath.String}}" alt="">{{end}}
+    <div>
+      {{if and (eq .Data.Kind "merch") .Data.MerchKind}}<p class="muted">{{.Data.MerchKind}}{{if gt .Data.Quantity 1}} · ×{{.Data.Quantity}}{{end}}</p>{{end}}
+      {{template "links_list" .Data.Links}}
+      <dl class="facts">
+        {{if eq .Data.Kind "volumes"}}<dt>Left</dt><dd>{{.Data.RemainLabel}}</dd>{{end}}
+        <dt>MSRP</dt><dd>{{money .Data.MSRPCents.Valid .Data.MSRPCents.Int64 .Data.Currency}}</dd>
+      </dl>
+      {{if .Data.Notes}}<p class="notes">{{.Data.Notes}}</p>{{end}}
+    </div>
+  </article>
+</div>
+{{template "footer" .}}
+{{end}}

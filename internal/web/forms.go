@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,26 +84,27 @@ func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error)
 		return "", false, fmt.Errorf("image is larger than 8MB")
 	}
 
-	ext := strings.ToLower(filepath.Ext(header.Filename))
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".gif":
-	default:
-		ctype := header.Header.Get("Content-Type")
-		exts, _ := mime.ExtensionsByType(ctype)
-		ok := false
-		for _, e := range exts {
-			switch e {
-			case ".jpg", ".jpeg", ".png", ".webp", ".gif":
-				ext = e
-				ok = true
-			}
-		}
-		if !ok {
-			return "", false, fmt.Errorf("unsupported image type (use jpg, png, webp, or gif)")
-		}
+	// The file's own bytes decide the type. The name and the browser's claim are ignored.
+	var head [512]byte
+	n, err := io.ReadFull(file, head[:])
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return "", false, err
 	}
-	if ext == ".jpeg" {
+	var ext string
+	switch http.DetectContentType(head[:n]) {
+	case "image/jpeg":
 		ext = ".jpg"
+	case "image/png":
+		ext = ".png"
+	case "image/webp":
+		ext = ".webp"
+	case "image/gif":
+		ext = ".gif"
+	default:
+		return "", false, fmt.Errorf("unsupported image type (use jpg, png, webp, or gif)")
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", false, err
 	}
 
 	var buf [16]byte
@@ -118,7 +118,11 @@ func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error)
 		return "", false, err
 	}
 	defer out.Close()
-	if _, err := io.Copy(out, io.LimitReader(file, maxUpload+1)); err != nil {
+	written, err := io.Copy(out, io.LimitReader(file, maxUpload+1))
+	if err == nil && written > maxUpload {
+		err = fmt.Errorf("image is larger than 8MB")
+	}
+	if err != nil {
 		_ = os.Remove(dest)
 		return "", false, err
 	}

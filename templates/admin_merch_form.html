@@ -4,7 +4,7 @@
 <div class="box">
   <h1 class="bar">{{if .Data.New}}Add merch{{else}}Edit {{.Data.Name}}{{end}}</h1>
   <form class="stack" method="post" enctype="multipart/form-data">
-    <label>Name <input name="name" value="{{.Data.Name}}" required></label>
+    <label>Name <input name="name" {{if fieldError .Err "name"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.Name}}" required></label>
     <label>Kind
       <input name="kind" value="{{.Data.Kind}}" list="merch-kinds" placeholder="figure, acrylic, nendoroid…">
     </label>
@@ -20,20 +20,25 @@
       <option value="soundtrack">
       <option value="other">
     </datalist>
-    <label>Quantity <input name="quantity" inputmode="numeric" value="{{.Data.Quantity}}"></label>
-    {{template "purchase_fields" .Data}}
-    <label>Photo <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+    <label>Quantity <input name="quantity" {{if fieldError .Err "quantity"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="numeric" value="{{.Data.Quantity}}"></label>
+    {{template "purchase_fields" .}}
+    <details {{if or .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>
+    <label>Photo <input type="file" name="image" {{if fieldError .Err "image"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>
     {{if .Data.Image}}
     <p class="thumb-row"><img src="{{imageURL .Data.Image}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
     {{end}}
+    <p class="muted">After a validation error, select any new files again.</p></details>
     <button type="submit">Save</button>
+    <a href="/series/{{.Data.SeriesSlug}}">Cancel</a>
+    {{if .Data.WishlistID}}<input type="hidden" name="wishlist_id" value="{{.Data.WishlistID}}">{{end}}
   </form>
 </div>
 {{if not .Data.New}}
 <section class="panel">
   <h2>More</h2>
-  <p><a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new">Add more merch</a></p>
+  <p><a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new">Add more merch</a>
+  · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a></p>
 </section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "merch" "OwnerID" .Data.ID "Next" (printf "/admin/merch/%d/edit" .Data.ID)}}
 <p class="admin-actions"><a class="danger-text" href="/admin/merch/{{.Data.ID}}/delete">Delete merch</a></p>

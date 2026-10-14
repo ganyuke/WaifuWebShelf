@@ -15,7 +15,7 @@ func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	ownerType := r.FormValue("owner_type")
 	switch ownerType {
-	case "series", "book_line", "volume", "volume_number", "merch":
+	case "series", "book_line", "volume", "volume_number", "merch", "wishlist":
 	default:
 		http.Error(w, "invalid owner", http.StatusBadRequest)
 		return

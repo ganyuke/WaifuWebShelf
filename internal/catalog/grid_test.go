@@ -68,3 +68,31 @@ func TestLineTitle(t *testing.T) {
 		t.Fatal(LineTitle("manga", "Anthology"))
 	}
 }
+
+func TestApplyWishlistUnknownTotal(t *testing.T) {
+	g := BuildGrid(db.BookLine{Kind: "manga"}, vols("1"))
+	g.ApplyWishlist(Remaining{Numbers: []int{8, 9, 10}})
+	if len(g.Cells) != 4 {
+		t.Fatalf("cells %d", len(g.Cells))
+	}
+	if g.Cells[0].Number != 1 || !g.Cells[0].Owned || g.Cells[0].Wanted {
+		t.Fatalf("owned %+v", g.Cells[0])
+	}
+	if g.Cells[1].Number != 8 || !g.Cells[1].Wanted {
+		t.Fatalf("wanted %+v", g.Cells[1])
+	}
+}
+
+func TestApplyWishlistKnownTotal(t *testing.T) {
+	g := BuildGrid(db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
+	g.ApplyWishlist(Remaining{Numbers: []int{2, 3, 9}, Keys: []string{"8.5"}})
+	if len(g.Cells) != 3 {
+		t.Fatalf("cells %d", len(g.Cells))
+	}
+	if g.Cells[0].Wanted || !g.Cells[1].Wanted || !g.Cells[2].Wanted {
+		t.Fatalf("flags %+v", g.Cells)
+	}
+	if len(g.WantedExtras) != 1 || g.WantedExtras[0] != "8.5" {
+		t.Fatalf("extras %+v", g.WantedExtras)
+	}
+}

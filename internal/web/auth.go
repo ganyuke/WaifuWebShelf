@@ -41,14 +41,22 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	next := safeNext(r.FormValue("next"))
 	user := r.FormValue("username")
 	pass := r.FormValue("password")
+	ip := s.proxies.clientIP(r)
+	if wait := s.throttle.wait(ip, time.Now()); wait > 0 {
+		log.Printf("login refused ip=%s", ip)
+		s.refuseLoginWait(w, r, r.FormValue("next"), wait)
+		return
+	}
 	if !secureEqual(user, s.cfg.AdminUser) || !secureEqual(pass, s.cfg.AdminPass) {
-		log.Printf("login failed user=%q ip=%s", logSafeUser(user), clientIP(r))
+		s.throttle.fail(ip, time.Now())
+		log.Printf("login failed user=%q ip=%s", logSafeUser(user), ip)
 		s.renderErr(w, r, "login", "Log in", "Wrong username or password.", map[string]any{
 			"Next":     r.FormValue("next"),
 			"Username": user,
 		})
 		return
 	}
+	s.throttle.clear(ip)
 	token, err := newSessionToken()
 	if err != nil {
 		s.serverError(w, r, err)
@@ -58,7 +66,7 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	s.sessionMu.Lock()
 	s.sessions[token] = exp
 	s.sessionMu.Unlock()
-	http.SetCookie(w, sessionCookieValue(r, token, exp))
+	http.SetCookie(w, s.sessionCookieValue(r, token, exp))
 	http.Redirect(w, r, next, http.StatusSeeOther)
 }
 
@@ -73,7 +81,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   requestHTTPS(r),
+		Secure:   s.proxies.https(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
@@ -97,13 +105,13 @@ func (s *Server) loggedIn(r *http.Request) bool {
 	return true
 }
 
-func sessionCookieValue(r *http.Request, token string, exp time.Time) *http.Cookie {
+func (s *Server) sessionCookieValue(r *http.Request, token string, exp time.Time) *http.Cookie {
 	return &http.Cookie{
 		Name:     sessionCookie,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   requestHTTPS(r),
+		Secure:   s.proxies.https(r),
 		SameSite: http.SameSiteLaxMode,
 		Expires:  exp,
 		MaxAge:   int(sessionTTL.Seconds()),

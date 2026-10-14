@@ -2,7 +2,7 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}New book line{{else}}Edit book line{{end}}</h1>
+  <h1 class="bar">{{if .Data.New}}New format / edition{{else}}Edit format / edition{{end}}</h1>
   <form class="stack" method="post">
     <label>Format
       <select name="kind">
@@ -13,15 +13,18 @@
       </select>
     </label>
     <label>Label <input name="label" value="{{.Data.Label}}" placeholder="optional, e.g. Official Comic Anthology"></label>
+    <details {{if or .Data.TotalVolumes .Data.DefaultMSRP .Err}}open{{end}}><summary>Collection and purchase defaults</summary>
     <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="leave blank if unknown / ongoing"></label>
     <label>Default currency
-      <input name="default_currency" value="{{if .Data.DefaultCurrency}}{{.Data.DefaultCurrency}}{{else}}CAD{{end}}" list="currencies" maxlength="8">
+      <input name="default_currency" value="{{if .Data.DefaultCurrency}}{{.Data.DefaultCurrency}}{{else}}{{defaultCurrency}}{{end}}" list="currencies" maxlength="8">
     </label>
     <datalist id="currencies">
-      <option value="CAD"><option value="USD"><option value="JPY"><option value="EUR">
+      <option value="USD"><option value="JPY"><option value="EUR"><option value="CAD">
     </datalist>
     <label>Default MSRP <input name="default_msrp" inputmode="decimal" value="{{.Data.DefaultMSRP}}" placeholder="prefilled on new volumes"></label>
+    </details>
     <button type="submit">Save</button>
+    <a href="/admin/series/{{.Data.SeriesID}}/edit">Cancel</a>
   </form>
 </div>
 {{if not .Data.New}}
@@ -38,7 +41,8 @@
     <li class="muted">None yet</li>
     {{end}}
   </ul>
-  <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a></p>
+  <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a>
+  · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
 </section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
 <p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete book line</a></p>

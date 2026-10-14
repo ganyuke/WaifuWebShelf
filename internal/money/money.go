@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const Default = "USD"
+
 func Decimals(currency string) int {
 	switch strings.ToUpper(strings.TrimSpace(currency)) {
 	case "JPY", "KRW":
@@ -17,7 +19,7 @@ func Decimals(currency string) int {
 func NormalizeCurrency(currency string) string {
 	c := strings.ToUpper(strings.TrimSpace(currency))
 	if c == "" {
-		return "CAD"
+		return Default
 	}
 	return c
 }

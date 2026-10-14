@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,17 +11,17 @@ import (
 func (s *Server) withPageCache(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cache := "skip"
-		defer func() { logRequest(r, cache) }()
+		defer func() { s.logRequest(r, cache) }()
 
 		if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/admin") && s.loggedIn(r) {
 			cw := newCaptureWriter()
 			next.ServeHTTP(cw, r)
 			setPrivate(cw.h)
-			writeCaptured(w, cw)
 			if cw.code == http.StatusSeeOther {
 				s.bumpPages()
 				cache = "bust"
 			}
+			writeCaptured(w, cw)
 			return
 		}
 
@@ -32,16 +33,16 @@ func (s *Server) withPageCache(next http.Handler) http.Handler {
 			return
 		}
 
-		etag := s.pageETag()
-		if etagMatch(r.Header.Get("If-None-Match"), etag) {
-			setPublicPage(w.Header(), etag)
-			w.WriteHeader(http.StatusNotModified)
-			cache = "304"
-			return
-		}
-		if body, ok := s.cachedPage(r.URL.Path); ok {
+		key := r.URL.RequestURI()
+		if body, ok := s.cachedPage(key); ok {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			etag := pageETag(body)
 			setPublicPage(w.Header(), etag)
+			if etagMatch(r.Header.Get("If-None-Match"), etag) {
+				w.WriteHeader(http.StatusNotModified)
+				cache = "304"
+				return
+			}
 			_, _ = w.Write(body)
 			cache = "hit"
 			return
@@ -51,9 +52,14 @@ func (s *Server) withPageCache(next http.Handler) http.Handler {
 		cw := newCaptureWriter()
 		next.ServeHTTP(cw, r)
 		if cw.code == http.StatusOK {
-			s.storePage(r.URL.Path, cw.body.Bytes(), gen)
+			etag := pageETag(cw.body.Bytes())
+			s.storePage(key, cw.body.Bytes(), gen)
 			setPublicPage(cw.h, etag)
 			cache = "miss"
+			if etagMatch(r.Header.Get("If-None-Match"), etag) {
+				cw.code = http.StatusNotModified
+				cache = "304"
+			}
 		}
 		writeCaptured(w, cw)
 	})
@@ -104,8 +110,8 @@ func (s *Server) currentPageGen() uint64 {
 	return s.pageGen
 }
 
-func (s *Server) pageETag() string {
-	return fmt.Sprintf(`"v%d"`, s.currentPageGen())
+func pageETag(body []byte) string {
+	return fmt.Sprintf(`W/"%x"`, sha256.Sum256(body))
 }
 
 func (s *Server) cachedPage(path string) ([]byte, bool) {
@@ -132,7 +138,7 @@ func etagMatch(header, etag string) bool {
 	}
 	for _, part := range strings.Split(header, ",") {
 		part = strings.TrimSpace(part)
-		if part == "*" || part == etag {
+		if part == "*" || strings.TrimPrefix(part, "W/") == strings.TrimPrefix(etag, "W/") {
 			return true
 		}
 	}

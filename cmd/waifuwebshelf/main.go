@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"waifuwebshelf/internal/config"
 	"waifuwebshelf/internal/db"
@@ -23,10 +28,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer store.Close()
 
 	srv, err := web.New(cfg, store)
 	if err != nil {
+		_ = store.Close()
 		log.Fatal(err)
 	}
 
@@ -36,7 +41,39 @@ func main() {
 		log.Printf("admin user %q (form login at /login)", cfg.AdminUser)
 	}
 	log.Printf("listening on %s (data %s)", cfg.Addr(), cfg.DataDir)
-	if err := http.ListenAndServe(cfg.Addr(), srv.Handler()); err != nil {
+
+	httpSrv := &http.Server{
+		Addr:              cfg.Addr(),
+		Handler:           srv.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+
+	// Closing the database on the way out folds pending writes into shelf.db,
+	// so a stopped service leaves one complete file to back up.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		<-stop
+		log.Printf("shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = httpSrv.Shutdown(ctx)
+	}()
+
+	err = httpSrv.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		<-done
+		err = nil
+	}
+	if cerr := store.Close(); cerr != nil {
+		log.Printf("close database: %v", cerr)
+	}
+	if err != nil {
 		log.Fatal(err)
 	}
 }

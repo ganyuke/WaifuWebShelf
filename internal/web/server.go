@@ -7,7 +7,6 @@ import (
 	"html/template"
 	"io/fs"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,10 +23,12 @@ type Server struct {
 	cfg       config.Config
 	db        *db.DB
 	tmpl      *template.Template
-	staticDir string
+	assets    staticAssets
 	imagesDir string
 	sessions  map[string]time.Time
 	sessionMu sync.Mutex
+	proxies   proxyList
+	throttle  *loginThrottle
 	pageMu    sync.Mutex
 	pageGen   uint64
 	pageHTML  map[string][]byte
@@ -52,18 +53,34 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("static directory not found; run from the repo root or place static next to the binary")
 	}
-	tmpl, err := template.New("").Funcs(funcMap()).ParseGlob(filepath.Join(tmplDir, "*.html"))
+	assets, err := loadStaticAssets(staticDir)
+	if err != nil {
+		return nil, fmt.Errorf("load static assets: %w", err)
+	}
+	funcs := funcMap()
+	funcs["assetURL"] = assets.URL
+	tmpl, err := template.New("").Funcs(funcs).ParseGlob(filepath.Join(tmplDir, "*.html"))
 	if err != nil {
 		return nil, err
 	}
 	if err := os.MkdirAll(cfg.ImagesDir(), 0o755); err != nil {
 		return nil, err
 	}
+	trusted := cfg.TrustedProxies
+	if trusted == "" {
+		trusted = config.DefaultTrustedProxies
+	}
+	proxies, err := parseProxies(trusted)
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
+		proxies:   proxies,
+		throttle:  newLoginThrottle(),
 		cfg:       cfg,
 		db:        store,
 		tmpl:      tmpl,
-		staticDir: staticDir,
+		assets:    assets,
 		imagesDir: cfg.ImagesDir(),
 		sessions:  map[string]time.Time{},
 		pageHTML:  map[string][]byte{},
@@ -73,11 +90,10 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.staticDir))))
+	mux.Handle("GET /static/", s.assets)
 	mux.Handle("GET /images/", http.StripPrefix("/images/", s.imageServer()))
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=86400")
-		http.ServeFile(w, r, filepath.Join(s.staticDir, "favicon.svg"))
+		s.assets.serve(w, r, "favicon.svg")
 	})
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -91,6 +107,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /series/{slug}/{lineSlug}/{number}", s.volumePage)
 	mux.HandleFunc("GET /merch", s.merchList)
 	mux.HandleFunc("GET /merch/{id}", s.merchDetail)
+	mux.HandleFunc("GET /wishlist", s.wishlist)
+	mux.HandleFunc("GET /wishlist/{id}", s.wishlistDetail)
 	mux.HandleFunc("GET /stats", s.statsPage)
 
 	mux.HandleFunc("GET /login", s.loginForm)
@@ -98,6 +116,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /logout", s.logout)
 
 	mux.HandleFunc("GET /admin", s.requireAdmin(s.adminHome))
+	mux.HandleFunc("GET /admin/items/new", s.requireAdmin(s.itemForm))
+	mux.HandleFunc("POST /admin/items/new", s.requireAdmin(s.itemSave))
 	mux.HandleFunc("GET /admin/{$}", s.requireAdmin(s.adminHome))
 
 	mux.HandleFunc("GET /admin/series/new", s.requireAdmin(s.seriesForm))
@@ -128,10 +148,17 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/merch/{id}/delete", s.requireAdmin(s.merchDeleteForm))
 	mux.HandleFunc("POST /admin/merch/{id}/delete", s.requireAdmin(s.merchDelete))
 
+	mux.HandleFunc("GET /admin/series/{id}/wishlist/new", s.requireAdmin(s.wishlistNewForm))
+	mux.HandleFunc("POST /admin/series/{id}/wishlist/new", s.requireAdmin(s.wishlistSaveNew))
+	mux.HandleFunc("GET /admin/wishlist/{id}/edit", s.requireAdmin(s.wishlistEdit))
+	mux.HandleFunc("POST /admin/wishlist/{id}/edit", s.requireAdmin(s.wishlistSaveEdit))
+	mux.HandleFunc("GET /admin/wishlist/{id}/delete", s.requireAdmin(s.wishlistDeleteForm))
+	mux.HandleFunc("POST /admin/wishlist/{id}/delete", s.requireAdmin(s.wishlistDelete))
+
 	mux.HandleFunc("POST /admin/links", s.requireAdmin(s.linkCreate))
 	mux.HandleFunc("POST /admin/links/{id}/delete", s.requireAdmin(s.linkDelete))
 
-	return s.withPageCache(mux)
+	return withHeaders(s.guardWrites(s.withPageCache(mux)))
 }
 
 func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
@@ -154,38 +181,8 @@ func secureEqual(a, b string) bool {
 	return subtle.ConstantTimeCompare(ah[:], bh[:]) == 1
 }
 
-func logRequest(r *http.Request, cache string) {
-	log.Printf("%s %s ip=%s cache=%s", r.Method, r.URL.Path, clientIP(r), cache)
-}
-
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		if i := strings.IndexByte(fwd, ','); i >= 0 {
-			fwd = fwd[:i]
-		}
-		if ip := strings.TrimSpace(fwd); ip != "" {
-			return ip
-		}
-	}
-	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
-		return ip
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
-func requestHTTPS(r *http.Request) bool {
-	if r.TLS != nil {
-		return true
-	}
-	proto := r.Header.Get("X-Forwarded-Proto")
-	if i := strings.IndexByte(proto, ','); i >= 0 {
-		proto = proto[:i]
-	}
-	return strings.EqualFold(strings.TrimSpace(proto), "https")
+func (s *Server) logRequest(r *http.Request, cache string) {
+	log.Printf("%s %s ip=%s cache=%s", r.Method, r.URL.Path, s.proxies.clientIP(r), cache)
 }
 
 func logSafeUser(user string) string {
