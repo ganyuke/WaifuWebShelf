@@ -28,7 +28,7 @@ More pages, with phone versions, are in `screenshots/v4/`.
 
 ```bash
 go test ./...
-ADMIN_PASS=changeme go run ./cmd/waifuwebshelf
+ADMIN_PASS=change-me-please go run ./cmd/waifuwebshelf
 ```
 
 Then open http://localhost:8080 and log in at http://localhost:8080/login (user `admin`, password from `ADMIN_PASS`).
@@ -42,7 +42,7 @@ Run from the repository root so `templates/` and `static/` resolve. The SQLite f
 | `PORT` | `8080` | Listen port |
 | `DATA_DIR` | `data` | SQLite + `images/` |
 | `ADMIN_USER` | `admin` | Login username |
-| `ADMIN_PASS` | empty | If unset, `/admin` and `/login` return 503 |
+| `ADMIN_PASS` | empty | At least 12 characters. If unset, `/admin` and `/login` return 503 |
 | `SITE_URL` | empty | Public address of the site, like `https://shelf.example.com`. Set it to show a picture when a page link is shared in chat |
 | `TRUSTED_PROXIES` | `127.0.0.1,::1` | Comma-separated addresses or ranges of your reverse proxy. Leave as is when the proxy runs on the same machine |
 

@@ -61,13 +61,19 @@ func NormalizeURL(raw string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", errScheme
+	}
 	if u.Host == "" {
 		return "", errEmptyHost
 	}
 	return u.String(), nil
 }
 
-var errEmptyHost = errString("url is missing a host")
+var (
+	errEmptyHost = errString("url is missing a host")
+	errScheme    = errString("use a web address starting with http or https")
+)
 
 type errString string
 

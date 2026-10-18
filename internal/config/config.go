@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 )
 
 const DefaultTrustedProxies = "127.0.0.1,::1"
@@ -59,12 +60,19 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+// MinAdminPass is the shortest ADMIN_PASS the server starts with.
+const MinAdminPass = 12
+
 func (c Config) Validate() error {
 	if c.Port == "" {
 		return fmt.Errorf("PORT is empty")
 	}
 	if c.DataDir == "" {
 		return fmt.Errorf("DATA_DIR is empty")
+	}
+	// The login page is public, so a short password is the easiest way in.
+	if c.AdminPass != "" && utf8.RuneCountInString(c.AdminPass) < MinAdminPass {
+		return fmt.Errorf("ADMIN_PASS is too short, use at least %d characters", MinAdminPass)
 	}
 	return nil
 }
