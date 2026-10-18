@@ -33,6 +33,8 @@
   field('msrp').value = opt.dataset.msrp || '';
  });
  update();
+ // Choosing a format fills in its prices, so the no-script button is not needed.
+ form.querySelectorAll('[data-defaults]').forEach(el => { el.hidden = true; });
  form.querySelectorAll('.field-error').forEach(error => {
   const input = field(error.id.replace(/-error$/, ''));
   if (input) input.setAttribute('aria-invalid', 'true');

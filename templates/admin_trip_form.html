@@ -23,9 +23,9 @@
   <fieldset class="new-store" data-new-store>
     <legend>New store</legend>
     <div class="trip-grid three">
-      <div><label for="store_name">Name</label><input id="store_name" name="store_name" value="{{$d.StoreName}}" placeholder="Book Off Robson">{{template "item_error" dict "Key" "store_name" "Errors" $d.Errors}}</div>
+      <div><label for="store_name">Name</label><input id="store_name" name="store_name" value="{{$d.StoreName}}" placeholder="Book Off Downtown">{{template "item_error" dict "Key" "store_name" "Errors" $d.Errors}}</div>
       <div><label for="store_currency">Currency</label><input id="store_currency" name="store_currency" value="{{$d.StoreCurrency}}" list="currencies" maxlength="8"></div>
-      <div><label for="store_tax">Tax % <span class="hint" title="Used to suggest the total when you enter a receipt" tabindex="0">(?)</span></label><input id="store_tax" name="store_tax" value="{{$d.StoreTax}}" inputmode="decimal" placeholder="12">{{template "item_error" dict "Key" "store_tax" "Errors" $d.Errors}}</div>
+      <div><label for="store_tax">Tax % <span class="hint" title="Used to suggest the total when you enter a receipt" tabindex="0">(?)</span></label><input id="store_tax" name="store_tax" value="{{$d.StoreTax}}" inputmode="decimal" placeholder="7.75">{{template "item_error" dict "Key" "store_tax" "Errors" $d.Errors}}</div>
     </div>
   </fieldset>
   <datalist id="currencies"><option value="CAD"><option value="USD"><option value="JPY"><option value="EUR"></datalist>

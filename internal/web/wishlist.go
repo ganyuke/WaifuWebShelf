@@ -413,7 +413,7 @@ func (s *Server) wishlistSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	data, err := s.newWishlistForm(id, r)
@@ -512,7 +512,7 @@ func (s *Server) wishlistSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	existing, err := s.db.GetWishlist(id)
@@ -540,7 +540,7 @@ func (s *Server) wishlistSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/admin/wishlist/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
+	http.Redirect(w, r, "/wishlist/"+formatID(id)+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) wishlistDeleteForm(w http.ResponseWriter, r *http.Request) {
@@ -619,7 +619,7 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 	currency := money.NormalizeCurrency(r.FormValue("currency"))
 	msrp, err := money.Parse(r.FormValue("msrp"), currency)
 	if err != nil {
-		return db.WishlistWrite{}, existing, "MSRP: " + err.Error(), err
+		return db.WishlistWrite{}, existing, "List price: " + err.Error(), err
 	}
 	in := db.WishlistWrite{
 		Kind:      kind,
@@ -636,7 +636,7 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 		}
 		lineID, err := parseID(r.FormValue("book_line_id"))
 		if err != nil || lineID == 0 {
-			return in, existing, "Pick a book line.", errWishlist
+			return in, existing, "Pick a format.", errWishlist
 		}
 		ok := false
 		for _, line := range data.Lines {
@@ -646,7 +646,7 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 			}
 		}
 		if !ok {
-			return in, existing, "Pick a book line.", errWishlist
+			return in, existing, "Pick a format.", errWishlist
 		}
 		in.BookLineID = sql.NullInt64{Int64: lineID, Valid: true}
 		in.VolFrom = from

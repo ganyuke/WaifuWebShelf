@@ -10,7 +10,7 @@ import (
 
 func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	ownerType := r.FormValue("owner_type")
@@ -42,7 +42,7 @@ func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := links.NormalizeURL(raw)
 	if err != nil || u == "" {
-		http.Error(w, "invalid url", http.StatusBadRequest)
+		http.Error(w, "Use a web address starting with http or https.", http.StatusBadRequest)
 		return
 	}
 	if _, err := s.db.CreateLink(ownerType, ownerID, ownerKey, label, u); err != nil {

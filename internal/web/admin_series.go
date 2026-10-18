@@ -147,7 +147,7 @@ func (s *Server) seriesSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	ser, err := s.db.GetSeries(id)
@@ -210,7 +210,7 @@ func (s *Server) seriesDeleteForm(w http.ResponseWriter, r *http.Request) {
 		"Title":  ser.Name,
 		"Action": "/admin/series/" + r.PathValue("id") + "/delete",
 		"Cancel": "/admin/series/" + r.PathValue("id") + "/edit",
-		"Body":   "This deletes the series, every book line and volume, and all merch attached to it.",
+		"Body":   "This deletes the series, every format and volume, and all merch attached to it.",
 	})
 }
 
@@ -264,7 +264,7 @@ func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, "admin_bookline_form", "New book line", bookLineFormData{
+	s.render(w, r, "admin_bookline_form", "New format", bookLineFormData{
 		New:             true,
 		SeriesID:        ser.ID,
 		SeriesName:      ser.Name,
@@ -276,7 +276,7 @@ func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) bookLineSaveNew(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	id, err := parseID(r.PathValue("id"))
@@ -300,12 +300,12 @@ func (s *Server) bookLineSaveNew(w http.ResponseWriter, r *http.Request) {
 	}
 	in, msg, err := parseBookLineWrite(r)
 	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "New book line", msg, data)
+		s.renderErr(w, r, "admin_bookline_form", "New format", msg, data)
 		return
 	}
 	data.Kind = in.Kind
 	if !catalog.ValidBookKind(in.Kind) {
-		s.renderErr(w, r, "admin_bookline_form", "New book line", "Pick a book format.", data)
+		s.renderErr(w, r, "admin_bookline_form", "New format", "Pick a book format.", data)
 		return
 	}
 	lineID, err := s.db.CreateBookLine(ser.ID, in)
@@ -331,7 +331,7 @@ func (s *Server) bookLineEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, "admin_bookline_form", "Edit book line", data)
+	s.render(w, r, "admin_bookline_form", "Edit format", data)
 }
 
 func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
@@ -389,7 +389,7 @@ func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	data, err := s.loadBookLineForm(id)
@@ -403,7 +403,7 @@ func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
 	}
 	number := normalizeVolumeNumber(r.FormValue("volume_number"))
 	if number == "" {
-		s.renderErr(w, r, "admin_bookline_form", "Edit book line", "volume number is required", data)
+		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Enter a volume number.", data)
 		return
 	}
 	existing, err := s.db.VolumeCover(id, number)
@@ -413,11 +413,11 @@ func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
 	}
 	cover, err := s.applyImageField(r, "cover", "", existing)
 	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "Edit book line", err.Error(), data)
+		s.renderErr(w, r, "admin_bookline_form", "Edit format", err.Error(), data)
 		return
 	}
 	if cover == existing {
-		s.renderErr(w, r, "admin_bookline_form", "Edit book line", "choose an image for the cover", data)
+		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Choose a picture for the cover.", data)
 		return
 	}
 	if err := s.db.SetVolumeCover(id, number, cover); err != nil {
@@ -434,7 +434,7 @@ func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	number := normalizeVolumeNumber(r.FormValue("volume_number"))
@@ -453,7 +453,7 @@ func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) bookLineSaveEdit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	id, err := parseID(r.PathValue("id"))
@@ -477,12 +477,12 @@ func (s *Server) bookLineSaveEdit(w http.ResponseWriter, r *http.Request) {
 	data.DefaultMSRP = r.FormValue("default_msrp")
 	in, msg, err := parseBookLineWrite(r)
 	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "Edit book line", msg, data)
+		s.renderErr(w, r, "admin_bookline_form", "Edit format", msg, data)
 		return
 	}
 	data.Kind = in.Kind
 	if !catalog.ValidBookKind(in.Kind) {
-		s.renderErr(w, r, "admin_bookline_form", "Edit book line", "Pick a book format.", data)
+		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Pick a book format.", data)
 		return
 	}
 	if err := s.db.UpdateBookLine(id, in); err != nil {
@@ -507,11 +507,11 @@ func (s *Server) bookLineDeleteForm(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	s.render(w, r, "admin_confirm_delete", "Delete book line", map[string]any{
+	s.render(w, r, "admin_confirm_delete", "Delete format", map[string]any{
 		"Title":  catalog.LineTitle(data.Kind, data.Label),
 		"Action": "/admin/book-lines/" + r.PathValue("id") + "/delete",
 		"Cancel": "/admin/book-lines/" + r.PathValue("id") + "/edit",
-		"Body":   "This deletes the book line and every volume on it.",
+		"Body":   "This deletes the format and every volume on it.",
 	})
 }
 

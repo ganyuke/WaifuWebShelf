@@ -27,11 +27,11 @@ func funcMap() template.FuncMap {
 			case "quantity":
 				return strings.Contains(m, "quantity")
 			case "msrp":
-				return strings.HasPrefix(m, "msrp:")
+				return strings.HasPrefix(m, "list price:")
 			case "price_ex_tax":
-				return strings.HasPrefix(m, "price without tax:")
+				return strings.HasPrefix(m, "paid without tax:")
 			case "price_inc_tax":
-				return strings.HasPrefix(m, "price with tax:")
+				return strings.HasPrefix(m, "paid with tax:")
 			case "image", "cover":
 				return strings.Contains(m, "image")
 			}
@@ -153,6 +153,12 @@ func flashText(code string) string {
 		return "Deleted."
 	case "linked":
 		return "Link added."
+	case "books-added":
+		return "Books added."
+	case "trip-saved":
+		return "Trip saved."
+	case "grouped":
+		return "Grouped into trips."
 	default:
 		return ""
 	}

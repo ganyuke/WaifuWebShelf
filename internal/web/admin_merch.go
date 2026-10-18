@@ -46,7 +46,7 @@ func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	ser, err := s.db.GetSeries(id)
@@ -177,7 +177,7 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	m, err := s.db.GetMerch(id)
@@ -236,7 +236,7 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/series/"+data.SeriesSlug+"?ok=updated", http.StatusSeeOther)
+	http.Redirect(w, r, "/merch/"+formatID(id)+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) merchDeleteForm(w http.ResponseWriter, r *http.Request) {

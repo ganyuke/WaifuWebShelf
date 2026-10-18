@@ -19,7 +19,7 @@
         <td>{{.MerchCount}}</td>
         <td>
           <a href="/admin/series/{{.ID}}/edit">Edit</a>
-          · <a href="/admin/series/{{.ID}}/book-lines/new">Add book line</a>
+          · <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
           · <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
         </td>
       </tr>
@@ -27,7 +27,7 @@
     </tbody>
   </table>
   {{else}}
-  <p class="muted">No series yet. <a href="/admin/series/new">Add one</a>, then book lines, volumes, and merch hang off that series.</p>
+  <p class="muted">No series yet.</p>
   {{end}}
 </div>
 {{if .Data.Ungrouped}}

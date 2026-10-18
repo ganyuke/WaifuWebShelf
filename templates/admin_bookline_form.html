@@ -2,7 +2,7 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}New format / edition{{else}}Edit format / edition{{end}}</h1>
+  <h1 class="bar">{{if .Data.New}}New format{{else}}Edit format{{end}}</h1>
   <form class="stack" method="post">
     <label>Format
       <select name="kind">
@@ -12,19 +12,18 @@
         <option value="other" {{if eq .Data.Kind "other"}}selected{{end}}>Other</option>
       </select>
     </label>
-    <label>Label <input name="label" value="{{.Data.Label}}" placeholder="optional, e.g. Official Comic Anthology"></label>
-    <details {{if or .Data.TotalVolumes .Data.DefaultMSRP .Err}}open{{end}}><summary>Collection and purchase defaults</summary>
-    <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="leave blank if unknown / ongoing"></label>
+    <label>Edition (optional) <input name="label" value="{{.Data.Label}}" placeholder="English"></label>
+    <details {{if or .Data.TotalVolumes .Data.DefaultMSRP .Err}}open{{end}}><summary>Volumes and prices (optional)</summary>
+    <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="Blank if ongoing"></label>
     <label>Default currency
       <input name="default_currency" value="{{if .Data.DefaultCurrency}}{{.Data.DefaultCurrency}}{{else}}{{defaultCurrency}}{{end}}" list="currencies" maxlength="8">
     </label>
     <datalist id="currencies">
       <option value="USD"><option value="JPY"><option value="EUR"><option value="CAD">
     </datalist>
-    <label>Default MSRP <input name="default_msrp" inputmode="decimal" value="{{.Data.DefaultMSRP}}" placeholder="prefilled on new volumes"></label>
+    <label>List price per volume <input name="default_msrp" inputmode="decimal" value="{{.Data.DefaultMSRP}}"></label>
     </details>
-    <button type="submit">Save</button>
-    <a href="/admin/series/{{.Data.SeriesID}}/edit">Cancel</a>
+    <div class="form-actions"><button type="submit">Save</button><a href="/admin/series/{{.Data.SeriesID}}/edit">Cancel</a></div>
   </form>
 </div>
 {{if not .Data.New}}
@@ -42,7 +41,7 @@
     {{end}}
   </ul>
   <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a>
-  · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
+  <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
 </section>
 <section class="panel">
   <h2>Covers for volumes not owned</h2>
@@ -61,13 +60,13 @@
   </ul>
   {{end}}
   <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers" enctype="multipart/form-data">
-    <label>Volume number <input name="volume_number" inputmode="numeric" required></label>
-    <label>Cover <input type="file" name="cover" accept="image/*" required></label>
+    <label>Volume number <input name="volume_number" required></label>
+    <label>Cover <input type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" required></label>
     <button type="submit">Add cover</button>
   </form>
 </section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
-<p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete book line</a></p>
+<p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete format</a></p>
 {{end}}
 {{template "footer" .}}
 {{end}}

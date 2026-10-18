@@ -27,7 +27,7 @@
     <span>
       <a href="/admin/series/{{.Data.Series.ID}}/edit">Edit</a>
       · <a href="/admin/items/new?series={{.Data.Series.ID}}">Add item</a>
-      · <a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add book line</a>
+      · <a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add format</a>
       · <a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>
     </span>
     {{end}}
@@ -99,7 +99,7 @@
 <div class="box">
   <div class="bar">
     <h2>Books</h2>
-    {{if $.SignedIn}}<a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add book line</a>{{end}}
+    {{if $.SignedIn}}<a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add format</a>{{end}}
   </div>
   <p class="muted">No manga or light novels yet.</p>
 </div>

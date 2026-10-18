@@ -24,3 +24,11 @@ func TestTemplatesParse(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryConfirmationHasText(t *testing.T) {
+	for _, code := range []string{"created", "updated", "deleted", "linked", "book-added", "merch-added", "books-added", "trip-saved", "grouped"} {
+		if flashText(code) == "" {
+			t.Errorf("no message for %q", code)
+		}
+	}
+}

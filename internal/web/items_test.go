@@ -58,6 +58,13 @@ func TestItemEntryFlow(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "Save and add another") {
 		t.Fatal(w.Body.String())
 	}
+	checked := `name="another_copy" type="checkbox" value="1" checked`
+	if w := call("GET", "/admin/items/new?n=3&copy=1", nil, true); !strings.Contains(w.Body.String(), checked) {
+		t.Fatal("Add copy should open with Add another copy checked")
+	}
+	if strings.Contains(w.Body.String(), checked) {
+		t.Fatal("a plain new item should not have Add another copy checked")
+	}
 	// No scripts or intermediate writes are required for a new series and format.
 	form := url.Values{"type": {"book"}, "series": {"new"}, "series_name": {"New shelf"}, "line": {"new"}, "kind": {"manga"}, "volume_number": {"1"}, "currency": {"CAD"}, "price_inc_tax": {"bad"}, "store": {"Book shop"}, "notes": {"Keep this"}}
 	w = call("POST", "/admin/items/new", form, true)

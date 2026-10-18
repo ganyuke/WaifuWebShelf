@@ -122,7 +122,7 @@
     <input type="hidden" name="next" value="{{.Next}}">
     <label>Label <input name="label" placeholder="MAL" required></label>
     <label>URL <input name="url" type="url" placeholder="https://" required></label>
-    <button type="submit">Add link</button>
+    <div class="form-actions"><button type="submit">Add link</button></div>
   </form>
 </section>
 {{end}}
@@ -138,7 +138,7 @@
 <datalist id="currencies">
   <option value="USD"><option value="JPY"><option value="EUR"><option value="CAD">
 </datalist>
-<label>MSRP <input name="msrp" {{if fieldError $.Err "msrp"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.MSRP}}" placeholder="list price for this purchase"></label>
+<label>List price <input name="msrp" {{if fieldError $.Err "msrp"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.MSRP}}"></label>
 <label>Paid without tax <input name="price_ex_tax" {{if fieldError $.Err "price_ex_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceEx}}"></label>
 <label>Paid with tax <input name="price_inc_tax" {{if fieldError $.Err "price_inc_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceInc}}"></label>
 </details>
@@ -160,7 +160,7 @@
     </select>
   </label>
   {{end}}
-  <label>MSRP <input name="msrp" {{if fieldError $.Err "msrp"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.MSRP}}" placeholder="list price"></label>
+  <label>List price <input name="msrp" {{if fieldError $.Err "msrp"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.MSRP}}"></label>
   {{if not .Trip.OnLine}}
   <label>Paid without tax <input name="price_ex_tax" {{if fieldError $.Err "price_ex_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceEx}}"></label>
   <label>Paid with tax <input name="price_inc_tax" {{if fieldError $.Err "price_inc_tax"}}aria-invalid="true" aria-describedby="form-error"{{end}} inputmode="decimal" value="{{.PriceInc}}"></label>

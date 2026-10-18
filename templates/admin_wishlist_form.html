@@ -7,7 +7,7 @@
     <input type="hidden" name="kind" value="{{.Data.Kind}}">
     {{if eq .Data.Kind "volumes"}}
     {{if gt (len .Data.Lines) 1}}
-    <label>Book line
+    <label>Format
       <select name="book_line_id">
         {{range .Data.Lines}}
         <option value="{{.ID}}" {{if eq .ID $.Data.BookLineID}}selected{{end}}>{{lineTitle .Kind .Label}}</option>
@@ -54,9 +54,9 @@
     <datalist id="currencies">
       <option value="USD"><option value="JPY"><option value="EUR"><option value="CAD">
     </datalist>
-    <label>MSRP <input name="msrp" inputmode="decimal" value="{{.Data.MSRP}}"></label>
+    <label>List price <input name="msrp" inputmode="decimal" value="{{.Data.MSRP}}"></label>
     <label>Notes <textarea name="notes" rows="3">{{.Data.Notes}}</textarea></label>
-    <button type="submit">Save</button>
+    <div class="form-actions"><button type="submit">Save</button><a href="{{if .Data.New}}/series/{{.Data.SeriesSlug}}{{else}}/wishlist/{{.Data.ID}}{{end}}">Cancel</a></div>
   </form>
 </div>
 {{if not .Data.New}}
@@ -65,10 +65,10 @@
   <p>
     {{if eq .Data.Kind "merch"}}
     <a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>
-    · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a>
+    <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a>
     {{else}}
     <a class="btn" href="/admin/book-lines/{{.Data.BookLineID}}/volumes/new{{if .Data.VolFrom}}?n={{.Data.VolFrom}}{{end}}">Add volume</a>
-    · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.BookLineID}}">Add to wishlist</a>
+    <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.BookLineID}}">Add to wishlist</a>
     {{end}}
   </p>
 </section>

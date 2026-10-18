@@ -35,7 +35,7 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form.", http.StatusBadRequest)
 		return
 	}
 	next := safeNext(r.FormValue("next"))

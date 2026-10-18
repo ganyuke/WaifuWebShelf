@@ -18,7 +18,7 @@ import (
 	"waifuwebshelf/internal/photos"
 )
 
-const maxUpload = 8 << 20
+const maxUpload = 25 << 20
 
 func parseMaybeMultipart(r *http.Request) error {
 	err := r.ParseMultipartForm(maxUpload)
@@ -32,15 +32,15 @@ func (s *Server) parsePurchase(r *http.Request) (db.Purchase, error) {
 	currency := money.NormalizeCurrency(r.FormValue("currency"))
 	msrp, err := money.Parse(r.FormValue("msrp"), currency)
 	if err != nil {
-		return db.Purchase{}, fmt.Errorf("MSRP: %w", err)
+		return db.Purchase{}, fmt.Errorf("List price: %w", err)
 	}
 	ex, err := money.Parse(r.FormValue("price_ex_tax"), currency)
 	if err != nil {
-		return db.Purchase{}, fmt.Errorf("price without tax: %w", err)
+		return db.Purchase{}, fmt.Errorf("Paid without tax: %w", err)
 	}
 	inc, err := money.Parse(r.FormValue("price_inc_tax"), currency)
 	if err != nil {
-		return db.Purchase{}, fmt.Errorf("price with tax: %w", err)
+		return db.Purchase{}, fmt.Errorf("Paid with tax: %w", err)
 	}
 	return db.Purchase{
 		PurchasedAt:      strings.TrimSpace(r.FormValue("purchased_at")),
@@ -94,14 +94,14 @@ func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (st
 	}
 	defer file.Close()
 	if header.Size > maxUpload {
-		return "", false, fmt.Errorf("image is larger than 8MB")
+		return "", false, fmt.Errorf("image is larger than 25 MB")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
 	if err != nil {
 		return "", false, err
 	}
 	if len(data) > maxUpload {
-		return "", false, fmt.Errorf("image is larger than 8MB")
+		return "", false, fmt.Errorf("image is larger than 25 MB")
 	}
 	// The file's own bytes decide the type. The name and the browser's claim are ignored.
 	switch http.DetectContentType(data) {
@@ -199,7 +199,7 @@ func parseBookLineWrite(r *http.Request) (db.BookLineWrite, string, error) {
 	currency := money.NormalizeCurrency(r.FormValue("default_currency"))
 	msrp, err := money.Parse(r.FormValue("default_msrp"), currency)
 	if err != nil {
-		return db.BookLineWrite{}, "Default MSRP: " + err.Error(), err
+		return db.BookLineWrite{}, "List price per volume: " + err.Error(), err
 	}
 	return db.BookLineWrite{
 		Kind:             kind,

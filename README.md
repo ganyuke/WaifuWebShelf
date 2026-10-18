@@ -2,7 +2,7 @@
 
 A personal catalog of manga, light novels, and merch. One Go binary, SQLite, server-rendered HTML. Public pages are a shelf; adding and editing uses a login form at `/login`.
 
-A **series** is a franchise. Manga vs light novels are **book lines** under that series, each with its own owned/missing volume grid. Merch hangs off the series.
+A **series** is a franchise. Manga and light novels are **formats** under that series, each with its own owned/missing volume grid. Merch hangs off the series.
 
 A **trip** is one store visit with its receipt. Enter the receipt lines as printed ("Book $2 × 8"), what you paid, and a photo of the haul if you took one, then add the books and merch onto the lines. Spending totals use what you paid on each trip. Item prices are the receipt prices, before tax. A visit where you bought nothing is a trip with no receipt. On the trip page, tap the haul photo to tag what's where.
 
@@ -105,7 +105,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 10m;
+        client_max_body_size 60m;
     }
 }
 ```

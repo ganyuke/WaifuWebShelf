@@ -11,7 +11,7 @@
     <input id="currency" name="currency" value="{{.Data.Currency}}" list="currencies" maxlength="8">
     <datalist id="currencies"><option value="CAD"><option value="USD"><option value="JPY"><option value="EUR"></datalist>
     <label for="tax">Tax % <span class="hint" title="Used to suggest the total when you enter a receipt" tabindex="0">(?)</span></label>
-    <input id="tax" name="tax" value="{{.Data.Tax}}" inputmode="decimal" placeholder="12">
+    <input id="tax" name="tax" value="{{.Data.Tax}}" inputmode="decimal" placeholder="7.75">
     {{template "item_error" dict "Key" "tax" "Errors" .Data.Errors}}
     <div class="form-actions"><button type="submit">Save</button><a href="/admin">Cancel</a></div>
   </form>

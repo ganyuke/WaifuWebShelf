@@ -14,14 +14,13 @@
     <p class="thumb-row"><img src="{{smallURL .Data.Image}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
     {{end}}
-    <p class="muted">After a validation error, select any new files again.</p></details>
-    <button type="submit">Save</button>
-    <a href="{{if .Data.New}}/{{else}}/series/{{.Data.Slug}}{{end}}">Cancel</a>
+    <p class="muted">JPEG, PNG, WebP, or GIF, up to 25 MB.{{if .Err}} Choose the photo again.{{end}}</p></details>
+    <div class="form-actions"><button type="submit">Save</button><a href="{{if .Data.New}}/{{else}}/series/{{.Data.Slug}}{{end}}">Cancel</a></div>
   </form>
 </div>
 {{if not .Data.New}}
 <section class="panel">
-  <h2>Book lines</h2>
+  <h2>Formats</h2>
   <ul>
     {{range .Data.Lines}}
     <li>
@@ -33,7 +32,7 @@
     <li class="muted">None yet</li>
     {{end}}
   </ul>
-  <p><a class="btn" href="/admin/series/{{.Data.ID}}/book-lines/new">Add book line</a></p>
+  <p><a class="btn" href="/admin/series/{{.Data.ID}}/book-lines/new">Add format</a></p>
 </section>
 <section class="panel">
   <h2>Merch</h2>
@@ -59,7 +58,7 @@
     {{end}}
   </ul>
   <p><a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=volumes">Add volume</a>
-  · <a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=merch">Add merch</a></p>
+  <a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=merch">Add merch</a></p>
 </section>
   <p class="admin-actions"><a href="/series/{{.Data.Slug}}">View public page</a></p>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "series" "OwnerID" .Data.ID "Next" (printf "/admin/series/%d/edit" .Data.ID)}}

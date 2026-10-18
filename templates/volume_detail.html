@@ -6,7 +6,7 @@
     <h1>Volume {{.Data.Number}}{{if gt (len .Data.Copies) 1}} <span class="count">{{len .Data.Copies}} copies</span>{{end}}</h1>
     {{if $.SignedIn}}
     <span>
-      <a href="/admin/book-lines/{{.Data.Line.ID}}/volumes/new?n={{.Data.Number}}">Add copy</a>
+      <a href="/admin/book-lines/{{.Data.Line.ID}}/volumes/new?n={{.Data.Number}}&amp;copy=1">Add copy</a>
     </span>
     {{end}}
   </div>
@@ -23,6 +23,7 @@
               <th class="num">Paid</th>
               {{if $.SignedIn}}<th class="num">Before tax</th>{{end}}
               <th class="num">List price</th>
+              {{if $.SignedIn}}<th></th>{{end}}
             </tr>
           </thead>
           <tbody>
@@ -32,13 +33,13 @@
               <td class="wide">
                 {{if .ImagePath.Valid}}<img class="thumb" src="{{smallURL .ImagePath.String}}" alt="">{{end}}
                 {{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{if .Store}}{{.Store}}{{else}}Trip{{end}}</a>{{else if .Store}}{{.Store}}{{else}}—{{end}}
-                {{if $.SignedIn}} · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>{{end}}
                 {{template "links_list" .Links}}
                 {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
               </td>
               <td class="num strong" data-label="Paid">{{money .Paid.Valid .Paid.Int64 .Currency}}{{if .PlusTax}} <span class="muted">+ tax</span>{{end}}</td>
               {{if $.SignedIn}}<td class="num" data-label="Before tax">{{money .PriceExTaxCents.Valid .PriceExTaxCents.Int64 .Currency}}</td>{{end}}
               <td class="num" data-label="List price">{{money .MSRPCents.Valid .MSRPCents.Int64 .Currency}}</td>
+              {{if $.SignedIn}}<td class="row-action"><a href="/admin/volumes/{{.ID}}/edit">Edit</a></td>{{end}}
             </tr>
             {{end}}
           </tbody>

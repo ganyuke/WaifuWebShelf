@@ -28,9 +28,8 @@
     <p class="thumb-row"><img src="{{smallURL .Data.Image}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
     {{end}}
-    <p class="muted">After a validation error, select any new files again.</p></details>
-    <button type="submit">Save</button>
-    <a href="/series/{{.Data.SeriesSlug}}">Cancel</a>
+    <p class="muted">JPEG, PNG, WebP, or GIF, up to 25 MB.{{if .Err}} Choose the photo again.{{end}}</p></details>
+    <div class="form-actions"><button type="submit">Save</button><a href="{{if .Data.New}}/series/{{.Data.SeriesSlug}}{{else}}/merch/{{.Data.ID}}{{end}}">Cancel</a></div>
     {{if .Data.WishlistID}}<input type="hidden" name="wishlist_id" value="{{.Data.WishlistID}}">{{end}}
   </form>
 </div>
@@ -38,7 +37,7 @@
 <section class="panel">
   <h2>More</h2>
   <p><a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new">Add more merch</a>
-  · <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a></p>
+  <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a></p>
 </section>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "merch" "OwnerID" .Data.ID "Next" (printf "/admin/merch/%d/edit" .Data.ID)}}
 <div class="admin-actions">{{template "take_off_trip" dict "Trip" .Data.Trip "Action" (printf "/admin/merch/%d/take-off" .Data.ID)}}<a class="danger-text" href="/admin/merch/{{.Data.ID}}/delete">Delete merch</a></div>

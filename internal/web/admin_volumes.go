@@ -3,6 +3,7 @@ package web
 import (
 	"database/sql"
 	"net/http"
+	"net/url"
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
@@ -14,6 +15,7 @@ type volumeFormData struct {
 	SeriesID     int64
 	SeriesName   string
 	SeriesSlug   string
+	LineSlug     string
 	LineTitle    string
 	VolumeNumber string
 	PurchasedAt  string
@@ -29,6 +31,15 @@ type volumeFormData struct {
 	VolumeLinks  []LinkView
 	CopyLinks    []LinkView
 	Trip         itemTripFields
+}
+
+// PageURL is the volume's public page.
+func (d volumeFormData) PageURL() string {
+	return volumePageURL(d.SeriesSlug, d.LineSlug, d.VolumeNumber)
+}
+
+func volumePageURL(seriesSlug, lineSlug, number string) string {
+	return "/series/" + seriesSlug + "/" + lineSlug + "/" + url.PathEscape(number)
 }
 
 func (s *Server) volumeContext(bookLineID int64) (db.BookLine, db.Series, error) {
@@ -54,7 +65,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	line, ser, err := s.volumeContext(id)
@@ -143,6 +154,7 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 		SeriesID:     ser.ID,
 		SeriesName:   ser.Name,
 		SeriesSlug:   ser.Slug,
+		LineSlug:     line.Slug,
 		LineTitle:    catalog.LineTitle(line.Kind, line.Label),
 		VolumeNumber: v.VolumeNumber,
 		PurchasedAt:  dateVal(v.PurchasedAt),
@@ -184,7 +196,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "could not read form", http.StatusBadRequest)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	v, err := s.db.GetVolume(id)
@@ -250,7 +262,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/series/"+data.SeriesSlug+"?ok=updated", http.StatusSeeOther)
+	http.Redirect(w, r, volumePageURL(data.SeriesSlug, data.LineSlug, number)+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) volumeDeleteForm(w http.ResponseWriter, r *http.Request) {

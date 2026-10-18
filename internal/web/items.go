@@ -39,6 +39,8 @@ func (s *Server) itemForm(w http.ResponseWriter, r *http.Request) {
 	d.New = true
 	d.Currency = money.Default
 	d.VolumeNumber = q.Get("n")
+	// Add copy on a volume page comes with copy=1, since that volume is owned.
+	d.AnotherCopy = q.Get("copy") == "1"
 	if d.Type == "merch" {
 		if id, e := parseID(q.Get("wish")); e == nil {
 			var m merchFormData
@@ -109,7 +111,7 @@ func (s *Server) renderItem(w http.ResponseWriter, r *http.Request, d itemForm, 
 
 func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read form. Check the file size and try again.", 400)
+		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
 		return
 	}
 	if r.MultipartForm != nil {
@@ -223,10 +225,10 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	p, e := s.parsePurchase(r)
 	if e != nil {
 		key := "msrp"
-		if strings.HasPrefix(e.Error(), "price without") {
+		if strings.HasPrefix(e.Error(), "Paid without") {
 			key = "price_ex_tax"
 		}
-		if strings.HasPrefix(e.Error(), "price with tax") {
+		if strings.HasPrefix(e.Error(), "Paid with tax") {
 			key = "price_inc_tax"
 		}
 		d.Errors[key] = e.Error()
