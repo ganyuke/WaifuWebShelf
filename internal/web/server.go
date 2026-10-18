@@ -130,6 +130,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /stats", s.statsPage)
 	mux.HandleFunc("GET /trips/{id}", s.tripPage)
 
+	mux.HandleFunc("GET /preview/series/{slug}", s.previewSeries)
+	mux.HandleFunc("GET /preview/series/{slug}/{lineSlug}/{number}", s.previewVolume)
+	mux.HandleFunc("GET /preview/merch/{id}", s.previewMerch)
+	mux.HandleFunc("GET /preview/wishlist/{id}", s.previewWishlist)
+	mux.HandleFunc("GET /preview/trips/{id}", s.previewTrip)
+
 	mux.HandleFunc("GET /login", s.loginForm)
 	mux.HandleFunc("POST /login", s.loginSubmit)
 	mux.HandleFunc("POST /logout", s.logout)

@@ -31,13 +31,13 @@
             <td class="date head">{{if .ID}}<a href="/trips/{{.ID}}">{{if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</a>{{else if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</td>
             <td data-label="Store">{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
             <td class="wide">
-              {{if .Photo}}<a href="/trips/{{.ID}}"><img class="thumb haul" src="{{smallURL .Photo}}" alt=""></a>{{end}}
+              {{if .Photo}}<a href="/trips/{{.ID}}" data-preview="/trips/{{.ID}}"><img class="thumb haul" src="{{smallURL .Photo}}" alt=""></a>{{end}}
               {{range $line := .Lines}}
               <p>
                 {{if .Merch}}
-                <a href="/merch/{{.Merch.ID}}">{{.Merch.Name}}</a>{{if gt .Merch.Quantity 1}} ×{{.Merch.Quantity}}{{end}} <span class="muted">· {{.SeriesName}}{{if .Paid}} · {{.Paid}}{{end}}</span>
+                <a href="/merch/{{.Merch.ID}}">{{.Merch.Name}}</a>{{if gt .Merch.Quantity 1}} ×{{.Merch.Quantity}}{{end}} <span class="muted">from {{.SeriesName}}{{if .Paid}}, {{.Paid}}{{end}}</span>
                 {{else}}
-                {{.SeriesName}} · {{.LineTitle}} · vol. {{range $i, $n := .Volumes}}{{if $i}}, {{end}}<a href="/series/{{$line.SeriesSlug}}/{{$line.LineSlug}}/{{$n.Number}}">{{$n.Number}}</a>{{if gt $n.Copies 1}} ×{{$n.Copies}}{{end}}{{end}}{{if .Paid}} <span class="muted">· {{.Paid}}</span>{{end}}
+                {{.SeriesName}}, {{.LineTitle}}, vol. {{range $i, $n := .Volumes}}{{if $i}}, {{end}}<a href="/series/{{$line.SeriesSlug}}/{{$line.LineSlug}}/{{$n.Number}}">{{$n.Number}}</a>{{if gt $n.Copies 1}} ×{{$n.Copies}}{{end}}{{end}}{{if .Paid}} <span class="muted">({{.Paid}})</span>{{end}}
                 {{end}}
               </p>
               {{else}}

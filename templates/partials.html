@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{if .Title}}{{.Title}} · {{end}}WaifuWebShelf</title>
+<title>{{if .Title}}{{.Title}} – {{end}}WaifuWebShelf</title>
 <meta property="og:site_name" content="WaifuWebShelf">
 <meta property="og:title" content="{{if .Title}}{{.Title}}{{else}}WaifuWebShelf{{end}}">
 {{with .Preview.Text}}<meta name="description" content="{{.}}">
@@ -38,8 +38,30 @@
 </main>
 <footer class="site-footer">{{if and .LoginEnabled (not .SignedIn)}}<a href="/login">Log in</a>{{end}}</footer>
 <script src="{{assetURL "forms.js"}}" defer></script>
+<script src="{{assetURL "preview.js"}}" defer></script>
 </body>
 </html>
+{{end}}
+
+{{define "preview_card"}}
+{{with .Data}}
+<div class="pv-card">
+  {{if .Image}}<img src="{{smallURL .Image}}" alt="">{{end}}
+  <p class="pv-title">{{.Title}}</p>
+  {{if .Sub}}<p class="muted">{{.Sub}}</p>{{end}}
+  {{if .Note}}<p>{{.Note}}</p>{{end}}
+  {{if .Facts}}<dl class="facts{{if .Tally}} tally{{end}}">{{range .Facts}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>{{end}}</dl>{{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "pager"}}
+{{if .Any}}
+<nav class="pager" aria-label="Previous and next">
+  {{if .PrevURL}}<a href="{{.PrevURL}}" title="{{.PrevTitle}}" rel="prev">← Previous</a>{{else}}<span class="off">← Previous</span>{{end}}
+  {{if .NextURL}}<a href="{{.NextURL}}" title="{{.NextTitle}}" rel="next">Next →</a>{{else}}<span class="off">Next →</span>{{end}}
+</nav>
+{{end}}
 {{end}}
 
 {{define "tile"}}
@@ -58,7 +80,7 @@
 {{define "purchase_facts"}}
 <dl class="facts">
   {{with .P}}
-  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{end}}{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} · {{end}}{{.Store}}{{if .TripID.Valid}}</a>{{end}}</dd>{{end}}
+  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{end}}{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} at {{end}}{{.Store}}{{if .TripID.Valid}}</a>{{end}}</dd>{{end}}
   {{if .Paid.Valid}}<dt>Paid</dt><dd>{{amount .Paid.Int64 .Currency}}{{if .PlusTax}} <span class="muted">+ tax</span>{{end}}</dd>{{end}}
   {{if .MSRPCents.Valid}}<dt>List price</dt><dd>{{amount .MSRPCents.Int64 .Currency}}</dd>{{end}}
   {{if and $.SignedIn .PriceExTaxCents.Valid}}<dt>Before tax</dt><dd>{{amount .PriceExTaxCents.Int64 .Currency}}</dd>{{end}}
@@ -79,7 +101,7 @@
 <div class="box">
   <div class="bar">
     <h2>Same trip</h2>
-    <a href="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} · {{.Trip.StoreName}}{{end}}</a>
+    <a href="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} at {{.Trip.StoreName}}{{end}}</a>
   </div>
   <div class="same-trip{{if .Tagged}} with-photo{{end}}">
     {{if .Tagged}}{{template "haul_photo" dict "Photo" .Trip.PhotoPath.String "Tags" .Tags "Tagging" false}}{{end}}
@@ -172,7 +194,7 @@
 
 {{define "take_off_trip"}}
 {{if .Trip.TripID}}
-<form class="inline" method="post" action="{{.Action}}"><button type="submit" class="danger-text">Take off this trip</button></form> · 
+<form class="inline" method="post" action="{{.Action}}"><button type="submit" class="danger-text">Take off this trip</button></form>
 {{end}}
 {{end}}
 

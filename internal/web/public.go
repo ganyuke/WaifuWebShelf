@@ -254,10 +254,28 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		"Copies": views,
 		"Links":  toLinkViews(volumeLinks),
 		"Cover":  nullImage(cover),
-		"Prev":   prev,
-		"Next":   next,
+		"Pager":  volumePager(ser.Slug, line.Slug, prev, next),
 		"Same":   same,
 	})
+}
+
+// Pager links to the previous and next item. A missing one is shown greyed
+// out, so the other stays in the same place from page to page.
+type Pager struct {
+	PrevURL, PrevTitle, NextURL, NextTitle string
+}
+
+func (p Pager) Any() bool { return p.PrevURL != "" || p.NextURL != "" }
+
+func volumePager(seriesSlug, lineSlug, prev, next string) Pager {
+	var p Pager
+	if prev != "" {
+		p.PrevURL, p.PrevTitle = volumePageURL(seriesSlug, lineSlug, prev), "Volume "+prev
+	}
+	if next != "" {
+		p.NextURL, p.NextTitle = volumePageURL(seriesSlug, lineSlug, next), "Volume "+next
+	}
+	return p
 }
 
 // ownedNumbers lists each owned volume number once, in shelf order.
@@ -331,16 +349,16 @@ func (s *Server) merchDetail(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	var prev, next *db.MerchRow
+	var pager Pager
 	for i := range all {
 		if all[i].ID != row.ID {
 			continue
 		}
 		if i > 0 {
-			prev = &all[i-1]
+			pager.PrevURL, pager.PrevTitle = "/merch/"+formatID(all[i-1].ID), all[i-1].Name
 		}
 		if i+1 < len(all) {
-			next = &all[i+1]
+			pager.NextURL, pager.NextTitle = "/merch/"+formatID(all[i+1].ID), all[i+1].Name
 		}
 		break
 	}
@@ -353,8 +371,7 @@ func (s *Server) merchDetail(w http.ResponseWriter, r *http.Request) {
 		"Same":  same,
 		"Merch": row,
 		"Links": toLinkViews(ll),
-		"Prev":  prev,
-		"Next":  next,
+		"Pager": pager,
 	})
 }
 

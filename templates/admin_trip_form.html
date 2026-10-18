@@ -1,7 +1,7 @@
 {{define "admin_trip_form"}}
 {{template "header" .}}
 {{$d := .Data}}
-<p class="crumb"><a href="/stats">Spending</a>{{if not $d.New}} · <a href="/trips/{{$d.ID}}">Trip</a>{{end}}</p>
+<p class="crumb"><a href="/stats">Spending</a>{{if not $d.New}} › <a href="/trips/{{$d.ID}}">Trip</a>{{end}}</p>
 <div class="box">
 <h1 class="bar">{{if $d.New}}Add trip{{else}}Edit trip{{end}}</h1>
 <form method="post" enctype="multipart/form-data" class="stack trip-form">

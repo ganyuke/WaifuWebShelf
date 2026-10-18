@@ -111,6 +111,9 @@ func TestTripFlow(t *testing.T) {
 			t.Fatalf("trip page missing %q", want)
 		}
 	}
+	if first := get("/series/rag/english/1"); !strings.Contains(first, `<span class="off">← Previous</span>`) || !strings.Contains(first, `rel="next"`) {
+		t.Fatal("the first volume should show Previous greyed out and link Next")
+	}
 	vol := get("/series/rag/english/2")
 	if !strings.Contains(vol, "+ tax") || !strings.Contains(vol, "Same trip") || !strings.Contains(vol, `href="/trips/`+trip+`"`) {
 		t.Fatal("volume page should link its trip and show what else was bought")
@@ -129,6 +132,26 @@ func TestTripFlow(t *testing.T) {
 		t.Fatal("trip page should show the new series' books on the receipt line")
 	}
 	get("/series/fly-me-to-the-moon/manga/2")
+
+	// Hovering a small picture shows the same details as its page.
+	card := get("/preview/series/rag/english/2")
+	for _, want := range []string{"Volume 2", "Rent-A-Girlfriend, English manga", "11 Oct 2026 at Book Off Robson", "Before tax"} {
+		if !strings.Contains(card, want) {
+			t.Fatalf("volume card missing %q:\n%s", want, card)
+		}
+	}
+	if strings.Contains(card, "<html") {
+		t.Fatal("a card is a fragment, not a page")
+	}
+	if card := get("/preview/series/rag/english/9"); !strings.Contains(card, "Not owned") {
+		t.Fatal("a missing volume's card should say Not owned")
+	}
+	if card := get("/preview/trips/" + trip); !strings.Contains(card, "Book Off Robson") || !strings.Contains(card, "CA$23.52") {
+		t.Fatal("trip card should show the store and what was paid")
+	}
+	if res, err := client.Get(ts.URL + "/preview/merch/999"); err != nil || res.StatusCode != 404 {
+		t.Fatal("unknown items give no card")
+	}
 
 	// Tags only show on a trip with a photo, so tag through the store and check the item page.
 	vols, _ := store.ListVolumesByNumber(lid, "2")

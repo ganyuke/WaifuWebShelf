@@ -1,7 +1,7 @@
 {{define "item_error"}}{{with index .Errors .Key}}<p class="field-error" id="{{$.Key}}-error" role="alert">{{.}}</p>{{end}}{{end}}
 {{define "item_form"}}
 {{template "header" .}}
-<p class="crumb">{{if .Data.Trip.TripID}}<a href="/trips/{{.Data.Trip.TripID}}">{{.Data.Trip.TripTitle}}</a>{{else}}<a href="/">Collection</a>{{if .Data.SeriesSlug}} · <a href="/series/{{.Data.SeriesSlug}}">Series</a>{{end}}{{end}} · Add item</p>
+<p class="crumb">{{if .Data.Trip.TripID}}<a href="/trips/{{.Data.Trip.TripID}}">{{.Data.Trip.TripTitle}}</a>{{else}}<a href="/">Collection</a>{{if .Data.SeriesSlug}} › <a href="/series/{{.Data.SeriesSlug}}">Series</a>{{end}}{{end}} › Add item</p>
 <div class="box">
 <h1>Add item</h1>
 <form method="post" action="/admin/items/new" enctype="multipart/form-data" class="stack item-form">
@@ -42,7 +42,7 @@
 <input type="hidden" name="currency" value="{{.Data.Currency}}">
 {{if .Data.Trip.ReceiptLines}}
 <label for="receipt_line">Receipt line</label>
-<select id="receipt_line" name="receipt_line">{{range .Data.Trip.ReceiptLines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Trip.ReceiptLine}}selected{{end}}>{{.Label}} {{amount .UnitCents $.Data.Currency}} · {{.Entered}} of {{.Count}}</option>{{end}}<option value="" {{if eq .Data.Trip.ReceiptLine ""}}selected{{end}}>Not on the receipt</option></select>
+<select id="receipt_line" name="receipt_line">{{range .Data.Trip.ReceiptLines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Trip.ReceiptLine}}selected{{end}}>{{.Label}}, {{amount .UnitCents $.Data.Currency}}, {{.Entered}} of {{.Count}} entered</option>{{end}}<option value="" {{if eq .Data.Trip.ReceiptLine ""}}selected{{end}}>Not on the receipt</option></select>
 {{template "item_error" dict "Key" "receipt_line" "Errors" .Data.Errors}}
 {{end}}
 <label for="msrp">List price</label><input id="msrp" name="msrp" type="text" value="{{.Data.MSRP}}" aria-describedby="msrp-error">{{template "item_error" dict "Key" "msrp" "Errors" .Data.Errors}}

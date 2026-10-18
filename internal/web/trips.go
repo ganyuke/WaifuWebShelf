@@ -48,8 +48,7 @@ type tripPageData struct {
 	Loose     []TripTile
 	ItemCount int
 	Subtotal  int64
-	Prev      *db.Trip
-	Next      *db.Trip
+	Pager     Pager
 	Tags      []TagView
 	Taggable  []TripTile
 	Choices   []lineChoiceView
@@ -61,7 +60,7 @@ type tripPageData struct {
 func tripTitle(t db.Trip) string {
 	title := displayDate(t.VisitedOn)
 	if t.StoreName != "" {
-		title += " · " + t.StoreName
+		title += " at " + t.StoreName
 	}
 	return title
 }
@@ -74,7 +73,7 @@ func tripTile(i db.TripItem) TripTile {
 	return TripTile{Kind: "volume", ID: i.ID, URL: "/series/" + i.SeriesSlug + "/" + i.LineSlug + "/" + i.VolumeNumber,
 		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: "Vol. " + i.VolumeNumber,
 		Label: i.SeriesName + " " + catalog.LineTitle(i.LineKind, i.LineLabel) + " vol. " + i.VolumeNumber,
-		Sub:   i.SeriesName + " · " + catalog.LineTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
+		Sub:   i.SeriesName + ", " + catalog.LineFullTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
 }
 
 type sameTripView struct {
@@ -261,10 +260,10 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 		}
 		// Trips are listed newest first, so the earlier trip comes after this one.
 		if i+1 < len(all) {
-			d.Prev = &all[i+1]
+			d.Pager.PrevURL, d.Pager.PrevTitle = "/trips/"+formatID(all[i+1].ID), tripTitle(all[i+1])
 		}
 		if i > 0 {
-			d.Next = &all[i-1]
+			d.Pager.NextURL, d.Pager.NextTitle = "/trips/"+formatID(all[i-1].ID), tripTitle(all[i-1])
 		}
 	}
 	if s.loggedIn(r) {
@@ -274,7 +273,7 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 			return
 		}
 		for _, c := range choices {
-			d.Choices = append(d.Choices, lineChoiceView{ID: c.ID, Title: c.SeriesName + " · " + catalog.LineTitle(c.Kind, c.Label), Next: nextMissing(c)})
+			d.Choices = append(d.Choices, lineChoiceView{ID: c.ID, Title: c.SeriesName + ", " + catalog.LineFullTitle(c.Kind, c.Label), Next: nextMissing(c)})
 		}
 		series, err := s.db.ListSeries()
 		if err != nil {

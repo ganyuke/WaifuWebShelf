@@ -41,7 +41,7 @@ func TestGridDuplicateCopies(t *testing.T) {
 	if g.Owned != 1 || g.Copies != 3 {
 		t.Fatalf("owned %d copies %d", g.Owned, g.Copies)
 	}
-	if g.Caption != "Manga  1 / 3 · 3 copies" {
+	if g.Caption != "Manga  1 / 3, 3 copies" {
 		t.Fatalf("caption %q", g.Caption)
 	}
 }

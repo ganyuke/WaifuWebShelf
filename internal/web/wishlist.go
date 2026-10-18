@@ -327,7 +327,7 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v.Links = toLinkViews(ll)
-	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: "Wishlist · " + v.SeriesName, Image: v.Picture()}, v)
+	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: v.SeriesName + " wishlist", Image: v.Picture()}, v)
 }
 
 func wishTitle(v WishView) string {

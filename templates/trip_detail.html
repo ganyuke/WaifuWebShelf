@@ -1,10 +1,13 @@
 {{define "trip_detail"}}
 {{template "header" .}}
 {{$t := .Data.Trip}}
-<p class="crumb"><a href="/stats">Spending</a></p>
+<div class="crumb-row">
+  <p class="crumb"><a href="/stats">Spending</a></p>
+  {{template "pager" .Data.Pager}}
+</div>
 <div class="box">
   <div class="bar">
-    <h1>{{date $t.VisitedOn}}{{if $t.StoreName}} · {{$t.StoreName}}{{end}}</h1>
+    <h1>{{date $t.VisitedOn}}{{if $t.StoreName}} at {{$t.StoreName}}{{end}}</h1>
     {{if $.SignedIn}}<a href="/admin/trips/{{$t.ID}}/edit">Edit trip</a>{{end}}
   </div>
   <article class="detail trip{{if not $t.PhotoPath.Valid}} no-pic{{end}}">
@@ -65,8 +68,8 @@
 {{range .Data.Lines}}
 <div class="box">
   <div class="bar">
-    <h2>{{.Label}} · {{amount .UnitCents $t.Currency}}</h2>
-    <span class="muted">{{.Entered}} of {{.Count}}</span>
+    <h2>{{.Label}}, {{amount .UnitCents $t.Currency}} each</h2>
+    <span class="muted">{{.Entered}} of {{.Count}} entered</span>
   </div>
   {{if .Items}}
   <div class="card-grid">{{range .Items}}{{template "trip_tile" dict "Tile" . "SignedIn" $.SignedIn}}{{end}}</div>
@@ -91,7 +94,7 @@
       {{if .Data.Lines}}
       <label for="receipt_line">Receipt line</label>
       <select id="receipt_line" name="receipt_line">
-        {{range .Data.Lines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.ReceiptLine}}selected{{end}}>{{.Label}} {{amount .UnitCents $t.Currency}} · {{.Entered}} of {{.Count}}</option>{{end}}
+        {{range .Data.Lines}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.ReceiptLine}}selected{{end}}>{{.Label}}, {{amount .UnitCents $t.Currency}}, {{.Entered}} of {{.Count}} entered</option>{{end}}
         <option value="" {{if eq $.Data.Form.ReceiptLine ""}}selected{{end}}>Not on the receipt</option>
       </select>
       {{template "item_error" dict "Key" "receipt_line" "Errors" .Data.Errors}}
@@ -99,7 +102,7 @@
       <label for="book_line">Series and format</label>
       <select id="book_line" name="book_line">
         <option value="">Choose</option>
-        {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.BookLine}}selected{{end}}>{{.Title}}{{if .Next}} · next {{.Next}}{{end}}</option>{{end}}
+        {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.BookLine}}selected{{end}}>{{.Title}}{{if .Next}}, next is vol. {{.Next}}{{end}}</option>{{end}}
         <option value="new" {{if eq $.Data.Form.BookLine "new"}}selected{{end}}>New series or format…</option>
       </select>
       {{template "item_error" dict "Key" "book_line" "Errors" .Data.Errors}}
@@ -132,12 +135,6 @@
 </div>
 {{end}}
 
-{{if or .Data.Prev .Data.Next}}
-<nav class="pager">
-  {{with .Data.Prev}}<a href="/trips/{{.ID}}">← {{date .VisitedOn}}{{if .StoreName}} · {{.StoreName}}{{end}}</a>{{end}}
-  {{with .Data.Next}}<a class="next" href="/trips/{{.ID}}">{{date .VisitedOn}}{{if .StoreName}} · {{.StoreName}}{{end}} →</a>{{end}}
-</nav>
-{{end}}
 {{if $.SignedIn}}<script src="{{assetURL "trips.js"}}" defer></script>{{end}}
 {{template "footer" .}}
 {{end}}

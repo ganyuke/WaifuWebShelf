@@ -14,13 +14,13 @@
         <td><a href="/admin/series/{{.ID}}/edit">{{.Name}}</a></td>
         <td>
           {{range .Lines}}{{lineTitle .Kind .Label}} {{progress .Owned .Total}}
-          · <a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a><br>{{else}}—{{end}}
+          <a class="row-link" href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a><br>{{else}}—{{end}}
         </td>
         <td>{{.MerchCount}}</td>
-        <td>
+        <td class="actions">
           <a href="/admin/series/{{.ID}}/edit">Edit</a>
-          · <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
-          · <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
+          <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
+          <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
         </td>
       </tr>
     {{end}}

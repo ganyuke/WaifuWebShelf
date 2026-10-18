@@ -1,6 +1,6 @@
 {{define "admin_bookline_form"}}
 {{template "header" .}}
-<p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
+<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
 <div class="box">
   <h1 class="bar">{{if .Data.New}}New format{{else}}Edit format{{end}}</h1>
   <form class="stack" method="post">
@@ -32,9 +32,8 @@
   <ul>
     {{range .Data.Volumes}}
     <li>
-      Vol. {{.VolumeNumber}}
-      {{if .Store}} · {{.Store}}{{end}}
-      · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>
+      Vol. {{.VolumeNumber}}{{if .Store}} from {{.Store}}{{end}}
+      <a class="row-link" href="/admin/volumes/{{.ID}}/edit">Edit</a>
     </li>
     {{else}}
     <li class="muted">None yet</li>

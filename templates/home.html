@@ -4,7 +4,7 @@
   <div>
     <div class="box">
       <div class="bar">
-        <h1>Series <span class="count">{{.Data.Stats.SeriesCount}} series · {{.Data.Stats.VolumeCount}} volumes · {{.Data.Stats.MerchPieces}} merch</span></h1>
+        <h1>Series <span class="count">{{.Data.Stats.SeriesCount}} series, {{.Data.Stats.VolumeCount}} volumes, and {{.Data.Stats.MerchPieces}} merch</span></h1>
         {{if .SignedIn}}<a href="/admin/series/new">Add series</a>{{end}}
       </div>
       {{if .Data.Series}}
@@ -14,7 +14,7 @@
           {{range .Data.Series}}
           <tr>
             <td class="catalog-cover">
-              <a href="/series/{{.Slug}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
+              <a href="/series/{{.Slug}}" data-preview="/series/{{.Slug}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
             </td>
             <td class="name-cell"><a class="name" href="/series/{{.Slug}}">{{.Name}}</a></td>
             <td class="lines-cell">
@@ -65,14 +65,14 @@
       <ul class="compact">
         {{range .Data.Recent}}
         <li>
-          <span class="pic">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</span>
+          <span class="pic" data-preview="{{if eq .Kind "volume"}}/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}{{else}}/merch/{{.ID}}{{end}}">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</span>
           <span class="text">
             {{if eq .Kind "volume"}}
             <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
-            <span>{{lineFull .LineKind .LineLabel}} · {{date .PurchasedAt.String}}</span>
+            <span>{{lineFull .LineKind .LineLabel}}, bought {{date .PurchasedAt.String}}</span>
             {{else}}
             <a href="/merch/{{.ID}}">{{.Name}}</a>
-            <span>{{.SeriesName}} · {{date .PurchasedAt.String}}</span>
+            <span>{{.SeriesName}}, bought {{date .PurchasedAt.String}}</span>
             {{end}}
           </span>
         </li>
@@ -90,7 +90,7 @@
       <ul class="compact">
         {{range .Data.Wanted}}
         <li class="wanted">
-          <span class="pic">{{if .Picture}}<img src="{{smallURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
+          <span class="pic" data-preview="/wishlist/{{.ID}}">{{if .Picture}}<img src="{{smallURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
           <span class="text">
             {{if eq .Kind "merch"}}
             <a href="/wishlist/{{.ID}}">{{.Name}}</a>

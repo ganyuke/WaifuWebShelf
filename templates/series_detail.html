@@ -26,9 +26,9 @@
     {{if $.SignedIn}}
     <span>
       <a href="/admin/series/{{.Data.Series.ID}}/edit">Edit</a>
-      · <a href="/admin/items/new?series={{.Data.Series.ID}}">Add item</a>
-      · <a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add format</a>
-      · <a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>
+      <a href="/admin/items/new?series={{.Data.Series.ID}}">Add item</a>
+      <a href="/admin/series/{{.Data.Series.ID}}/book-lines/new">Add format</a>
+      <a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>
     </span>
     {{end}}
   </div>
@@ -42,7 +42,7 @@
     {{if $.SignedIn}}
     <span>
       <a href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new">Add volume</a>
-      · <a href="/admin/series/{{$.Data.Series.ID}}/wishlist/new?kind=volumes&line={{$grid.Line.ID}}">Add to wishlist</a>
+      <a href="/admin/series/{{$.Data.Series.ID}}/wishlist/new?kind=volumes&line={{$grid.Line.ID}}">Add to wishlist</a>
     </span>
     {{end}}
   </div>
@@ -63,17 +63,17 @@
     {{range $grid.Cells}}
     <li>
       {{if .Owned}}
-      <a class="vol-cell owned" href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}{{if gt (len .Copies) 1}} · {{len .Copies}} copies{{end}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span>{{if gt (len .Copies) 1}}<span class="copy-count">×{{len .Copies}}</span>{{end}}</a>
+      <a class="vol-cell owned" href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}{{if gt (len .Copies) 1}}, {{len .Copies}} copies{{end}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span>{{if gt (len .Copies) 1}}<span class="copy-count">×{{len .Copies}}</span>{{end}}</a>
       {{else if .Wanted}}
         {{if $.SignedIn}}
-        <a class="vol-cell wanted" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></a>
+        <a class="vol-cell wanted" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></a>
         {{else}}
-        <span class="vol-cell wanted" title="Volume {{.Number}} · on wishlist">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></span>
+        <span class="vol-cell wanted" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}, on the wishlist">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span><span class="vol-tag">Wishlist</span></span>
         {{end}}
       {{else if $.SignedIn}}
-      <a class="vol-cell missing" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></a>
+      <a class="vol-cell missing" href="/admin/book-lines/{{$grid.Line.ID}}/volumes/new?n={{.Number}}" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Add volume {{.Number}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></a>
       {{else}}
-      <span class="vol-cell missing" title="Volume {{.Number}} · not owned">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></span>
+      <span class="vol-cell missing" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.Number}}" title="Volume {{.Number}}, not owned">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{end}}<span class="vol-num">{{.Number}}</span></span>
       {{end}}
     </li>
     {{end}}
@@ -111,7 +111,7 @@
     {{if $.SignedIn}}
     <span>
       <a href="/admin/series/{{.Data.Series.ID}}/merch/new">Add merch</a>
-      · <a href="/admin/series/{{.Data.Series.ID}}/wishlist/new?kind=merch">Add to wishlist</a>
+      <a href="/admin/series/{{.Data.Series.ID}}/wishlist/new?kind=merch">Add to wishlist</a>
     </span>
     {{end}}
   </div>

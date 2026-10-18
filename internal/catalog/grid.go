@@ -178,7 +178,7 @@ func progressCaption(title string, uniqueOwned int, total *int, copies, extras i
 		base += itoa(uniqueOwned) + " owned"
 	}
 	if copies > uniqueOwned+extras {
-		base += " · " + itoa(copies) + " copies"
+		base += ", " + itoa(copies) + " copies"
 	}
 	return base
 }

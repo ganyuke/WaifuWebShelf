@@ -108,7 +108,7 @@ func funcMap() template.FuncMap {
 	}
 }
 
-// merchSub is the small line under a merch name: its kind and count.
+// merchSub is the small line under a merch name: its kind and count, like "figure ×2".
 // The kind is left out when the name already says it.
 func merchSub(name, kind string, quantity int) string {
 	var parts []string
@@ -118,7 +118,7 @@ func merchSub(name, kind string, quantity int) string {
 	if quantity > 1 {
 		parts = append(parts, "×"+strconv.Itoa(quantity))
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, " ")
 }
 
 // displayDate turns a stored date like 2026-01-09 into "9 Jan 2026".

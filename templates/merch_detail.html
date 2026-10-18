@@ -1,6 +1,9 @@
 {{define "merch_detail"}}
 {{template "header" .}}
-<p class="crumb"><a href="/series/{{.Data.Merch.SeriesSlug}}">{{.Data.Merch.SeriesName}}</a> · <a href="/merch">Merch</a></p>
+<div class="crumb-row">
+  <p class="crumb"><a href="/series/{{.Data.Merch.SeriesSlug}}">{{.Data.Merch.SeriesName}}</a> › <a href="/merch">Merch</a></p>
+  {{template "pager" .Data.Pager}}
+</div>
 <div class="box">
   <div class="bar">
     <h1>{{.Data.Merch.Name}}</h1>
@@ -15,12 +18,6 @@
       {{if .Data.Merch.Notes}}<p class="notes">{{.Data.Merch.Notes}}</p>{{end}}
     </div>
   </article>
-  {{if or .Data.Prev .Data.Next}}
-  <nav class="pager">
-    {{with .Data.Prev}}<a href="/merch/{{.ID}}">← {{.Name}}</a>{{end}}
-    {{with .Data.Next}}<a class="next" href="/merch/{{.ID}}">{{.Name}} →</a>{{end}}
-  </nav>
-  {{end}}
 </div>
 {{template "same_trips" .Data.Same}}
 {{template "footer" .}}

@@ -288,8 +288,12 @@ a.vol-cell.missing:hover, a.vol-cell.wanted:hover { border-color: var(--bar); co
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; margin: 0 0 8px; }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
-.pager { display: flex; justify-content: space-between; gap: 12px; margin: 20px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
-.pager .next { margin-left: auto; text-align: right; }
+.crumb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 14px 0 -8px; font-size: 13px; }
+.crumb-row .crumb { margin: 0; }
+.bar > span, .actions { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; }
+.row-link { margin-left: 12px; }
+.pager { display: flex; gap: 16px; flex: none; }
+.pager .off { color: var(--muted); opacity: 0.5; }
 
 .ext-links { list-style: none; padding: 0; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 3px 14px; }
 .ext-links a { display: inline-flex; align-items: center; gap: 5px; }
@@ -628,3 +632,12 @@ button.danger { background: var(--danger); border-color: var(--danger); }
   .trips td[data-label="Paid"]::before, .trips td[data-label="Store"]::before { content: none; }
   .trips td.wide { grid-area: items; padding-top: 4px; }
 }
+
+/* Hover popup for small pictures */
+.pv { position: absolute; z-index: 50; width: 260px; padding: 10px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 6px 20px rgb(0 0 0 / 18%); font-size: 13px; pointer-events: none; }
+.pv img { display: block; max-width: 100%; max-height: 320px; margin: 0 auto 8px; }
+.pv p { margin: 0 0 4px; }
+.pv-title { font-weight: 700; }
+.pv .facts { margin: 6px 0 0; }
+.pv .tally { grid-template-columns: minmax(0, 1fr) max-content; }
+.pv .tally dd { text-align: right; white-space: nowrap; }

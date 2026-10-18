@@ -1,6 +1,9 @@
 {{define "volume_detail"}}
 {{template "header" .}}
-<p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> · <a href="/series/{{.Data.Series.Slug}}#{{.Data.Line.Slug}}">{{.Data.Title}}</a></p>
+<div class="crumb-row">
+  <p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> › <a href="/series/{{.Data.Series.Slug}}#{{.Data.Line.Slug}}">{{.Data.Title}}</a></p>
+  {{template "pager" .Data.Pager}}
+</div>
 <div class="box">
   <div class="bar">
     <h1>Volume {{.Data.Number}}{{if gt (len .Data.Copies) 1}} <span class="count">{{len .Data.Copies}} copies</span>{{end}}</h1>
@@ -47,12 +50,6 @@
       </div>
     </div>
   </article>
-  {{if or .Data.Prev .Data.Next}}
-  <nav class="pager">
-    {{if .Data.Prev}}<a href="/series/{{.Data.Series.Slug}}/{{.Data.Line.Slug}}/{{.Data.Prev}}">← Volume {{.Data.Prev}}</a>{{end}}
-    {{if .Data.Next}}<a class="next" href="/series/{{.Data.Series.Slug}}/{{.Data.Line.Slug}}/{{.Data.Next}}">Volume {{.Data.Next}} →</a>{{end}}
-  </nav>
-  {{end}}
 </div>
 {{template "same_trips" .Data.Same}}
 {{template "footer" .}}

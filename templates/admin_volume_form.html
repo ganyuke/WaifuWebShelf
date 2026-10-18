@@ -1,6 +1,6 @@
 {{define "admin_volume_form"}}
 {{template "header" .}}
-<p class="crumb"><a href="/admin">Admin</a> · <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a> · <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a></p>
+<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a> › <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a></p>
 <div class="box">
   <h1 class="bar">{{if .Data.New}}Add volume{{else}}Edit volume {{.Data.VolumeNumber}}{{end}}</h1>
   <form class="stack" method="post" enctype="multipart/form-data">

@@ -35,7 +35,7 @@ func ValidBookKind(kind string) bool {
 	}
 }
 
-// LineFullTitle names a book line with its kind, e.g. "Manga · English".
+// LineFullTitle names a book line with its kind, e.g. "English manga".
 // LineTitle alone gives "English", which only reads well next to the kind.
 func LineFullTitle(kind, label string) string {
 	label = strings.TrimSpace(label)
@@ -45,5 +45,5 @@ func LineFullTitle(kind, label string) string {
 	if kind == "other" || kind == "" || strings.EqualFold(label, KindName(kind)) {
 		return label
 	}
-	return KindName(kind) + " · " + label
+	return label + " " + strings.ToLower(KindName(kind))
 }

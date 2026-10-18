@@ -1,14 +1,14 @@
 {{define "wishlist_detail"}}
 {{template "header" .}}
-<p class="crumb"><a href="/wishlist">Wishlist</a> · <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a></p>
+<p class="crumb"><a href="/wishlist">Wishlist</a> › <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a></p>
 <div class="box">
   <div class="bar">
     <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.LineTitle}}, {{.Data.VolumesLabel}}{{end}}</h1>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/wishlist/{{.Data.ID}}/edit">Edit</a>
-      {{if eq .Data.Kind "merch"}} · <a href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>{{end}}
-      {{if eq .Data.Kind "volumes"}} · <a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Data.Remain.Numbers}}?n={{index .Data.Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
+      {{if eq .Data.Kind "merch"}}<a href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>{{end}}
+      {{if eq .Data.Kind "volumes"}}<a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Data.Remain.Numbers}}?n={{index .Data.Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
     </span>
     {{end}}
   </div>
@@ -16,7 +16,7 @@
   {{template "links_list" .Data.Links}}
   <dl class="facts">
     {{if gt .Data.RemainCount 1}}<dt>Volumes</dt><dd>{{.Data.RemainCount}}</dd>{{end}}
-    {{if .Data.MSRPValid}}<dt>List price</dt><dd>{{amount .Data.MSRPAmount .Data.Currency}}{{with .Data.Each}} <span class="muted">· {{.}} each</span>{{end}}</dd>{{end}}
+    {{if .Data.MSRPValid}}<dt>List price</dt><dd>{{amount .Data.MSRPAmount .Data.Currency}}{{with .Data.Each}} <span class="muted">({{.}} each)</span>{{end}}</dd>{{end}}
   </dl>
   {{if .Data.Notes}}<p class="notes">{{.Data.Notes}}</p>{{end}}
   {{if .Data.Volumes}}{{template "wish_volumes" .Data.Volumes}}{{end}}
