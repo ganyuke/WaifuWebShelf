@@ -67,6 +67,24 @@
  update();
 })();
 
+// Add books on a trip: the new series fields show only when New series or format is chosen.
+(() => {
+ const form = document.querySelector('.trip-books');
+ if (!form) return;
+ const choice = form.elements.namedItem('book_line');
+ const fields = form.querySelector('[data-new-line]');
+ const update = () => {
+  const isNew = choice.value === 'new';
+  fields.hidden = !isNew;
+  fields.querySelectorAll('input, select').forEach(i => i.disabled = !isNew);
+ };
+ choice.addEventListener('change', () => {
+  update();
+  if (choice.value === 'new') form.elements.namedItem('series_name').focus();
+ });
+ update();
+})();
+
 // Tagging on a trip's haul photo: a tap places the tag, then the form picks the item.
 (() => {
  const haul = document.querySelector('.haul.tagging');

@@ -37,7 +37,9 @@ type lineChoiceView struct {
 
 type addBooksForm struct {
 	ReceiptLine, BookLine, Numbers string
-	AnotherCopy                    bool
+	// Used when BookLine is "new".
+	SeriesName, Kind, Label string
+	AnotherCopy             bool
 }
 
 type tripPageData struct {
@@ -51,6 +53,7 @@ type tripPageData struct {
 	Tags      []TagView
 	Taggable  []TripTile
 	Choices   []lineChoiceView
+	Series    []string
 	Form      addBooksForm
 	Errors    map[string]string
 }
@@ -273,6 +276,17 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 		for _, c := range choices {
 			d.Choices = append(d.Choices, lineChoiceView{ID: c.ID, Title: c.SeriesName + " · " + catalog.LineTitle(c.Kind, c.Label), Next: nextMissing(c)})
 		}
+		series, err := s.db.ListSeries()
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		for _, se := range series {
+			d.Series = append(d.Series, se.Name)
+		}
+		if d.Form.Kind == "" {
+			d.Form.Kind = "manga"
+		}
 		if d.Form.ReceiptLine == "" && errs == nil {
 			d.Form.ReceiptLine = openLine(lines, true)
 		}
@@ -325,12 +339,21 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	form := addBooksForm{ReceiptLine: r.FormValue("receipt_line"), BookLine: r.FormValue("book_line"),
-		Numbers: r.FormValue("volumes"), AnotherCopy: r.FormValue("another_copy") == "1"}
+		Numbers: r.FormValue("volumes"), SeriesName: strings.TrimSpace(r.FormValue("series_name")),
+		Kind: r.FormValue("kind"), Label: strings.TrimSpace(r.FormValue("label")), AnotherCopy: r.FormValue("another_copy") == "1"}
 	errs := map[string]string{}
-	lineID, err := parseID(form.BookLine)
-	if err != nil {
+	var ref db.BookLineRef
+	if form.BookLine == "new" {
+		ref = db.BookLineRef{SeriesName: form.SeriesName, Kind: form.Kind, Label: form.Label}
+		if form.SeriesName == "" {
+			errs["series_name"] = "Enter a series name."
+		}
+		if !catalog.ValidBookKind(form.Kind) {
+			errs["kind"] = "Choose a format."
+		}
+	} else if ref.ID, err = parseID(form.BookLine); err != nil {
 		errs["book_line"] = "Choose a series and format."
-	} else if _, err := s.db.GetBookLine(lineID); err != nil {
+	} else if _, err := s.db.GetBookLine(ref.ID); err != nil {
 		errs["book_line"] = "This format is unavailable."
 	}
 	var receiptLine int64
@@ -351,7 +374,7 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 	for i, n := range numbers {
 		orders[i] = volumeSortOrder(n)
 	}
-	err = s.db.AddVolumes(id, receiptLine, lineID, numbers, orders, form.AnotherCopy)
+	err = s.db.AddVolumes(id, receiptLine, ref, numbers, orders, form.AnotherCopy)
 	var owned *db.OwnedError
 	switch {
 	case errors.As(err, &owned):

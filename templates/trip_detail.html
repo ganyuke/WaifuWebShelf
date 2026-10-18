@@ -100,8 +100,21 @@
       <select id="book_line" name="book_line">
         <option value="">Choose</option>
         {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.BookLine}}selected{{end}}>{{.Title}}{{if .Next}} · next {{.Next}}{{end}}</option>{{end}}
+        <option value="new" {{if eq $.Data.Form.BookLine "new"}}selected{{end}}>New series or format…</option>
       </select>
       {{template "item_error" dict "Key" "book_line" "Errors" .Data.Errors}}
+      <fieldset class="new-store" data-new-line>
+        <legend>New series or format</legend>
+        <label for="series_name">Series <span class="hint" title="Type a series you already have to add a new format to it" tabindex="0">(?)</span></label>
+        <input id="series_name" name="series_name" value="{{.Data.Form.SeriesName}}" list="series-names" autocomplete="off">
+        <datalist id="series-names">{{range .Data.Series}}<option value="{{.}}">{{end}}</datalist>
+        {{template "item_error" dict "Key" "series_name" "Errors" .Data.Errors}}
+        <label for="kind">Format</label>
+        <select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Form.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>
+        {{template "item_error" dict "Key" "kind" "Errors" .Data.Errors}}
+        <label for="label">Edition (optional)</label>
+        <input id="label" name="label" value="{{.Data.Form.Label}}" placeholder="English" autocomplete="off">
+      </fieldset>
       <label for="volumes">Volumes</label>
       <input id="volumes" name="volumes" value="{{.Data.Form.Numbers}}" placeholder="14, 15, 17-19" autocomplete="off">
       {{template "item_error" dict "Key" "volumes" "Errors" .Data.Errors}}

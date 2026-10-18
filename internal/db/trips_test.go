@@ -43,7 +43,7 @@ func TestTripReceiptPricesAndTotals(t *testing.T) {
 	if err != nil || len(lines) != 1 {
 		t.Fatalf("lines %v %v", lines, err)
 	}
-	if err := d.AddVolumes(tid, lines[0].ID, lid, []string{"14", "15"}, []int{1400, 1500}, false); err != nil {
+	if err := d.AddVolumes(tid, lines[0].ID, BookLineRef{ID: lid}, []string{"14", "15"}, []int{1400, 1500}, false); err != nil {
 		t.Fatal(err)
 	}
 	vols, err := d.ListVolumes(lid)
@@ -66,7 +66,7 @@ func TestTripReceiptPricesAndTotals(t *testing.T) {
 		t.Fatalf("entered %d", lines[0].Entered)
 	}
 
-	err = d.AddVolumes(tid, lines[0].ID, lid, []string{"15", "16"}, []int{1500, 1600}, false)
+	err = d.AddVolumes(tid, lines[0].ID, BookLineRef{ID: lid}, []string{"15", "16"}, []int{1500, 1600}, false)
 	var owned *OwnedError
 	if !errors.As(err, &owned) || len(owned.Numbers) != 1 || owned.Numbers[0] != "15" {
 		t.Fatalf("want owned 15, got %v", err)
@@ -187,7 +187,7 @@ func TestPhotoTags(t *testing.T) {
 	d, lid := tripFixture(t)
 	a, _ := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Book Off"}, VisitedOn: "2026-10-11", Currency: "CAD"})
 	b, _ := d.CreateTrip(TripWrite{StoreID: 1, VisitedOn: "2026-10-18", Currency: "CAD"})
-	if err := d.AddVolumes(a, 0, lid, []string{"1"}, []int{100}, false); err != nil {
+	if err := d.AddVolumes(a, 0, BookLineRef{ID: lid}, []string{"1"}, []int{100}, false); err != nil {
 		t.Fatal(err)
 	}
 	vols, _ := d.ListVolumes(lid)
@@ -210,5 +210,56 @@ func TestPhotoTags(t *testing.T) {
 	}
 	if tags, _ := d.TripTags(a); len(tags) != 0 {
 		t.Fatalf("tag kept after taking the item off the trip: %+v", tags)
+	}
+}
+
+func TestAddVolumesNewSeries(t *testing.T) {
+	d, lid := tripFixture(t)
+	tid, err := d.CreateTrip(TripWrite{
+		NewStore:  &StoreWrite{Name: "Book Off Robson", Currency: "CAD"},
+		VisitedOn: "2026-10-11", Currency: "CAD",
+		Lines: []ReceiptLineWrite{{Label: "Book", UnitCents: 200, Count: 8}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines, _ := d.ReceiptLines(tid)
+	fly := BookLineRef{SeriesName: "Fly Me to the Moon", Kind: "manga"}
+	if err := d.AddVolumes(tid, lines[0].ID, fly, []string{"1", "2", "3"}, []int{100, 200, 300}, false); err != nil {
+		t.Fatal(err)
+	}
+	// Typing the name again in other case lands on the same series and format.
+	again := BookLineRef{SeriesName: "fly me to the moon", Kind: "manga"}
+	if err := d.AddVolumes(tid, lines[0].ID, again, []string{"4"}, []int{400}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.AddVolumes(tid, lines[0].ID, again, []string{"4"}, []int{400}, false); err == nil {
+		t.Fatal("want owned error for volume 4")
+	}
+	series, err := d.ListSeries()
+	if err != nil || len(series) != 2 {
+		t.Fatalf("series %v %v", series, err)
+	}
+	var flyID int64
+	for _, s := range series {
+		if s.Name == "Fly Me to the Moon" {
+			flyID = s.ID
+		}
+	}
+	bls, err := d.ListBookLines(flyID)
+	if err != nil || len(bls) != 1 || bls[0].Kind != "manga" || bls[0].DefaultCurrency != "CAD" {
+		t.Fatalf("book lines %+v %v", bls, err)
+	}
+	if vols, _ := d.ListVolumes(bls[0].ID); len(vols) != 4 || vols[0].PriceExTaxCents.Int64 != 200 {
+		t.Fatalf("vols %+v", vols)
+	}
+
+	// An existing series with its existing format adds to that format.
+	rag := BookLineRef{SeriesName: "rent-a-girlfriend", Kind: "manga", Label: "english"}
+	if err := d.AddVolumes(tid, lines[0].ID, rag, []string{"9"}, []int{900}, false); err != nil {
+		t.Fatal(err)
+	}
+	if vols, _ := d.ListVolumes(lid); len(vols) != 1 {
+		t.Fatalf("want volume 9 on the existing format, have %d", len(vols))
 	}
 }

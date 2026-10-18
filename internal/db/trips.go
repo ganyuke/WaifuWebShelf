@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/slug"
 )
 
 type Store struct {
@@ -429,15 +430,74 @@ func tripPurchase(tx *sql.Tx, tripID, lineID int64, qty int) (Purchase, sql.Null
 	return p, sql.NullInt64{Int64: lineID, Valid: true}, nil
 }
 
+// BookLineRef picks the book line volumes go on: an existing one by ID, or
+// (when ID is 0) a series name and format to find or create.
+type BookLineRef struct {
+	ID                      int64
+	SeriesName, Kind, Label string
+}
+
+// findOrCreateBookLine matches the series by name and the format by kind and
+// label, ignoring case, and creates whichever is missing. A new format starts
+// with the trip's currency.
+func findOrCreateBookLine(tx *sql.Tx, ref BookLineRef, currency string) (int64, error) {
+	if ref.ID != 0 {
+		return ref.ID, nil
+	}
+	now := nowUTC()
+	var seriesID int64
+	err := tx.QueryRow(`SELECT id FROM series WHERE name = ? COLLATE NOCASE ORDER BY id LIMIT 1`, ref.SeriesName).Scan(&seriesID)
+	if errors.Is(err, sql.ErrNoRows) {
+		seriesSlug := slug.Unique(slug.Make(ref.SeriesName), func(candidate string) bool {
+			var n int
+			_ = tx.QueryRow(`SELECT COUNT(*) FROM series WHERE slug = ?`, candidate).Scan(&n)
+			return n > 0
+		})
+		res, err := tx.Exec(`INSERT INTO series (name, slug, created_at, updated_at) VALUES (?, ?, ?, ?)`, ref.SeriesName, seriesSlug, now, now)
+		if err != nil {
+			return 0, err
+		}
+		if seriesID, err = res.LastInsertId(); err != nil {
+			return 0, err
+		}
+	} else if err != nil {
+		return 0, err
+	}
+	var lineID int64
+	err = tx.QueryRow(`SELECT id FROM book_lines WHERE series_id = ? AND kind = ? AND label = ? COLLATE NOCASE ORDER BY id LIMIT 1`,
+		seriesID, ref.Kind, ref.Label).Scan(&lineID)
+	if err == nil || !errors.Is(err, sql.ErrNoRows) {
+		return lineID, err
+	}
+	lineSlug := slug.Unique(slug.ForBookLine(ref.Kind, ref.Label), func(candidate string) bool {
+		var n int
+		_ = tx.QueryRow(`SELECT COUNT(*) FROM book_lines WHERE series_id = ? AND slug = ?`, seriesID, candidate).Scan(&n)
+		return n > 0
+	})
+	res, err := tx.Exec(`
+		INSERT INTO book_lines (series_id, kind, label, slug, default_currency, sort_order, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM book_lines WHERE series_id = ?), ?, ?)`,
+		seriesID, ref.Kind, ref.Label, lineSlug, money.NormalizeCurrency(currency), seriesID, now, now)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
 // AddVolumes puts several volumes of one book line on a trip in one go.
-// Nothing is saved when any number is already owned, unless anotherCopy is set.
-func (d *DB) AddVolumes(tripID, receiptLineID, bookLineID int64, numbers []string, sortOrders []int, anotherCopy bool) error {
+// Nothing is saved when any number is already owned, unless anotherCopy is set,
+// and then a new series or format is not created either.
+func (d *DB) AddVolumes(tripID, receiptLineID int64, ref BookLineRef, numbers []string, sortOrders []int, anotherCopy bool) error {
 	tx, err := d.SQL.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 	p, line, err := tripPurchase(tx, tripID, receiptLineID, 1)
+	if err != nil {
+		return err
+	}
+	bookLineID, err := findOrCreateBookLine(tx, ref, p.Currency)
 	if err != nil {
 		return err
 	}

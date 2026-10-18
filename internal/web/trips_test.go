@@ -116,6 +116,20 @@ func TestTripFlow(t *testing.T) {
 		t.Fatal("volume page should link its trip and show what else was bought")
 	}
 
+	// A series not on the shelf yet is added from the same form.
+	fly := url.Values{"receipt_line": {strconv.FormatInt(lines[0].ID, 10)}, "book_line": {"new"}, "kind": {"manga"}, "volumes": {"1-2"}}
+	if res, body := post("/admin/trips/"+trip+"/books", fly); res.StatusCode != 422 || !strings.Contains(body, "Enter a series name.") {
+		t.Fatalf("missing series name should be refused: %d", res.StatusCode)
+	}
+	fly.Set("series_name", "Fly Me to the Moon")
+	if res, _ := post("/admin/trips/"+trip+"/books", fly); res.StatusCode != 303 {
+		t.Fatalf("add books from a new series %d", res.StatusCode)
+	}
+	if page := get("/trips/" + trip); !strings.Contains(page, "4 of 8") || !strings.Contains(page, "Fly Me to the Moon") {
+		t.Fatal("trip page should show the new series' books on the receipt line")
+	}
+	get("/series/fly-me-to-the-moon/manga/2")
+
 	// Tags only show on a trip with a photo, so tag through the store and check the item page.
 	vols, _ := store.ListVolumesByNumber(lid, "2")
 	if err := store.AddTag(tripID, "volume", vols[0].ID, 250, 400); err != nil {
