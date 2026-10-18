@@ -12,6 +12,7 @@ import (
 
 	"waifuwebshelf/internal/config"
 	"waifuwebshelf/internal/db"
+	"waifuwebshelf/internal/photos"
 	"waifuwebshelf/internal/web"
 )
 
@@ -39,6 +40,11 @@ func main() {
 		log.Printf("ADMIN_PASS is not set; /admin is disabled")
 	} else {
 		log.Printf("admin user %q (form login at /login)", cfg.AdminUser)
+	}
+	if photos.WebP() {
+		log.Printf("new photos are saved as WebP")
+	} else {
+		log.Printf("new photos are saved as JPEG. Install libwebp to save them as WebP, which are smaller")
 	}
 	log.Printf("listening on %s (data %s)", cfg.Addr(), cfg.DataDir)
 

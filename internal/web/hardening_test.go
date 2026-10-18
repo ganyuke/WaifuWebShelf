@@ -2,10 +2,15 @@ package web
 
 import (
 	"bytes"
+	"database/sql"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +18,7 @@ import (
 
 	"waifuwebshelf/internal/config"
 	"waifuwebshelf/internal/db"
+	"waifuwebshelf/internal/photos"
 )
 
 func newTestServer(t *testing.T) (*Server, *httptest.Server) {
@@ -148,13 +154,18 @@ func uploadRequest(t *testing.T, filename string, body []byte) *http.Request {
 	return req
 }
 
-var pngHead = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00")
+// tinyPNG is a complete one-pixel PNG.
+func tinyPNG() []byte {
+	var buf bytes.Buffer
+	_ = png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 1, 1)))
+	return buf.Bytes()
+}
 
 func TestSaveUploadChecksContents(t *testing.T) {
 	srv, _ := newTestServer(t)
 
-	name, ok, err := srv.saveUpload(uploadRequest(t, "cover.jpg", pngHead), "image")
-	if err != nil || !ok || !strings.HasSuffix(name, ".png") {
+	name, ok, err := srv.saveUpload(uploadRequest(t, "cover.jpg", tinyPNG()), "image")
+	if err != nil || !ok || !(strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".webp")) {
 		t.Fatalf("png named .jpg: %q %v %v", name, ok, err)
 	}
 
@@ -164,9 +175,50 @@ func TestSaveUploadChecksContents(t *testing.T) {
 	}
 }
 
+func TestSaveUploadDropsPhotoLocation(t *testing.T) {
+	srv, _ := newTestServer(t)
+	var buf bytes.Buffer
+	_ = jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 4, 4)), nil)
+	exif := []byte("Exif\x00\x00MM\x00\x2a\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00GPS 32.7157 N 117.1611 W")
+	seg := []byte{0xFF, 0xE1, byte((len(exif) + 2) >> 8), byte(len(exif) + 2)}
+	photo := append(append(append([]byte{0xFF, 0xD8}, seg...), exif...), buf.Bytes()[2:]...)
+	name, ok, err := srv.saveUpload(uploadRequest(t, "haul.jpg", photo), "image")
+	if err != nil || !ok {
+		t.Fatalf("upload %v %v", ok, err)
+	}
+	saved, err := os.ReadFile(filepath.Join(srv.imagesDir, name))
+	if err != nil || bytes.Contains(saved, []byte("GPS")) {
+		t.Fatalf("location should be removed from the saved photo (%v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(srv.imagesDir, photos.SmallName(name))); err != nil {
+		t.Fatalf("small version missing: %v", err)
+	}
+	srv.deleteImage(sql.NullString{String: name, Valid: true})
+	if left, _ := filepath.Glob(filepath.Join(srv.imagesDir, "*")); len(left) != 0 {
+		t.Fatalf("both versions should be removed, left %v", left)
+	}
+}
+
+func TestSmallImageFallsBackToFull(t *testing.T) {
+	srv, _ := newTestServer(t)
+	if err := os.WriteFile(filepath.Join(srv.imagesDir, "old.png"), tinyPNG(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/images/old-sm.png", nil))
+	if rec.Code != 200 || !bytes.Equal(rec.Body.Bytes(), tinyPNG()) {
+		t.Fatalf("picture without a small version should serve the full one, got %d", rec.Code)
+	}
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/images/missing-sm.png", nil))
+	if rec.Code != 404 {
+		t.Fatalf("missing picture %d", rec.Code)
+	}
+}
+
 func TestSaveUploadRejectsOversize(t *testing.T) {
 	srv, _ := newTestServer(t)
-	big := append(append([]byte{}, pngHead...), make([]byte, maxUpload)...)
+	big := append(tinyPNG(), make([]byte, maxUpload)...)
 	if _, _, err := srv.saveUpload(uploadRequest(t, "big.png", big), "image"); err == nil {
 		t.Fatal("oversize accepted")
 	}

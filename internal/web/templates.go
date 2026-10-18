@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"waifuwebshelf/internal/photos"
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
@@ -68,6 +69,13 @@ func funcMap() template.FuncMap {
 				return ""
 			}
 			return "/images/" + path
+		},
+		// smallURL is for grids and thumbnails.
+		"smallURL": func(path string) string {
+			if path == "" {
+				return ""
+			}
+			return "/images/" + photos.SmallName(path)
 		},
 		"active": func(path, prefix string) string {
 			if prefix == "/" {

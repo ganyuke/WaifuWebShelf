@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/photos"
 )
 
 const maxUpload = 8 << 20
@@ -65,7 +67,7 @@ func (s *Server) applyImageFieldIn(dir string, r *http.Request, fileField, remov
 		deleteFileIn(dir, existing)
 		return sql.NullString{}, nil
 	}
-	name, ok, err := saveUploadIn(dir, r, fileField)
+	name, ok, err := saveUploadIn(dir, r, fileField, dir == s.imagesDir)
 	if err != nil {
 		return existing, err
 	}
@@ -77,10 +79,12 @@ func (s *Server) applyImageFieldIn(dir string, r *http.Request, fileField, remov
 }
 
 func (s *Server) saveUpload(r *http.Request, field string) (string, bool, error) {
-	return saveUploadIn(s.imagesDir, r, field)
+	return saveUploadIn(s.imagesDir, r, field, true)
 }
 
-func saveUploadIn(dir string, r *http.Request, field string) (string, bool, error) {
+// saveUploadIn saves a prepared copy of the uploaded picture in dir, plus a
+// small version when withSmall is set.
+func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (string, bool, error) {
 	file, header, err := r.FormFile(field)
 	if err == http.ErrMissingFile || err == http.ErrNotMultipart {
 		return "", false, nil
@@ -92,48 +96,44 @@ func saveUploadIn(dir string, r *http.Request, field string) (string, bool, erro
 	if header.Size > maxUpload {
 		return "", false, fmt.Errorf("image is larger than 8MB")
 	}
-
-	// The file's own bytes decide the type. The name and the browser's claim are ignored.
-	var head [512]byte
-	n, err := io.ReadFull(file, head[:])
-	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
+	if err != nil {
 		return "", false, err
 	}
-	var ext string
-	switch http.DetectContentType(head[:n]) {
-	case "image/jpeg":
-		ext = ".jpg"
-	case "image/png":
-		ext = ".png"
-	case "image/webp":
-		ext = ".webp"
-	case "image/gif":
-		ext = ".gif"
+	if len(data) > maxUpload {
+		return "", false, fmt.Errorf("image is larger than 8MB")
+	}
+	// The file's own bytes decide the type. The name and the browser's claim are ignored.
+	switch http.DetectContentType(data) {
+	case "image/jpeg", "image/png", "image/webp", "image/gif":
 	default:
 		return "", false, fmt.Errorf("unsupported image type (use jpg, png, webp, or gif)")
 	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
+	pic, err := photos.Process(data, withSmall)
+	if errors.Is(err, photos.ErrTooLarge) {
 		return "", false, err
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("could not read this image, try saving it again")
 	}
 
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
 		return "", false, err
 	}
-	name := hex.EncodeToString(buf[:]) + ext
+	name := hex.EncodeToString(buf[:]) + pic.Ext
 	dest := filepath.Join(dir, name)
-	out, err := os.Create(dest)
-	if err != nil {
-		return "", false, err
-	}
-	defer out.Close()
-	written, err := io.Copy(out, io.LimitReader(file, maxUpload+1))
-	if err == nil && written > maxUpload {
-		err = fmt.Errorf("image is larger than 8MB")
-	}
-	if err != nil {
+	if err := os.WriteFile(dest, pic.Full, 0o644); err != nil {
 		_ = os.Remove(dest)
 		return "", false, err
+	}
+	if withSmall {
+		small := filepath.Join(dir, photos.SmallName(name))
+		if err := os.WriteFile(small, pic.Small, 0o644); err != nil {
+			_ = os.Remove(dest)
+			_ = os.Remove(small)
+			return "", false, err
+		}
 	}
 	return name, true, nil
 }
@@ -148,6 +148,7 @@ func deleteFileIn(dir string, existing sql.NullString) {
 	}
 	name := filepath.Base(existing.String)
 	_ = os.Remove(filepath.Join(dir, name))
+	_ = os.Remove(filepath.Join(dir, photos.SmallName(name)))
 }
 
 func (s *Server) imageServer() http.Handler {
@@ -157,6 +158,12 @@ func (s *Server) imageServer() http.Handler {
 		if name == "." || name == string(filepath.Separator) {
 			http.NotFound(w, r)
 			return
+		}
+		// Pictures from before small versions existed fall back to the full one.
+		if full, ok := photos.FullName(name); ok {
+			if _, err := os.Stat(filepath.Join(s.imagesDir, name)); os.IsNotExist(err) {
+				name = full
+			}
 		}
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		r.URL.Path = name

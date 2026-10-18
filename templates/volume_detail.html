@@ -11,7 +11,7 @@
     {{end}}
   </div>
   <article class="detail book{{if not .Data.Cover}} no-pic{{end}}">
-    {{if .Data.Cover}}<img class="hero-img" src="{{imageURL .Data.Cover}}" alt="">{{end}}
+    {{if .Data.Cover}}<img class="hero-img" src="{{smallURL .Data.Cover}}" alt="">{{end}}
     <div>
       {{template "links_list" .Data.Links}}
       <div class="table-wrap">
@@ -30,7 +30,7 @@
             <tr>
               <td class="date head">{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{else}}—{{end}}</td>
               <td class="wide">
-                {{if .ImagePath.Valid}}<img class="thumb" src="{{imageURL .ImagePath.String}}" alt="">{{end}}
+                {{if .ImagePath.Valid}}<img class="thumb" src="{{smallURL .ImagePath.String}}" alt="">{{end}}
                 {{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{if .Store}}{{.Store}}{{else}}Trip{{end}}</a>{{else if .Store}}{{.Store}}{{else}}—{{end}}
                 {{if $.SignedIn}} · <a href="/admin/volumes/{{.ID}}/edit">Edit</a>{{end}}
                 {{template "links_list" .Links}}

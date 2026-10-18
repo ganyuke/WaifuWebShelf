@@ -65,7 +65,7 @@
       <label for="photo">Haul photo</label>
       <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
       {{template "item_error" dict "Key" "photo" "Errors" $d.Errors}}
-      {{if $d.Photo}}<p class="thumb-row"><img src="{{imageURL $d.Photo}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove</label></p>{{end}}
+      {{if $d.Photo}}<p class="thumb-row"><img src="{{smallURL $d.Photo}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove</label></p>{{end}}
     </div>
     <div>
       <label for="receipt">Receipt photo <span class="hint" title="Only you can open it, when logged in" tabindex="0">(?)</span></label>

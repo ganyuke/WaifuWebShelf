@@ -50,7 +50,7 @@
   <ul class="cover-list">
     {{range .Data.SpareCovers}}
     <li>
-      <img class="thumb" src="{{imageURL .Image}}" alt="">
+      <img class="thumb" src="{{smallURL .Image}}" alt="">
       <span>Vol. {{.Number}}</span>
       <form class="inline" method="post" action="/admin/book-lines/{{$.Data.ID}}/covers/delete">
         <input type="hidden" name="volume_number" value="{{.Number}}">

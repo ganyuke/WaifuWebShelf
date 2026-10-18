@@ -11,7 +11,7 @@
     <details {{if or .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>
     <label>Cover photo <input type="file" name="image" {{if fieldError .Err "image"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>
     {{if .Data.Image}}
-    <p class="thumb-row"><img src="{{imageURL .Data.Image}}" alt="" class="thumb">
+    <p class="thumb-row"><img src="{{smallURL .Data.Image}}" alt="" class="thumb">
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove photo</label></p>
     {{end}}
     <p class="muted">After a validation error, select any new files again.</p></details>

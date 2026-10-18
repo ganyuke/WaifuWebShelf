@@ -45,7 +45,7 @@
     {{if eq .Kind "merch"}}
     <div class="card">
       <a class="cover" href="/wishlist/{{.ID}}">
-        {{if .ImagePath.Valid}}<img src="{{imageURL .ImagePath.String}}" alt="" loading="lazy">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
+        {{if .ImagePath.Valid}}<img src="{{smallURL .ImagePath.String}}" alt="" loading="lazy">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
       </a>
       <div class="card-body">
         <h3><a href="/wishlist/{{.ID}}">{{.Name}}</a></h3>
@@ -59,7 +59,7 @@
     {{range .Volumes}}
     <div class="card">
       <a class="cover" href="/wishlist/{{$item.ID}}">
-        {{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}
+        {{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}
       </a>
       <div class="card-body">
         <h3><a href="/wishlist/{{$item.ID}}">Volume {{.Number}}</a></h3>
@@ -93,7 +93,7 @@
 <div class="card-grid wish-grid">
   {{range .}}
   <div class="card">
-    <div class="cover">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}</div>
+    <div class="cover">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}</div>
     <div class="card-body"><h3>Volume {{.Number}}</h3></div>
   </div>
   {{end}}

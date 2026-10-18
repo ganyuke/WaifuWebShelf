@@ -111,6 +111,10 @@ server {
 
 Health check: `GET /healthz`.
 
+### Photos
+
+Uploaded photos are shrunk and saved without their camera details, like where they were taken. They're saved as JPEG. Install libwebp on the server (`apt install libwebp7`, `dnf install libwebp`, or `brew install webp`) to save new ones as WebP instead, which are smaller. The log says which one at startup.
+
 ### Login attempts
 
 After 5 wrong passwords in a row from one address, further logins from it are refused for 15 minutes. A correct login clears the count.

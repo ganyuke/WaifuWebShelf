@@ -196,8 +196,7 @@ func TestReceiptPhotoIsPrivate(t *testing.T) {
 		_ = mw.WriteField(k, v)
 	}
 	fw, _ := mw.CreateFormFile("receipt", "receipt.png")
-	png := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
-	_, _ = fw.Write(png)
+	_, _ = fw.Write(tinyPNG())
 	_ = mw.Close()
 	req, _ = http.NewRequest(http.MethodPost, ts.URL+"/admin/trips/new", &body)
 	req.Header.Set("Content-Type", mw.FormDataContentType())

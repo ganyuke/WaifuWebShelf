@@ -31,7 +31,7 @@
             <td class="date head">{{if .ID}}<a href="/trips/{{.ID}}">{{if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</a>{{else if .Date.Valid}}{{date .Date.String}}{{else}}—{{end}}</td>
             <td data-label="Store">{{if .Store}}{{.Store}}{{else}}—{{end}}</td>
             <td class="wide">
-              {{if .Photo}}<a href="/trips/{{.ID}}"><img class="thumb haul" src="{{imageURL .Photo}}" alt=""></a>{{end}}
+              {{if .Photo}}<a href="/trips/{{.ID}}"><img class="thumb haul" src="{{smallURL .Photo}}" alt=""></a>{{end}}
               {{range $line := .Lines}}
               <p>
                 {{if .Merch}}

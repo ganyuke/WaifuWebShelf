@@ -14,7 +14,7 @@
           {{range .Data.Series}}
           <tr>
             <td class="catalog-cover">
-              <a href="/series/{{.Slug}}">{{if .Cover}}<img src="{{imageURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
+              <a href="/series/{{.Slug}}">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}</a>
             </td>
             <td class="name-cell"><a class="name" href="/series/{{.Slug}}">{{.Name}}</a></td>
             <td class="lines-cell">
@@ -65,7 +65,7 @@
       <ul class="compact">
         {{range .Data.Recent}}
         <li>
-          <span class="pic">{{if .Image.Valid}}<img src="{{imageURL .Image.String}}" alt="" loading="lazy">{{end}}</span>
+          <span class="pic">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</span>
           <span class="text">
             {{if eq .Kind "volume"}}
             <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
@@ -90,7 +90,7 @@
       <ul class="compact">
         {{range .Data.Wanted}}
         <li class="wanted">
-          <span class="pic">{{if .Picture}}<img src="{{imageURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
+          <span class="pic">{{if .Picture}}<img src="{{smallURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
           <span class="text">
             {{if eq .Kind "merch"}}
             <a href="/wishlist/{{.ID}}">{{.Name}}</a>
