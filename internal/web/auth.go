@@ -16,8 +16,8 @@ const (
 )
 
 func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
-	if !s.cfg.AdminEnabled() {
-		http.Error(w, "admin is disabled (set ADMIN_PASS)", http.StatusServiceUnavailable)
+	if !s.cfg.LoginEnabled() {
+		s.notFound(w, r)
 		return
 	}
 	if s.loggedIn(r) {
@@ -30,8 +30,8 @@ func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
-	if !s.cfg.AdminEnabled() {
-		http.Error(w, "admin is disabled (set ADMIN_PASS)", http.StatusServiceUnavailable)
+	if !s.cfg.LoginEnabled() {
+		s.notFound(w, r)
 		return
 	}
 	if err := r.ParseForm(); err != nil {

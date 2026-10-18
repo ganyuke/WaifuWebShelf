@@ -178,3 +178,20 @@ func TestLoginFailedLogsUsername(t *testing.T) {
 		t.Fatalf("missing request log:\n%s", out)
 	}
 }
+
+func TestLoginDisabled(t *testing.T) {
+	srv, err := New(config.Config{DataDir: t.TempDir(), DisableLogin: true, AdminPass: "ignored"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/login", "/admin", "/admin/trips/new"} {
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s: %d, want 404", path, rec.Code)
+		}
+	}
+	if _, err := New(config.Config{DataDir: t.TempDir()}, nil); err == nil {
+		t.Fatal("login on with no password must not start")
+	}
+}

@@ -36,7 +36,7 @@
 
 {{define "footer"}}
 </main>
-<footer class="site-footer">{{if and .AdminEnabled (not .SignedIn)}}<a href="/login">Log in</a>{{end}}</footer>
+<footer class="site-footer">{{if and .LoginEnabled (not .SignedIn)}}<a href="/login">Log in</a>{{end}}</footer>
 <script src="{{assetURL "forms.js"}}" defer></script>
 </body>
 </html>

@@ -25,6 +25,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fromEnv := cfg.AdminPass != ""
+	generated, err := cfg.ResolveAdminPass()
+	if err != nil {
+		log.Fatal(err)
+	}
+	switch {
+	case !cfg.LoginEnabled():
+		log.Printf("login is off, the site is view-only")
+	case generated:
+		log.Printf("log in at /login as %q with password %s (saved in %s)", cfg.AdminUser, cfg.AdminPass, cfg.AdminPassPath())
+	case fromEnv:
+		log.Printf("log in at /login as %q", cfg.AdminUser)
+	default:
+		log.Printf("log in at /login as %q, the password is in %s", cfg.AdminUser, cfg.AdminPassPath())
+	}
+
 	store, err := db.Open(cfg.DBPath())
 	if err != nil {
 		log.Fatal(err)
@@ -36,11 +52,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if !cfg.AdminEnabled() {
-		log.Printf("ADMIN_PASS is not set; /admin is disabled")
-	} else {
-		log.Printf("admin user %q (form login at /login)", cfg.AdminUser)
-	}
 	if photos.WebP() {
 		log.Printf("new photos are saved as WebP")
 	} else {

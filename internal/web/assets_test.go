@@ -75,7 +75,7 @@ func TestAssetContentVersions(t *testing.T) {
 }
 
 func TestTemplatesUseVersionedAssets(t *testing.T) {
-	s, e := New(config.Config{DataDir: t.TempDir()}, nil)
+	s, e := New(config.Config{DataDir: t.TempDir(), DisableLogin: true}, nil)
 	if e != nil {
 		t.Fatal(e)
 	}

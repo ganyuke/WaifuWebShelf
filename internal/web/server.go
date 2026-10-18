@@ -41,7 +41,7 @@ type View struct {
 	Path         string
 	Flash        string
 	Err          string
-	AdminEnabled bool
+	LoginEnabled bool
 	SignedIn     bool
 	Preview      Preview
 	Data         any
@@ -77,6 +77,10 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 	}
 	if err := os.MkdirAll(cfg.ReceiptsDir(), 0o700); err != nil {
 		return nil, err
+	}
+	// An empty password would let anyone in.
+	if cfg.LoginEnabled() && cfg.AdminPass == "" {
+		return nil, fmt.Errorf("login is on but there is no admin password")
 	}
 	trusted := cfg.TrustedProxies
 	if trusted == "" {
@@ -197,8 +201,8 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !s.cfg.AdminEnabled() {
-			http.Error(w, "admin is disabled (set ADMIN_PASS)", http.StatusServiceUnavailable)
+		if !s.cfg.LoginEnabled() {
+			s.notFound(w, r)
 			return
 		}
 		if !s.loggedIn(r) {
@@ -252,7 +256,7 @@ func (s *Server) renderView(w http.ResponseWriter, r *http.Request, name, title,
 		Path:         r.URL.Path,
 		Flash:        r.URL.Query().Get("ok"),
 		Err:          formErr,
-		AdminEnabled: s.cfg.AdminEnabled(),
+		LoginEnabled: s.cfg.LoginEnabled(),
 		SignedIn:     s.loggedIn(r),
 		Preview:      preview,
 		Data:         data,

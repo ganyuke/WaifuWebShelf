@@ -7,7 +7,7 @@ import (
 )
 
 func TestTemplatesParse(t *testing.T) {
-	s, err := New(config.Config{DataDir: t.TempDir(), Port: "8080"}, nil)
+	s, err := New(config.Config{DataDir: t.TempDir(), Port: "8080", DisableLogin: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
