@@ -10,19 +10,19 @@
   const book = field('type').value === 'book';
   show('[data-book]', book); show('[data-merch]', !book);
   show('[data-new-series]', field('series').value === 'new');
-  for (const opt of field('line').options) {
+  for (const opt of field('edition').options) {
    opt.hidden = !!opt.dataset.series && opt.dataset.series !== field('series').value;
    opt.disabled = opt.hidden;
   }
-  if (field('line').selectedOptions[0]?.hidden) field('line').value = '';
-  if (field('series').value === 'new') field('line').value = 'new';
-  show('[data-new-format]', book && field('line').value === 'new');
+  if (field('edition').selectedOptions[0]?.hidden) field('edition').value = '';
+  if (field('series').value === 'new') field('edition').value = 'new';
+  show('[data-new-edition]', book && field('edition').value === 'new');
  };
  field('type').addEventListener('change', update);
  field('series').addEventListener('change', update);
- field('line').addEventListener('change', () => {
+ field('edition').addEventListener('change', () => {
   update();
-  const opt = field('line').selectedOptions[0];
+  const opt = field('edition').selectedOptions[0];
   if (!opt?.dataset.currency) return;
   // On a trip the currency is the trip's, so only a list price in that currency fits.
   if (field('currency').type === 'hidden') {
@@ -33,7 +33,7 @@
   field('msrp').value = opt.dataset.msrp || '';
  });
  update();
- // Choosing a format fills in its prices, so the no-script button is not needed.
+ // Choosing an edition fills in its prices, so the no-script button is not needed.
  form.querySelectorAll('[data-defaults]').forEach(el => { el.hidden = true; });
  form.querySelectorAll('.field-error').forEach(error => {
   const input = field(error.id.replace(/-error$/, ''));

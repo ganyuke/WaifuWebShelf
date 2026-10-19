@@ -27,23 +27,31 @@ func Make(s string) string {
 	return out
 }
 
-func ForBookLine(kind, label string) string {
-	title := strings.TrimSpace(label)
+// ForWork is a work's slug: its title, or its medium when it has none.
+func ForWork(title, kind string) string {
+	title = strings.TrimSpace(title)
 	if title == "" {
 		switch kind {
 		case "light_novel":
 			title = "light novel"
-		case "artbook":
-			title = "artbook"
-		case "manga":
-			title = "manga"
+		case "artbook", "manga":
+			title = kind
 		default:
 			title = "other"
 		}
 	}
-	s := Make(title)
+	return orDefault(Make(title), "work")
+}
+
+// ForEdition is an edition's slug from its language name and its own name,
+// like "english" or "english-3-in-1".
+func ForEdition(languageName, name string) string {
+	return orDefault(Make(strings.TrimSpace(languageName+" "+name)), "edition")
+}
+
+func orDefault(s, def string) string {
 	if s == "series" {
-		s = "line"
+		return def
 	}
 	return s
 }

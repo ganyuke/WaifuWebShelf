@@ -67,11 +67,11 @@
  update();
 })();
 
-// Add books on a trip: the new series fields show only when New series or format is chosen.
+// Add books on a trip: the new series fields show only when New series or edition is chosen.
 (() => {
  const form = document.querySelector('.trip-books');
  if (!form) return;
- const choice = form.elements.namedItem('book_line');
+ const choice = form.elements.namedItem('edition');
  const fields = form.querySelector('[data-new-line]');
  const update = () => {
   const isNew = choice.value === 'new';

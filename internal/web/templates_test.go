@@ -14,7 +14,7 @@ func TestTemplatesParse(t *testing.T) {
 	needed := []string{
 		"home", "series_detail", "volume_detail", "merch_list",
 		"merch_detail", "stats", "notfound", "admin_home", "admin_series_form",
-		"admin_bookline_form", "admin_volume_form", "admin_merch_form", "admin_confirm_delete",
+		"admin_work_form", "admin_edition_form", "admin_volume_form", "admin_merch_form", "admin_confirm_delete",
 		"login", "header", "footer", "links_list", "links_editor", "purchase_fields", "purchase_facts", "tile", "money_block",
 		"wish_money", "wishlist", "wishlist_detail", "admin_wishlist_form",
 	}
@@ -26,7 +26,7 @@ func TestTemplatesParse(t *testing.T) {
 }
 
 func TestEveryConfirmationHasText(t *testing.T) {
-	for _, code := range []string{"created", "updated", "deleted", "linked", "book-added", "merch-added", "books-added", "trip-saved", "grouped"} {
+	for _, code := range []string{"created", "updated", "deleted", "linked", "book-added", "merch-added", "books-added", "trip-saved", "covers-saved"} {
 		if flashText(code) == "" {
 			t.Errorf("no message for %q", code)
 		}

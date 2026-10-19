@@ -19,14 +19,14 @@ import (
 	"waifuwebshelf/internal/db"
 )
 
-// Covers are saved per format and volume number, owned or not. A picture
+// Covers are saved per edition and volume number, owned or not. A picture
 // replaces the volume's cover, and the old one is copied to
-// backups/covers/FORMAT-ID/ in the data folder first.
+// backups/covers/EDITION-ID/ in the data folder first.
 //
 // covers.js sends pictures and Kobo covers one per request and asks for JSON,
 // so a whole series stays under the upload limit and each request ends well
 // inside the server's timeouts. Without the script, the forms send everything
-// in one request and get the format page back.
+// in one request and get the edition page back.
 
 // coverResult is the JSON answer covers.js reads.
 type coverResult struct {
@@ -40,9 +40,9 @@ func wantsJSON(r *http.Request) bool {
 	return strings.Contains(r.Header.Get("Accept"), "application/json")
 }
 
-// bookLineCoverSave stores uploaded covers. One picture goes to the volume
+// editionCoverSave stores uploaded covers. One picture goes to the volume
 // number given, and otherwise each picture goes to the number in its file name.
-func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
+func (s *Server) editionCoverSave(w http.ResponseWriter, r *http.Request) {
 	id, data, ok := s.coverForm(w, r)
 	if !ok {
 		return
@@ -83,9 +83,9 @@ func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
 	s.coverDone(w, r, id, data, res)
 }
 
-// bookLineCoverFind lists the covers for the series a store page belongs to.
+// editionCoverFind lists the covers for the series a store page belongs to.
 // Without the script it also saves them.
-func (s *Server) bookLineCoverFind(w http.ResponseWriter, r *http.Request) {
+func (s *Server) editionCoverFind(w http.ResponseWriter, r *http.Request) {
 	id, data, ok := s.coverForm(w, r)
 	if !ok {
 		return
@@ -123,8 +123,8 @@ func (s *Server) bookLineCoverFind(w http.ResponseWriter, r *http.Request) {
 	s.coverDone(w, r, id, data, res)
 }
 
-// bookLineCoverGet saves one cover found by bookLineCoverFind.
-func (s *Server) bookLineCoverGet(w http.ResponseWriter, r *http.Request) {
+// editionCoverGet saves one cover found by editionCoverFind.
+func (s *Server) editionCoverGet(w http.ResponseWriter, r *http.Request) {
 	id, data, ok := s.coverForm(w, r)
 	if !ok {
 		return
@@ -141,12 +141,12 @@ func (s *Server) bookLineCoverGet(w http.ResponseWriter, r *http.Request) {
 	s.coverDone(w, r, id, data, coverResult{Saved: 1})
 }
 
-// coverForm reads the format and form shared by the cover handlers.
-func (s *Server) coverForm(w http.ResponseWriter, r *http.Request) (int64, bookLineFormData, bool) {
+// coverForm reads the edition and form shared by the cover handlers.
+func (s *Server) coverForm(w http.ResponseWriter, r *http.Request) (int64, editionFormData, bool) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
 		s.notFound(w, r)
-		return 0, bookLineFormData{}, false
+		return 0, editionFormData{}, false
 	}
 	if err := parseMaybeMultipart(r); err != nil {
 		msg := "Reload the page and try again."
@@ -158,23 +158,23 @@ func (s *Server) coverForm(w http.ResponseWriter, r *http.Request) (int64, bookL
 		} else {
 			s.badRequest(w, r, msg)
 		}
-		return 0, bookLineFormData{}, false
+		return 0, editionFormData{}, false
 	}
-	data, err := s.loadBookLineForm(id)
+	data, err := s.loadEditionForm(id)
 	if db.IsNotFound(err) {
 		s.notFound(w, r)
-		return 0, bookLineFormData{}, false
+		return 0, editionFormData{}, false
 	}
 	if err != nil {
 		s.serverError(w, r, err)
-		return 0, bookLineFormData{}, false
+		return 0, editionFormData{}, false
 	}
 	return id, data, true
 }
 
 // coverDone answers a cover request. Pages are refreshed here because the
 // page cache only notices saves that end in a redirect.
-func (s *Server) coverDone(w http.ResponseWriter, r *http.Request, id int64, data bookLineFormData, res coverResult) {
+func (s *Server) coverDone(w http.ResponseWriter, r *http.Request, id int64, data editionFormData, res coverResult) {
 	if res.Saved > 0 {
 		s.bumpPages()
 	}
@@ -187,17 +187,17 @@ func (s *Server) coverDone(w http.ResponseWriter, r *http.Request, id int64, dat
 		return
 	}
 	if len(res.Errors) == 0 {
-		http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=covers-saved", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/editions/"+formatID(id)+"/edit?ok=covers-saved", http.StatusSeeOther)
 		return
 	}
 	if res.Saved > 0 {
-		if fresh, err := s.loadBookLineForm(id); err == nil {
+		if fresh, err := s.loadEditionForm(id); err == nil {
 			data = fresh
 		}
 		res.Errors = append([]string{fmt.Sprintf("Saved %d %s.", res.Saved, plural(res.Saved, "cover", "covers"))}, res.Errors...)
 	}
 	w.WriteHeader(http.StatusUnprocessableEntity)
-	s.renderErr(w, r, "admin_bookline_form", "Edit format", strings.Join(res.Errors, " "), data)
+	s.renderErr(w, r, "admin_edition_form", "Edit edition", strings.Join(res.Errors, " "), data)
 }
 
 // fetchCover downloads one cover from the source that reads link and saves it.

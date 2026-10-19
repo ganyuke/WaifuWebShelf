@@ -11,12 +11,27 @@ CREATE TABLE IF NOT EXISTS series (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS book_lines (
+-- A work is one title in a series with one medium, like the K-On! Shuffle
+-- manga. An empty title means the series' own name.
+CREATE TABLE IF NOT EXISTS works (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     series_id INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
     kind TEXT NOT NULL CHECK (kind IN ('manga', 'light_novel', 'artbook', 'other')),
-    label TEXT NOT NULL DEFAULT '',
-    slug TEXT NOT NULL DEFAULT '',
+    slug TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- An edition is one printing of a work with its own volume numbers, like the
+-- English one or a 3-in-1. Language is a code from names.Languages.
+CREATE TABLE IF NOT EXISTS editions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    work_id INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+    language TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '',
+    slug TEXT NOT NULL,
     total_volumes INTEGER,
     default_msrp_cents INTEGER,
     default_currency TEXT NOT NULL DEFAULT 'USD',
@@ -60,9 +75,10 @@ CREATE TABLE IF NOT EXISTS receipt_lines (
     sort_order INTEGER NOT NULL DEFAULT 0
 );
 
+-- One row per copy owned.
 CREATE TABLE IF NOT EXISTS volumes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_line_id INTEGER NOT NULL REFERENCES book_lines(id) ON DELETE CASCADE,
+    edition_id INTEGER NOT NULL REFERENCES editions(id) ON DELETE CASCADE,
     volume_number TEXT NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     purchased_at TEXT,
@@ -101,7 +117,7 @@ CREATE TABLE IF NOT EXISTS merch (
 
 CREATE TABLE IF NOT EXISTS links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_type TEXT NOT NULL CHECK (owner_type IN ('series', 'book_line', 'volume', 'volume_number', 'merch', 'wishlist')),
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('series', 'work', 'edition', 'volume', 'volume_number', 'merch', 'wishlist')),
     owner_id INTEGER NOT NULL,
     owner_key TEXT NOT NULL DEFAULT '',
     label TEXT NOT NULL,
@@ -113,7 +129,7 @@ CREATE TABLE IF NOT EXISTS wishlist (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     kind TEXT NOT NULL CHECK (kind IN ('volumes', 'merch')),
     series_id INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
-    book_line_id INTEGER REFERENCES book_lines(id) ON DELETE CASCADE,
+    edition_id INTEGER REFERENCES editions(id) ON DELETE CASCADE,
     vol_from TEXT NOT NULL DEFAULT '',
     vol_to TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL DEFAULT '',
@@ -142,18 +158,34 @@ CREATE TABLE IF NOT EXISTS photo_tags (
 CREATE INDEX IF NOT EXISTS idx_photo_tags_trip ON photo_tags(trip_id);
 CREATE INDEX IF NOT EXISTS idx_trips_visited ON trips(visited_on);
 CREATE INDEX IF NOT EXISTS idx_receipt_lines_trip ON receipt_lines(trip_id);
-CREATE INDEX IF NOT EXISTS idx_book_lines_series ON book_lines(series_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_book_lines_slug ON book_lines(series_id, slug);
-CREATE INDEX IF NOT EXISTS idx_volumes_book_line ON volumes(book_line_id);
-CREATE INDEX IF NOT EXISTS idx_volumes_number ON volumes(book_line_id, volume_number);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_works_slug ON works(series_id, slug);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_editions_slug ON editions(work_id, slug);
+CREATE INDEX IF NOT EXISTS idx_volumes_number ON volumes(edition_id, volume_number);
+CREATE INDEX IF NOT EXISTS idx_volumes_trip ON volumes(trip_id);
+CREATE INDEX IF NOT EXISTS idx_merch_trip ON merch(trip_id);
 CREATE INDEX IF NOT EXISTS idx_merch_series ON merch(series_id);
 CREATE INDEX IF NOT EXISTS idx_links_owner ON links(owner_type, owner_id, owner_key);
 CREATE INDEX IF NOT EXISTS idx_wishlist_series ON wishlist(series_id, status);
-CREATE INDEX IF NOT EXISTS idx_wishlist_line ON wishlist(book_line_id, status);
+CREATE INDEX IF NOT EXISTS idx_wishlist_edition ON wishlist(edition_id, status);
 
-CREATE TABLE IF NOT EXISTS volume_covers (
-    book_line_id INTEGER NOT NULL REFERENCES book_lines(id) ON DELETE CASCADE,
+-- What belongs to a volume number rather than to one copy: its cover and its
+-- own title, which replaces "Work vol. N" as its name when set.
+CREATE TABLE IF NOT EXISTS volume_info (
+    edition_id INTEGER NOT NULL REFERENCES editions(id) ON DELETE CASCADE,
     volume_number TEXT NOT NULL,
-    image_path TEXT NOT NULL,
-    PRIMARY KEY (book_line_id, volume_number)
+    title TEXT NOT NULL DEFAULT '',
+    cover_path TEXT,
+    PRIMARY KEY (edition_id, volume_number)
 );
+
+-- Everything a volume's name and address are built from, one row per edition.
+CREATE VIEW IF NOT EXISTS edition_names AS
+SELECT
+    e.id AS edition_id, w.id AS work_id, s.id AS series_id,
+    s.name AS series_name, s.slug AS series_slug,
+    w.title AS work_title, w.kind AS kind, w.slug AS work_slug,
+    e.language AS language, e.name AS edition_name, e.slug AS edition_slug,
+    w.sort_order AS work_order, e.sort_order AS edition_order
+FROM editions e
+JOIN works w ON w.id = e.work_id
+JOIN series s ON s.id = w.series_id;

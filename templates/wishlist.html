@@ -63,7 +63,7 @@
       </a>
       <div class="card-body">
         <h3><a href="/wishlist/{{$item.ID}}" data-preview="/wishlist/{{$item.ID}}">Vol. {{.Number}}</a></h3>
-        <p class="muted">{{$item.LineTitle}}</p>
+        <p class="muted">{{$item.Describe}}</p>
         {{with $item.UnitPrice}}<p class="price">{{.}}</p>{{end}}
         {{template "links_list" $item.Links}}
         {{if $.SignedIn}}<p><a href="/admin/wishlist/{{$item.ID}}/edit">Edit</a></p>{{end}}
@@ -74,7 +74,7 @@
       <a class="cover" href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}"><span class="cover-text">Vol. {{.RemainLabel}}</span></a>
       <div class="card-body">
         <h3><a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">Vol. {{.RemainLabel}}</a></h3>
-        <p class="muted">{{.LineTitle}}</p>
+        <p class="muted">{{.Describe}}</p>
         {{with .UnitPrice}}<p class="price">{{.}}</p>{{end}}
       </div>
     </div>

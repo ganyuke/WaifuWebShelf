@@ -51,7 +51,11 @@ func newCoverTest(t *testing.T) *coverTest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	line, err := srv.db.CreateBookLine(ser, db.BookLineWrite{Kind: "manga", DefaultCurrency: "USD"})
+	work, err := srv.db.CreateWork(ser, db.WorkWrite{Kind: "manga"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	line, err := srv.db.CreateEdition(work, db.EditionWrite{Language: "en", DefaultCurrency: "USD"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +70,7 @@ func newCoverTest(t *testing.T) *coverTest {
 }
 
 func (c *coverTest) path(suffix string) string {
-	return c.ts.URL + "/admin/book-lines/" + formatID(c.line) + "/covers" + suffix
+	return c.ts.URL + "/admin/editions/" + formatID(c.line) + "/covers" + suffix
 }
 
 // upload posts files by name with an optional volume number.
@@ -111,7 +115,7 @@ func (c *coverTest) do(req *http.Request) (*http.Response, string) {
 
 func (c *coverTest) covers() map[string]string {
 	c.t.Helper()
-	m, err := c.srv.db.LineCovers(c.line)
+	m, err := c.srv.db.EditionCovers(c.line)
 	if err != nil {
 		c.t.Fatal(err)
 	}

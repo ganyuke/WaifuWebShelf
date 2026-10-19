@@ -87,13 +87,6 @@ func SmallName(name string) string {
 	return strings.TrimSuffix(name, ext) + "-sm" + ext
 }
 
-// FullName undoes SmallName. ok is false when name is not a small version.
-func FullName(name string) (string, bool) {
-	ext := filepath.Ext(name)
-	base, ok := strings.CutSuffix(strings.TrimSuffix(name, ext), "-sm")
-	return base + ext, ok
-}
-
 // shrink scales img down so its longest side is at most limit, and always
 // returns a copy as *image.RGBA.
 func shrink(img image.Image, limit int) *image.RGBA {

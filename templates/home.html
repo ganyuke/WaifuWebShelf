@@ -18,11 +18,11 @@
             </td>
             <td class="name-cell"><a class="name" href="/series/{{.Slug}}">{{.Name}}</a></td>
             <td class="lines-cell">
-              {{if .Lines}}
+              {{if .Editions}}
               <table class="lines">
-                {{range .Lines}}
+                {{range .Editions}}
                 <tr>
-                  <td>{{lineFull .Kind .Label}}</td>
+                  <td>{{.Describe}}</td>
                   <td class="meter-cell">{{if ge (percent .Owned .Total) 0}}<progress class="meter" max="100" value="{{percent .Owned .Total}}"></progress>{{end}}</td>
                   <td>{{volumesOwned .Owned .Total}}</td>
                 </tr>
@@ -65,11 +65,11 @@
       <ul class="compact">
         {{range .Data.Recent}}
         <li>
-          {{$url := printf "/merch/%d" .ID}}{{if eq .Kind "volume"}}{{$url = printf "/series/%s/%s/%s" .SeriesSlug .LineSlug .VolumeNumber}}{{end}}<a class="pic" href="{{$url}}" data-preview="{{$url}}" tabindex="-1" aria-hidden="true">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{else if eq .Kind "volume"}}{{.VolumeNumber}}{{end}}</a>
+          {{$url := printf "/merch/%d" .ID}}{{if eq .Kind "volume"}}{{$url = .VolumeURL .VolumeNumber}}{{end}}<a class="pic" href="{{$url}}" data-preview="{{$url}}" tabindex="-1" aria-hidden="true">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{else if eq .Kind "volume"}}{{.VolumeNumber}}{{end}}</a>
           <span class="text">
             {{if eq .Kind "volume"}}
-            <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}" data-preview="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
-            <span>{{lineFull .LineKind .LineLabel}}, bought {{date .PurchasedAt.String}}</span>
+            <a href="{{$url}}" data-preview="{{$url}}">{{.Volume .VolumeNumber .VolumeTitle}}</a>
+            <span>{{with .VolumeCaption .VolumeNumber .VolumeTitle}}{{.}}, {{end}}bought {{date .PurchasedAt.String}}</span>
             {{else}}
             <a href="/merch/{{.ID}}" data-preview="/merch/{{.ID}}">{{.Name}}</a>
             <span>{{.SeriesName}}, bought {{date .PurchasedAt.String}}</span>
@@ -96,8 +96,8 @@
             <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.Name}}</a>
             <span>{{.SeriesName}}</span>
             {{else}}
-            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.SeriesName}} {{.VolumesLabel}}</a>
-            <span>{{.LineTitle}}</span>
+            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.Numbered}} {{.VolumesLabel}}</a>
+            <span>{{.Caption}}</span>
             {{end}}
           </span>
           {{if .MSRPValid}}<span class="price">{{amount .MSRPAmount .Currency}}</span>{{end}}

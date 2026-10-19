@@ -17,7 +17,7 @@ func TestVolumeNumberLinksSharedAcrossCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lineID, err := store.CreateBookLine(id, BookLineWrite{Kind: "manga"})
+	lineID, err := testEdition(store, id, "manga", EditionWrite{})
 	if err != nil {
 		t.Fatal(err)
 	}

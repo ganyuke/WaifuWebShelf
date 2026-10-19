@@ -158,10 +158,4 @@ func TestNames(t *testing.T) {
 	if SmallName("ab12.webp") != "ab12-sm.webp" {
 		t.Fatal(SmallName("ab12.webp"))
 	}
-	if full, ok := FullName("ab12-sm.jpg"); !ok || full != "ab12.jpg" {
-		t.Fatal(full, ok)
-	}
-	if _, ok := FullName("ab12.jpg"); ok {
-		t.Fatal("a full name is not a small one")
-	}
 }

@@ -12,7 +12,7 @@ func TestCreateItemAtomic(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer d.Close()
-	in := ItemWrite{SeriesName: "Atomic", Kind: "manga", Number: "1", Purchase: Purchase{Currency: "USD"}}
+	in := ItemWrite{SeriesName: "Atomic", NewEdition: NewEdition{Kind: "manga", Language: "en"}, Number: "1", Purchase: Purchase{Currency: "USD"}}
 	// Force an item insert failure after both parent rows were inserted.
 	_, e = d.SQL.Exec(`CREATE TRIGGER fail_item BEFORE INSERT ON volumes BEGIN SELECT RAISE(ABORT, 'forced failure'); END`)
 	if e != nil {
@@ -21,7 +21,7 @@ func TestCreateItemAtomic(t *testing.T) {
 	if _, _, _, e = d.CreateItem(in); e == nil {
 		t.Fatal("expected insert failure")
 	}
-	for _, table := range []string{"series", "book_lines", "volumes"} {
+	for _, table := range []string{"series", "works", "editions", "volumes"} {
 		var n int
 		if e = d.SQL.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&n); e != nil || n != 0 {
 			t.Fatalf("%s: count %d, %v", table, n, e)
@@ -33,7 +33,7 @@ func TestCreateItemAtomic(t *testing.T) {
 		t.Fatal(e)
 	}
 	in.SeriesID = sid
-	in.LineID = lid
+	in.EditionID = lid
 	if _, _, _, e = d.CreateItem(in); !errors.Is(e, ErrOwned) {
 		t.Fatalf("duplicate: %v", e)
 	}

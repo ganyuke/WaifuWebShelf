@@ -4,30 +4,33 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"waifuwebshelf/internal/slug"
 )
 
 var ErrOwned = errors.New("This volume is already owned. Select Add another copy to add it anyway.")
 
 type ItemWrite struct {
-	WishlistID                                       int64
-	TripID, ReceiptLineID                            int64
-	SeriesID, LineID                                 int64
-	SeriesName, Kind, Label, Number, Name, MerchKind string
-	Quantity, SortOrder                              int
-	Merch, AnotherCopy                               bool
-	Purchase                                         Purchase
-	Cover                                            sql.NullString
+	WishlistID                          int64
+	TripID, ReceiptLineID               int64
+	SeriesID, EditionID                 int64
+	SeriesName, Number, Name, MerchKind string
+	// NewEdition is found or made when EditionID is 0.
+	NewEdition          NewEdition
+	Quantity, SortOrder int
+	Merch, AnotherCopy  bool
+	Purchase            Purchase
+	Cover               sql.NullString
 }
 
 // CreateItem commits the parents and item together, including the duplicate-copy check.
-func (d *DB) CreateItem(in ItemWrite) (seriesID, lineID int64, seriesSlug string, err error) {
+func (d *DB) CreateItem(in ItemWrite) (seriesID, editionID int64, seriesSlug string, err error) {
 	tx, err := d.SQL.Begin()
 	if err != nil {
 		return 0, 0, "", err
 	}
 	defer tx.Rollback()
-	seriesID, lineID = in.SeriesID, in.LineID
+	seriesID, editionID = in.SeriesID, in.EditionID
 	unique := func(base, query string, args ...any) (string, error) {
 		for i := 0; ; i++ {
 			candidate := base
@@ -64,34 +67,24 @@ func (d *DB) CreateItem(in ItemWrite) (seriesID, lineID int64, seriesSlug string
 		}
 	}
 	if !in.Merch {
-		if lineID == 0 {
-			var ls string
-			ls, err = unique(slug.ForBookLine(in.Kind, in.Label), `SELECT COUNT(*) FROM book_lines WHERE series_id=? AND slug=?`, seriesID)
-			if err != nil {
-				return
-			}
-			var res sql.Result
-			res, err = tx.Exec(`INSERT INTO book_lines(series_id,kind,label,slug,default_currency,sort_order) VALUES(?,?,?,?,?,(SELECT COALESCE(MAX(sort_order),-1)+1 FROM book_lines WHERE series_id=?))`, seriesID, in.Kind, in.Label, ls, in.Purchase.Currency, seriesID)
-			if err != nil {
-				return
-			}
-			lineID, err = res.LastInsertId()
+		if editionID == 0 {
+			editionID, err = findOrCreateEdition(tx, seriesID, in.NewEdition, in.Purchase.Currency)
 			if err != nil {
 				return
 			}
 		} else {
 			var parent int64
-			err = tx.QueryRow(`SELECT series_id FROM book_lines WHERE id=?`, lineID).Scan(&parent)
+			err = tx.QueryRow(`SELECT series_id FROM edition_names WHERE edition_id=?`, editionID).Scan(&parent)
 			if err != nil {
 				return
 			}
 			if parent != seriesID {
-				err = errors.New("Choose a format belonging to this series.")
+				err = errors.New("Choose an edition belonging to this series.")
 				return
 			}
 		}
 		var n int
-		err = tx.QueryRow(`SELECT COUNT(*) FROM volumes WHERE book_line_id=? AND volume_number=?`, lineID, in.Number).Scan(&n)
+		err = tx.QueryRow(`SELECT COUNT(*) FROM volumes WHERE edition_id=? AND volume_number=?`, editionID, in.Number).Scan(&n)
 		if err != nil {
 			return
 		}
@@ -121,9 +114,9 @@ func (d *DB) CreateItem(in ItemWrite) (seriesID, lineID int64, seriesSlug string
 	if in.Merch {
 		_, err = tx.Exec(`INSERT INTO merch(series_id,name,kind,quantity,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes,trip_id,receipt_line_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, seriesID, in.Name, in.MerchKind, in.Quantity, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes, trip, receiptLine)
 	} else {
-		_, err = tx.Exec(`INSERT INTO volumes(book_line_id,volume_number,sort_order,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes,trip_id,receipt_line_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, lineID, in.Number, in.SortOrder, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes, trip, receiptLine)
+		_, err = tx.Exec(`INSERT INTO volumes(edition_id,volume_number,sort_order,purchased_at,store,msrp_cents,price_ex_tax_cents,price_inc_tax_cents,currency,image_path,notes,trip_id,receipt_line_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, editionID, in.Number, in.SortOrder, nullStr(p.PurchasedAt), p.Store, nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents), p.Currency, p.ImagePath, p.Notes, trip, receiptLine)
 		if err == nil && in.Cover.Valid {
-			_, err = tx.Exec(`INSERT INTO volume_covers(book_line_id,volume_number,image_path) VALUES(?,?,?) ON CONFLICT(book_line_id,volume_number) DO UPDATE SET image_path=excluded.image_path`, lineID, in.Number, in.Cover)
+			err = setVolumeInfo(tx, editionID, in.Number, `cover_path`, in.Cover)
 		}
 	}
 	if err != nil {

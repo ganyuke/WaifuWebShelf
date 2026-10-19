@@ -199,23 +199,6 @@ func TestSaveUploadDropsPhotoLocation(t *testing.T) {
 	}
 }
 
-func TestSmallImageFallsBackToFull(t *testing.T) {
-	srv, _ := newTestServer(t)
-	if err := os.WriteFile(filepath.Join(srv.imagesDir, "old.png"), tinyPNG(), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/images/old-sm.png", nil))
-	if rec.Code != 200 || !bytes.Equal(rec.Body.Bytes(), tinyPNG()) {
-		t.Fatalf("picture without a small version should serve the full one, got %d", rec.Code)
-	}
-	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/images/missing-sm.png", nil))
-	if rec.Code != 404 {
-		t.Fatalf("missing picture %d", rec.Code)
-	}
-}
-
 func TestSaveUploadRejectsOversize(t *testing.T) {
 	srv, _ := newTestServer(t)
 	big := append(tinyPNG(), make([]byte, maxUpload)...)

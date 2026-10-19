@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"waifuwebshelf/internal/config"
@@ -35,7 +34,7 @@ func main() {
 	defer store.Close()
 
 	client := newHTTP()
-	log.Print("fetching MangaDex covers")
+	log.Print("Getting cover lists from MangaDex")
 	mainCovers, err := fetchDexCovers(client, dexMain)
 	if err != nil {
 		log.Fatal(err)
@@ -53,14 +52,14 @@ func main() {
 		if err := store.DeleteSeries(existing.ID); err != nil {
 			log.Fatal(err)
 		}
-		log.Printf("replaced existing %s", seriesSlug)
+		log.Printf("Replacing %s", seriesSlug)
 	} else if !db.IsNotFound(err) {
 		log.Fatal(err)
 	}
 
 	seriesImg := sql.NullString{}
 	if fn, ok := pickCover(mainCovers, "1", "en", "ja"); ok {
-		name, err := saveCover(client, cfg.ImagesDir(), "rag-series.jpg", dexMain, fn)
+		name, err := saveCover(client, cfg.ImagesDir(), "rag-series", dexMain, fn)
 		if err != nil {
 			log.Printf("series cover: %v", err)
 		} else {
@@ -80,25 +79,21 @@ func main() {
 	enTotal, jpTotal, shyTotal, anthTotal := int64(37), int64(46), int64(3), int64(1)
 	enMSRP, jpMSRP := int64(1699), int64(770)
 
-	enID := must(store.CreateBookLine(seriesID, db.BookLineWrite{
-		Kind: "manga", Label: "English", TotalVolumes: &enTotal,
-		DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
-	}))
-	jpID := must(store.CreateBookLine(seriesID, db.BookLineWrite{
-		Kind: "manga", Label: "Japanese", TotalVolumes: &jpTotal,
-		DefaultMSRPCents: &jpMSRP, DefaultCurrency: "JPY",
-	}))
-	shyID := must(store.CreateBookLine(seriesID, db.BookLineWrite{
-		Kind: "manga", Label: "Rent-A-(Really Shy!)-Girlfriend", TotalVolumes: &shyTotal,
-		DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
-	}))
-	anthID := must(store.CreateBookLine(seriesID, db.BookLineWrite{
-		Kind: "other", Label: "Official Comic Anthology", TotalVolumes: &anthTotal,
-		DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
-	}))
+	_, enID := edition(store, seriesID, db.WorkWrite{Kind: "manga"}, db.EditionWrite{
+		Language: "en", TotalVolumes: &enTotal, DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
+	})
+	_, jpID := edition(store, seriesID, db.WorkWrite{Kind: "manga"}, db.EditionWrite{
+		Language: "ja", TotalVolumes: &jpTotal, DefaultMSRPCents: &jpMSRP, DefaultCurrency: "JPY",
+	})
+	shyWork, shyID := edition(store, seriesID, db.WorkWrite{Kind: "manga", Title: "Rent-A-(Really Shy!)-Girlfriend"}, db.EditionWrite{
+		Language: "en", TotalVolumes: &shyTotal, DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
+	})
+	_, anthID := edition(store, seriesID, db.WorkWrite{Kind: "other", Title: "Official Comic Anthology"}, db.EditionWrite{
+		Language: "en", TotalVolumes: &anthTotal, DefaultMSRPCents: &enMSRP, DefaultCurrency: "CAD",
+	})
 
-	must(store.CreateLink("book_line", enID, "", "Kodansha", "https://kodansha.us/series/rent-a-girlfriend/"))
-	must(store.CreateLink("book_line", shyID, "", "MAL", "https://myanimelist.net/manga/128534/Kanojo_Hitomishirimasu"))
+	must(store.CreateLink("edition", enID, "", "Kodansha", "https://kodansha.us/series/rent-a-girlfriend/"))
+	must(store.CreateLink("work", shyWork, "", "MAL", "https://myanimelist.net/manga/128534/Kanojo_Hitomishirimasu"))
 
 	mustErr(addVols(store, enID, seq(1, 12), buy("CAD", "Indigo", "2023-06-11", 1699, 1699, 1924, "")))
 	mustErr(addVols(store, enID, []int{14, 16, 17, 18}, buy("CAD", "Book Off", "2024-09-02", 1699, 800, 800, "used")))
@@ -121,25 +116,25 @@ func main() {
 	mustErr(addVols(store, anthID, []int{1}, buy("CAD", "Kinokuniya", "2023-11-04", 1699, 1699, 1924, "")))
 
 	n := applyCovers(store, client, cfg.ImagesDir(), enID, dexMain, mainCovers, []string{"en"}, seq(1, int(enTotal)), "rag-en")
-	log.Printf("english covers %d/%d", n, enTotal)
+	log.Printf("Rent-A-Girlfriend, English manga: %d of %d covers", n, enTotal)
 	n = applyCovers(store, client, cfg.ImagesDir(), jpID, dexMain, mainCovers, []string{"ja"}, seq(1, int(jpTotal)), "rag-jp")
-	log.Printf("japanese covers %d/%d", n, jpTotal)
+	log.Printf("Rent-A-Girlfriend, Japanese manga: %d of %d covers", n, jpTotal)
 	n = applyCovers(store, client, cfg.ImagesDir(), shyID, dexShy, shyCovers, []string{"en"}, seq(1, int(shyTotal)), "rag-shy")
-	log.Printf("shy covers %d/%d", n, shyTotal)
+	log.Printf("Rent-A-(Really Shy!)-Girlfriend, English manga: %d of %d covers", n, shyTotal)
 	n = applyCovers(store, client, cfg.ImagesDir(), anthID, dexAnth, anthCovers, []string{"ja", "en"}, []int{1}, "rag-anth")
-	log.Printf("anthology covers %d/1", n)
+	log.Printf("Official Comic Anthology, English: %d of 1 cover", n)
 
 	type merchItem struct {
 		src, dest, name, kind, date, store, currency string
 		msrp, paid                                   int64
 	}
 	for _, item := range []merchItem{
-		{"sumi-bowling.png", "rag-sumi-bowling.png", "Sumi Sakurasawa bowling figure", "figure", "2024-06-08", "AmiAmi", "JPY", 16500, 14850},
-		{"sumi-nendoroid.png", "rag-sumi-nendoroid.png", "Sumi Sakurasawa Nendoroid", "nendoroid", "2024-05-12", "AmiAmi", "JPY", 6500, 5850},
-		{"sumi-dakimakura.png", "rag-sumi-dakimakura.png", "Sumi Sakurasawa dakimakura", "dakimakura", "2025-01-22", "Mandarake", "JPY", 12000, 8800},
-		{"sumi-bunny.png", "rag-sumi-bunny.png", "Sumi Sakurasawa bunny figure", "figure", "2025-04-03", "AmiAmi", "JPY", 28000, 25200},
-		{"chizuru-nendoroid.png", "rag-chizuru-nendoroid.png", "Chizuru Mizuhara Nendoroid", "nendoroid", "2024-05-12", "AmiAmi", "JPY", 8900, 7200},
-		{"chizuru-bunny.png", "rag-chizuru-bunny.png", "Chizuru Mizuhara bunny figure", "figure", "2025-08-16", "AmiAmi", "JPY", 28800, 25920},
+		{"sumi-bowling.png", "rag-sumi-bowling", "Sumi Sakurasawa bowling figure", "figure", "2024-06-08", "AmiAmi", "JPY", 16500, 14850},
+		{"sumi-nendoroid.png", "rag-sumi-nendoroid", "Sumi Sakurasawa Nendoroid", "nendoroid", "2024-05-12", "AmiAmi", "JPY", 6500, 5850},
+		{"sumi-dakimakura.png", "rag-sumi-dakimakura", "Sumi Sakurasawa dakimakura", "dakimakura", "2025-01-22", "Mandarake", "JPY", 12000, 8800},
+		{"sumi-bunny.png", "rag-sumi-bunny", "Sumi Sakurasawa bunny figure", "figure", "2025-04-03", "AmiAmi", "JPY", 28000, 25200},
+		{"chizuru-nendoroid.png", "rag-chizuru-nendoroid", "Chizuru Mizuhara Nendoroid", "nendoroid", "2024-05-12", "AmiAmi", "JPY", 8900, 7200},
+		{"chizuru-bunny.png", "rag-chizuru-bunny", "Chizuru Mizuhara bunny figure", "figure", "2025-08-16", "AmiAmi", "JPY", 28800, 25920},
 	} {
 		img, err := installMerchImage(cfg.ImagesDir(), item.src, item.dest)
 		if err != nil {
@@ -155,7 +150,25 @@ func main() {
 
 	seedMore(store, client, cfg.ImagesDir())
 
-	log.Printf("seeded into %s", cfg.DBPath())
+	log.Printf("Saved to %s", cfg.DBPath())
+}
+
+// edition makes an edition, and its work when the series has no work with
+// that title and medium yet.
+func edition(store *db.DB, seriesID int64, wk db.WorkWrite, ed db.EditionWrite) (workID, editionID int64) {
+	works, err := store.ListWorks(seriesID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, w := range works {
+		if w.Title == wk.Title && w.Kind == wk.Kind {
+			workID = w.ID
+		}
+	}
+	if workID == 0 {
+		workID = must(store.CreateWork(seriesID, wk))
+	}
+	return workID, must(store.CreateEdition(workID, ed))
 }
 
 func applyCovers(store *db.DB, client *http.Client, imagesDir string, lineID int64, mangaID string, covers map[string]map[string]string, locales []string, numbers []int, prefix string) int {
@@ -165,8 +178,8 @@ func applyCovers(store *db.DB, client *http.Client, imagesDir string, lineID int
 		if !found {
 			continue
 		}
-		name := fmt.Sprintf("%s-%d.jpg", prefix, n)
-		if _, err := saveCover(client, imagesDir, name, mangaID, fn); err != nil {
+		name, err := saveCover(client, imagesDir, fmt.Sprintf("%s-%d", prefix, n), mangaID, fn)
+		if err != nil {
 			log.Printf("cover %s vol %d: %v", prefix, n, err)
 			continue
 		}
@@ -184,10 +197,11 @@ func installMerchImage(imagesDir, src, dest string) (sql.NullString, error) {
 	if err != nil {
 		return sql.NullString{}, err
 	}
-	if err := os.WriteFile(filepath.Join(imagesDir, dest), b, 0o644); err != nil {
+	name, err := savePicture(imagesDir, dest, b)
+	if err != nil {
 		return sql.NullString{}, err
 	}
-	return sql.NullString{String: dest, Valid: true}, nil
+	return sql.NullString{String: name, Valid: true}, nil
 }
 
 func seq(from, to int) []int {

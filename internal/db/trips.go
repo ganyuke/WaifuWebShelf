@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 	"waifuwebshelf/internal/slug"
 )
 
@@ -79,18 +78,16 @@ type TripItem struct {
 	Kind          string
 	ID            int64
 	ReceiptLineID sql.NullInt64
-	SeriesName    string
-	SeriesSlug    string
-	LineKind      string
-	LineLabel     string
-	LineSlug      string
 	VolumeNumber  string
+	VolumeTitle   string
 	Name          string
 	Quantity      int
 	Image         sql.NullString
 	Currency      string
 	PriceExTax    sql.NullInt64
 	PriceIncTax   sql.NullInt64
+	// Naming is set for volumes. Merch only has the series.
+	names.Naming
 }
 
 func (i TripItem) Paid() sql.NullInt64 { return paid(i.PriceIncTax, i.PriceExTax) }
@@ -212,26 +209,27 @@ func (d *DB) ReceiptLines(tripID int64) ([]ReceiptLine, error) {
 
 func (d *DB) TripItems(tripID int64) ([]TripItem, error) {
 	rows, err := d.SQL.Query(`
-		SELECT kind, id, receipt_line_id, series_name, series_slug, line_kind, line_label, line_slug, volume_number,
-			name, quantity, image, currency, price_ex_tax_cents, price_inc_tax_cents
+		SELECT kind, id, receipt_line_id, volume_number, volume_title, name, quantity, image, currency,
+			price_ex_tax_cents, price_inc_tax_cents, series_name, series_slug, work_title, kind_, work_slug,
+			language, edition_name, edition_slug
 		FROM (
-			SELECT 'volume' AS kind, v.id, v.receipt_line_id, s.name AS series_name, s.slug AS series_slug,
-				bl.kind AS line_kind, bl.label AS line_label, bl.slug AS line_slug, bl.sort_order AS line_order,
-				v.volume_number, v.sort_order AS vol_order, '' AS name, 1 AS quantity,
-				COALESCE(c.image_path, v.image_path) AS image, v.currency, v.price_ex_tax_cents, v.price_inc_tax_cents
+			SELECT 'volume' AS kind, v.id, v.receipt_line_id, v.volume_number, COALESCE(i.title, '') AS volume_title,
+				'' AS name, 1 AS quantity, COALESCE(i.cover_path, v.image_path) AS image, v.currency,
+				v.price_ex_tax_cents, v.price_inc_tax_cents, n.series_name, n.series_slug, n.work_title,
+				n.kind AS kind_, n.work_slug, n.language, n.edition_name, n.edition_slug,
+				n.work_order, n.edition_order, v.sort_order AS vol_order
 			FROM volumes v
-			JOIN book_lines bl ON bl.id = v.book_line_id
-			JOIN series s ON s.id = bl.series_id
-			LEFT JOIN volume_covers c ON c.book_line_id = v.book_line_id AND c.volume_number = v.volume_number
+			JOIN edition_names n ON n.edition_id = v.edition_id
+			LEFT JOIN volume_info i ON i.edition_id = v.edition_id AND i.volume_number = v.volume_number
 			WHERE v.trip_id = ?
 			UNION ALL
-			SELECT 'merch', m.id, m.receipt_line_id, s.name, s.slug, '', '', '', 0, '', 0,
-				m.name, m.quantity, m.image_path, m.currency, m.price_ex_tax_cents, m.price_inc_tax_cents
+			SELECT 'merch', m.id, m.receipt_line_id, '', '', m.name, m.quantity, m.image_path, m.currency,
+				m.price_ex_tax_cents, m.price_inc_tax_cents, s.name, s.slug, '', '', '', '', '', '', 0, 0, 0
 			FROM merch m
 			JOIN series s ON s.id = m.series_id
 			WHERE m.trip_id = ?
 		)
-		ORDER BY kind DESC, series_name COLLATE NOCASE, line_order, vol_order, volume_number, name COLLATE NOCASE, id`, tripID, tripID)
+		ORDER BY kind DESC, series_name COLLATE NOCASE, work_order, edition_order, vol_order, volume_number, name COLLATE NOCASE, id`, tripID, tripID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,8 +237,8 @@ func (d *DB) TripItems(tripID int64) ([]TripItem, error) {
 	var out []TripItem
 	for rows.Next() {
 		var i TripItem
-		if err := rows.Scan(&i.Kind, &i.ID, &i.ReceiptLineID, &i.SeriesName, &i.SeriesSlug, &i.LineKind, &i.LineLabel,
-			&i.LineSlug, &i.VolumeNumber, &i.Name, &i.Quantity, &i.Image, &i.Currency, &i.PriceExTax, &i.PriceIncTax); err != nil {
+		if err := rows.Scan(append([]any{&i.Kind, &i.ID, &i.ReceiptLineID, &i.VolumeNumber, &i.VolumeTitle, &i.Name, &i.Quantity,
+			&i.Image, &i.Currency, &i.PriceExTax, &i.PriceIncTax}, scanNaming(&i.Naming)...)...); err != nil {
 			return nil, err
 		}
 		out = append(out, i)
@@ -430,19 +428,22 @@ func tripPurchase(tx *sql.Tx, tripID, lineID int64, qty int) (Purchase, sql.Null
 	return p, sql.NullInt64{Int64: lineID, Valid: true}, nil
 }
 
-// BookLineRef picks the book line volumes go on: an existing one by ID, or
-// (when ID is 0) a series name and format to find or create.
-type BookLineRef struct {
-	ID                      int64
-	SeriesName, Kind, Label string
+// EditionRef picks the edition volumes go on: an existing one by ID, or
+// (when ID is 0) a series name and edition to find or create.
+type EditionRef struct {
+	ID         int64
+	SeriesName string
+	NewEdition NewEdition
 }
 
-// findOrCreateBookLine matches the series by name and the format by kind and
-// label, ignoring case, and creates whichever is missing. A new format starts
-// with the trip's currency.
-func findOrCreateBookLine(tx *sql.Tx, ref BookLineRef, currency string) (int64, error) {
+// findOrCreateRef matches the series by name, ignoring case, and finds or
+// creates the edition in it. A new edition starts with the trip's currency.
+func findOrCreateRef(tx *sql.Tx, ref EditionRef, currency string) (int64, error) {
 	if ref.ID != 0 {
 		return ref.ID, nil
+	}
+	if !names.ValidKind(ref.NewEdition.Kind) || !names.ValidLanguage(ref.NewEdition.Language) {
+		return 0, ErrBadEdition
 	}
 	now := nowUTC()
 	var seriesID int64
@@ -463,31 +464,13 @@ func findOrCreateBookLine(tx *sql.Tx, ref BookLineRef, currency string) (int64, 
 	} else if err != nil {
 		return 0, err
 	}
-	var lineID int64
-	err = tx.QueryRow(`SELECT id FROM book_lines WHERE series_id = ? AND kind = ? AND label = ? COLLATE NOCASE ORDER BY id LIMIT 1`,
-		seriesID, ref.Kind, ref.Label).Scan(&lineID)
-	if err == nil || !errors.Is(err, sql.ErrNoRows) {
-		return lineID, err
-	}
-	lineSlug := slug.Unique(slug.ForBookLine(ref.Kind, ref.Label), func(candidate string) bool {
-		var n int
-		_ = tx.QueryRow(`SELECT COUNT(*) FROM book_lines WHERE series_id = ? AND slug = ?`, seriesID, candidate).Scan(&n)
-		return n > 0
-	})
-	res, err := tx.Exec(`
-		INSERT INTO book_lines (series_id, kind, label, slug, default_currency, sort_order, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM book_lines WHERE series_id = ?), ?, ?)`,
-		seriesID, ref.Kind, ref.Label, lineSlug, money.NormalizeCurrency(currency), seriesID, now, now)
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
+	return findOrCreateEdition(tx, seriesID, ref.NewEdition, currency)
 }
 
-// AddVolumes puts several volumes of one book line on a trip in one go.
+// AddVolumes puts several volumes of one edition on a trip in one go.
 // Nothing is saved when any number is already owned, unless anotherCopy is set,
-// and then a new series or format is not created either.
-func (d *DB) AddVolumes(tripID, receiptLineID int64, ref BookLineRef, numbers []string, sortOrders []int, anotherCopy bool) error {
+// and then a new series or edition is not created either.
+func (d *DB) AddVolumes(tripID, receiptLineID int64, ref EditionRef, numbers []string, sortOrders []int, anotherCopy bool) error {
 	tx, err := d.SQL.Begin()
 	if err != nil {
 		return err
@@ -497,13 +480,13 @@ func (d *DB) AddVolumes(tripID, receiptLineID int64, ref BookLineRef, numbers []
 	if err != nil {
 		return err
 	}
-	bookLineID, err := findOrCreateBookLine(tx, ref, p.Currency)
+	editionID, err := findOrCreateRef(tx, ref, p.Currency)
 	if err != nil {
 		return err
 	}
 	var msrp sql.NullInt64
 	var lineCurrency string
-	if err := tx.QueryRow(`SELECT default_msrp_cents, default_currency FROM book_lines WHERE id = ?`, bookLineID).Scan(&msrp, &lineCurrency); err != nil {
+	if err := tx.QueryRow(`SELECT default_msrp_cents, default_currency FROM editions WHERE id = ?`, editionID).Scan(&msrp, &lineCurrency); err != nil {
 		return err
 	}
 	// A list price in another currency can't sit on a volume priced in the trip's currency.
@@ -514,7 +497,7 @@ func (d *DB) AddVolumes(tripID, receiptLineID int64, ref BookLineRef, numbers []
 		var owned []string
 		for _, n := range numbers {
 			var c int
-			if err := tx.QueryRow(`SELECT COUNT(*) FROM volumes WHERE book_line_id = ? AND volume_number = ?`, bookLineID, n).Scan(&c); err != nil {
+			if err := tx.QueryRow(`SELECT COUNT(*) FROM volumes WHERE edition_id = ? AND volume_number = ?`, editionID, n).Scan(&c); err != nil {
 				return err
 			}
 			if c > 0 {
@@ -528,10 +511,10 @@ func (d *DB) AddVolumes(tripID, receiptLineID int64, ref BookLineRef, numbers []
 	now := nowUTC()
 	for i, n := range numbers {
 		if _, err := tx.Exec(`
-			INSERT INTO volumes (book_line_id, volume_number, sort_order, purchased_at, store,
+			INSERT INTO volumes (edition_id, volume_number, sort_order, purchased_at, store,
 				msrp_cents, price_ex_tax_cents, currency, trip_id, receipt_line_id, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			bookLineID, n, sortOrders[i], p.PurchasedAt, p.Store, msrp, nullInt64Ptr(p.PriceExTaxCents),
+			editionID, n, sortOrders[i], p.PurchasedAt, p.Store, msrp, nullInt64Ptr(p.PriceExTaxCents),
 			p.Currency, tripID, line, now, now); err != nil {
 			return err
 		}
@@ -609,127 +592,31 @@ func (d *DB) SetReceiptLine(kind string, id, lineID int64) error {
 	return tx.Commit()
 }
 
-// UngroupedPurchases counts dated items not on any trip, and how many trips they would make.
-func (d *DB) UngroupedPurchases() (items, trips int, err error) {
-	err = d.SQL.QueryRow(`
-		SELECT COUNT(*), COUNT(DISTINCT purchased_at || char(0) || store || char(0) || currency)
-		FROM (
-			SELECT purchased_at, store, currency FROM volumes WHERE trip_id IS NULL AND purchased_at IS NOT NULL AND purchased_at != ''
-			UNION ALL
-			SELECT purchased_at, store, currency FROM merch WHERE trip_id IS NULL AND purchased_at IS NOT NULL AND purchased_at != ''
-		)`).Scan(&items, &trips)
-	return
-}
-
-// GroupIntoTrips makes one trip per day, store and currency for dated items not on a trip.
-// Items keep their prices. A trip's total is the sum of its items' prices with tax,
-// and is left empty when any item has no price with tax.
-func (d *DB) GroupIntoTrips() (trips, items int, err error) {
-	tx, err := d.SQL.Begin()
-	if err != nil {
-		return 0, 0, err
-	}
-	defer tx.Rollback()
-	type group struct {
-		day, store, currency string
-		n, withInc           int
-		inc                  int64
-	}
-	rows, err := tx.Query(`
-		SELECT purchased_at, store, currency, COUNT(*), COUNT(price_inc_tax_cents), COALESCE(SUM(price_inc_tax_cents), 0)
-		FROM (
-			SELECT purchased_at, store, currency, price_inc_tax_cents FROM volumes WHERE trip_id IS NULL AND purchased_at IS NOT NULL AND purchased_at != ''
-			UNION ALL
-			SELECT purchased_at, store, currency, price_inc_tax_cents FROM merch WHERE trip_id IS NULL AND purchased_at IS NOT NULL AND purchased_at != ''
-		)
-		GROUP BY 1, 2, 3
-		ORDER BY 1, 2, 3`)
-	if err != nil {
-		return 0, 0, err
-	}
-	var groups []group
-	for rows.Next() {
-		var g group
-		if err := rows.Scan(&g.day, &g.store, &g.currency, &g.n, &g.withInc, &g.inc); err != nil {
-			rows.Close()
-			return 0, 0, err
-		}
-		groups = append(groups, g)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return 0, 0, err
-	}
-	now := nowUTC()
-	for _, g := range groups {
-		var storeID sql.NullInt64
-		if g.store != "" {
-			storeID, err = resolveStore(tx, TripWrite{NewStore: &StoreWrite{Name: g.store, Currency: g.currency}})
-			if err != nil {
-				return 0, 0, err
-			}
-		}
-		var total sql.NullInt64
-		if g.withInc == g.n {
-			total = sql.NullInt64{Int64: g.inc, Valid: true}
-		}
-		res, err := tx.Exec(`INSERT INTO trips (store_id, visited_on, currency, paid_cents, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			storeID, g.day, g.currency, total, now, now)
-		if err != nil {
-			return 0, 0, err
-		}
-		id, err := res.LastInsertId()
-		if err != nil {
-			return 0, 0, err
-		}
-		for _, table := range []string{"volumes", "merch"} {
-			if _, err := tx.Exec(`UPDATE `+table+` SET trip_id = ? WHERE trip_id IS NULL AND purchased_at = ? AND store = ? AND currency = ?`,
-				id, g.day, g.store, g.currency); err != nil {
-				return 0, 0, err
-			}
-		}
-		trips++
-		items += g.n
-	}
-	return trips, items, tx.Commit()
-}
-
-// Backup writes a complete copy of the database to path.
-func (d *DB) Backup(path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	_, err := d.SQL.Exec(`VACUUM INTO ?`, path)
-	return err
-}
-
-// LineChoice is a book line offered when adding books to a trip.
-type LineChoice struct {
-	BookLine
-	SeriesName string
+// EditionChoice is an edition offered when adding books to a trip.
+type EditionChoice struct {
+	Edition
 	LastBought sql.NullString
 	Owned      []string
 }
 
-// LineChoices lists every book line, the ones bought from most recently first.
-func (d *DB) LineChoices() ([]LineChoice, error) {
+// EditionChoices lists every edition, the ones bought from most recently first.
+func (d *DB) EditionChoices() ([]EditionChoice, error) {
 	rows, err := d.SQL.Query(`
-		SELECT bl.id, bl.series_id, bl.kind, bl.label, bl.slug, bl.total_volumes, bl.default_msrp_cents,
-			bl.default_currency, bl.sort_order, s.name, MAX(v.purchased_at), COALESCE(group_concat(v.volume_number, char(31)), '')
-		FROM book_lines bl
-		JOIN series s ON s.id = bl.series_id
-		LEFT JOIN volumes v ON v.book_line_id = bl.id
-		GROUP BY bl.id
-		ORDER BY MAX(v.purchased_at) IS NULL, MAX(v.purchased_at) DESC, s.name COLLATE NOCASE, bl.sort_order, bl.id`)
+		SELECT ` + editionCols + namingCols("n") + `, MAX(v.purchased_at), COALESCE(group_concat(v.volume_number, char(31)), '')
+		FROM editions e
+		JOIN edition_names n ON n.edition_id = e.id
+		LEFT JOIN volumes v ON v.edition_id = e.id
+		GROUP BY e.id
+		ORDER BY MAX(v.purchased_at) IS NULL, MAX(v.purchased_at) DESC, n.series_name COLLATE NOCASE, n.work_order, e.sort_order, e.id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []LineChoice
+	var out []EditionChoice
 	for rows.Next() {
-		var c LineChoice
+		var c EditionChoice
 		var owned string
-		if err := rows.Scan(append(scanBookLine(&c.BookLine), &c.SeriesName, &c.LastBought, &owned)...); err != nil {
+		if err := rows.Scan(append(scanEdition(&c.Edition), &c.LastBought, &owned)...); err != nil {
 			return nil, err
 		}
 		if owned != "" {

@@ -3,62 +3,42 @@ package web
 import (
 	"database/sql"
 	"net/http"
-	"net/url"
 
-	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
+	"waifuwebshelf/internal/names"
 )
 
 type volumeFormData struct {
 	ID           int64
-	BookLineID   int64
+	EditionID    int64
 	SeriesID     int64
-	SeriesName   string
-	SeriesSlug   string
-	LineSlug     string
-	LineTitle    string
 	VolumeNumber string
-	PurchasedAt  string
-	Store        string
-	Currency     string
-	MSRP         string
-	PriceEx      string
-	PriceInc     string
-	Notes        string
-	Image        string
-	Cover        string
-	New          bool
-	VolumeLinks  []LinkView
-	CopyLinks    []LinkView
-	Trip         itemTripFields
-}
-
-// PageURL is the volume's public page.
-func (d volumeFormData) PageURL() string {
-	return volumePageURL(d.SeriesSlug, d.LineSlug, d.VolumeNumber)
+	// VolumeTitle is the volume number's own title, shared by its copies.
+	VolumeTitle string
+	PurchasedAt string
+	Store       string
+	Currency    string
+	MSRP        string
+	PriceEx     string
+	PriceInc    string
+	Notes       string
+	Image       string
+	Cover       string
+	New         bool
+	VolumeLinks []LinkView
+	CopyLinks   []LinkView
+	Trip        itemTripFields
+	names.Naming
 }
 
 // PublicURL is the volume's page on the public site.
 func (d volumeFormData) PublicURL() string {
-	return volumePageURL(d.SeriesSlug, d.LineSlug, d.VolumeNumber)
-}
-
-func volumePageURL(seriesSlug, lineSlug, number string) string {
-	return "/series/" + seriesSlug + "/" + lineSlug + "/" + url.PathEscape(number)
-}
-
-func (s *Server) volumeContext(bookLineID int64) (db.BookLine, db.Series, error) {
-	line, err := s.db.GetBookLine(bookLineID)
-	if err != nil {
-		return line, db.Series{}, err
-	}
-	ser, err := s.db.GetSeries(line.SeriesID)
-	return line, ser, err
+	return d.VolumeURL(d.VolumeNumber)
 }
 
 func (s *Server) volumeNewForm(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	q.Set("line", r.PathValue("id"))
+	q.Set("edition", r.PathValue("id"))
 	r.URL.RawQuery = q.Encode()
 	s.itemForm(w, r)
 }
@@ -73,7 +53,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
-	line, ser, err := s.volumeContext(id)
+	ed, err := s.db.GetEdition(id)
 	if db.IsNotFound(err) {
 		s.notFound(w, r)
 		return
@@ -83,9 +63,8 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := volumeFormData{
-		New: true, BookLineID: line.ID, SeriesID: ser.ID, SeriesName: ser.Name, SeriesSlug: ser.Slug,
-		LineTitle:    catalog.LineFullTitle(line.Kind, line.Label),
-		VolumeNumber: r.FormValue("volume_number"), PurchasedAt: r.FormValue("purchased_at"),
+		New: true, EditionID: ed.ID, SeriesID: ed.SeriesID, Naming: ed.Naming,
+		VolumeNumber: r.FormValue("volume_number"), VolumeTitle: r.FormValue("volume_title"), PurchasedAt: r.FormValue("purchased_at"),
 		Store: r.FormValue("store"), Currency: r.FormValue("currency"),
 		MSRP: r.FormValue("msrp"), PriceEx: r.FormValue("price_ex_tax"), PriceInc: r.FormValue("price_inc_tax"),
 		Notes: r.FormValue("notes"),
@@ -100,7 +79,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		s.renderErr(w, r, "admin_volume_form", "Add volume", err.Error(), data)
 		return
 	}
-	existingCover, err := s.db.VolumeCover(line.ID, number)
+	existingCover, err := s.db.VolumeCover(ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -116,15 +95,19 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.ImagePath = img
-	if _, err := s.db.CreateVolume(line.ID, number, volumeSortOrder(number), p); err != nil {
+	if _, err := s.db.CreateVolume(ed.ID, number, volumeSortOrder(number), p); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	if err := s.db.SetVolumeCover(line.ID, number, cover); err != nil {
+	if err := s.db.SetVolumeCover(ed.ID, number, cover); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(line.ID)+"/edit?ok=created", http.StatusSeeOther)
+	if err := s.db.SetVolumeTitle(ed.ID, number, data.VolumeTitle); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/admin/editions/"+formatID(ed.ID)+"/edit?ok=created", http.StatusSeeOther)
 }
 
 func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
@@ -132,7 +115,7 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 	if err != nil {
 		return volumeFormData{}, err
 	}
-	line, ser, err := s.volumeContext(v.BookLineID)
+	ed, err := s.db.GetEdition(v.EditionID)
 	if err != nil {
 		return volumeFormData{}, err
 	}
@@ -140,11 +123,11 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 	if err != nil {
 		return volumeFormData{}, err
 	}
-	volumeLinks, err := s.db.ListLinksKeyed("volume_number", v.BookLineID, v.VolumeNumber)
+	volumeLinks, err := s.db.ListLinksKeyed("volume_number", v.EditionID, v.VolumeNumber)
 	if err != nil {
 		return volumeFormData{}, err
 	}
-	cover, err := s.db.VolumeCover(v.BookLineID, v.VolumeNumber)
+	info, err := s.db.GetVolumeInfo(v.EditionID, v.VolumeNumber)
 	if err != nil {
 		return volumeFormData{}, err
 	}
@@ -155,13 +138,11 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 	return volumeFormData{
 		Trip:         trip,
 		ID:           v.ID,
-		BookLineID:   v.BookLineID,
-		SeriesID:     ser.ID,
-		SeriesName:   ser.Name,
-		SeriesSlug:   ser.Slug,
-		LineSlug:     line.Slug,
-		LineTitle:    catalog.LineFullTitle(line.Kind, line.Label),
+		EditionID:    v.EditionID,
+		SeriesID:     ed.SeriesID,
+		Naming:       ed.Naming,
 		VolumeNumber: v.VolumeNumber,
+		VolumeTitle:  info.Title,
 		PurchasedAt:  dateVal(v.PurchasedAt),
 		Store:        v.Store,
 		Currency:     v.Currency,
@@ -170,7 +151,7 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 		PriceInc:     moneyVal(v.PriceIncTaxCents, v.Currency),
 		Notes:        v.Notes,
 		Image:        nullImage(v.ImagePath),
-		Cover:        nullImage(cover),
+		Cover:        nullImage(info.Cover),
 		VolumeLinks:  s.linkViews(volumeLinks),
 		CopyLinks:    s.linkViews(copyLinks),
 	}, nil
@@ -219,6 +200,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.VolumeNumber = r.FormValue("volume_number")
+	data.VolumeTitle = r.FormValue("volume_title")
 	data.PurchasedAt = r.FormValue("purchased_at")
 	data.Store = r.FormValue("store")
 	data.Currency = r.FormValue("currency")
@@ -236,7 +218,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.renderErr(w, r, "admin_volume_form", "Edit volume", err.Error(), data)
 		return
 	}
-	existingCover, err := s.db.VolumeCover(v.BookLineID, number)
+	existingCover, err := s.db.VolumeCover(v.EditionID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -263,11 +245,15 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	if err := s.db.SetVolumeCover(v.BookLineID, number, cover); err != nil {
+	if err := s.db.SetVolumeCover(v.EditionID, number, cover); err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, volumePageURL(data.SeriesSlug, data.LineSlug, number)+"?ok=updated", http.StatusSeeOther)
+	if err := s.db.SetVolumeTitle(v.EditionID, number, data.VolumeTitle); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, data.VolumeURL(number)+"?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) volumeDeleteForm(w http.ResponseWriter, r *http.Request) {
@@ -286,7 +272,7 @@ func (s *Server) volumeDeleteForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "admin_confirm_delete", "Delete volume", map[string]any{
-		"Title":  data.SeriesName + " vol. " + data.VolumeNumber,
+		"Title":  data.Volume(data.VolumeNumber, data.VolumeTitle),
 		"Action": "/admin/volumes/" + r.PathValue("id") + "/delete",
 		"Cancel": "/admin/volumes/" + r.PathValue("id") + "/edit",
 		"Body":   "Remove this volume from the shelf.",
@@ -312,5 +298,5 @@ func (s *Server) volumeDelete(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(data.BookLineID)+"/edit?ok=deleted", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/editions/"+formatID(data.EditionID)+"/edit?ok=deleted", http.StatusSeeOther)
 }

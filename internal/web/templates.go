@@ -12,6 +12,7 @@ import (
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 )
 
 func funcMap() template.FuncMap {
@@ -37,7 +38,8 @@ func funcMap() template.FuncMap {
 			return false
 		},
 		"moneyInput": moneyVal,
-		"kinds":      func() []string { return []string{"manga", "light_novel", "artbook", "other"} },
+		"kinds":      func() []string { return names.Kinds },
+		"languages":  func() []names.Language { return names.Languages },
 		"money":      money.DisplayNull,
 		"amount":     money.Display,
 		"abs": func(n int64) int64 {
@@ -46,9 +48,8 @@ func funcMap() template.FuncMap {
 			}
 			return n
 		},
-		"date":     displayDate,
-		"month":    displayMonth,
-		"lineFull": catalog.LineFullTitle,
+		"date":  displayDate,
+		"month": displayMonth,
 		"volumesOwned": func(owned int, total *int) string {
 			return catalog.VolumesOwned(owned, total)
 		},
@@ -58,7 +59,7 @@ func funcMap() template.FuncMap {
 		"merchSub":        merchSub,
 		"amountDelta":     money.FormatAmountDelta,
 		"defaultCurrency": func() string { return money.Default },
-		"kindName":        catalog.KindName,
+		"kindName":        names.KindName,
 		"imageURL": func(path string) string {
 			if path == "" {
 				return ""
@@ -152,8 +153,6 @@ func flashText(code string) string {
 		return "Books added."
 	case "trip-saved":
 		return "Trip saved."
-	case "grouped":
-		return "Grouped into trips."
 	case "covers-saved":
 		return "Covers saved."
 	default:

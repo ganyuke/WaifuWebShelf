@@ -65,8 +65,8 @@ func TestItemEntryFlow(t *testing.T) {
 	if strings.Contains(w.Body.String(), checked) {
 		t.Fatal("a plain new item should not have Add another copy checked")
 	}
-	// No scripts or intermediate writes are required for a new series and format.
-	form := url.Values{"type": {"book"}, "series": {"new"}, "series_name": {"New shelf"}, "line": {"new"}, "kind": {"manga"}, "volume_number": {"1"}, "currency": {"CAD"}, "price_inc_tax": {"bad"}, "store": {"Book shop"}, "notes": {"Keep this"}}
+	// No scripts or intermediate writes are required for a new series and edition.
+	form := url.Values{"type": {"book"}, "series": {"new"}, "series_name": {"New shelf"}, "edition": {"new"}, "kind": {"manga"}, "language": {"en"}, "volume_number": {"1"}, "currency": {"CAD"}, "price_inc_tax": {"bad"}, "store": {"Book shop"}, "notes": {"Keep this"}}
 	w = call("POST", "/admin/items/new", form, true)
 	if !strings.Contains(w.Body.String(), `id="price_inc_tax-error"`) || !strings.Contains(w.Body.String(), "Keep this") {
 		t.Fatal(w.Body.String())
@@ -93,12 +93,12 @@ func TestItemEntryFlow(t *testing.T) {
 	if len(series) != 1 {
 		t.Fatal(series)
 	}
-	lines, _ := store.ListBookLines(series[0].ID)
+	lines, _ := store.ListSeriesEditions(series[0].ID)
 	if len(lines) != 1 {
 		t.Fatal(lines)
 	}
 	form.Set("series", formatID(series[0].ID))
-	form.Set("line", formatID(lines[0].ID))
+	form.Set("edition", formatID(lines[0].ID))
 	form.Set("action", "save")
 	w = call("POST", "/admin/items/new", form, true)
 	if !strings.Contains(w.Body.String(), "This volume is already owned.") {
@@ -117,7 +117,7 @@ func TestItemEntryFlow(t *testing.T) {
 	if len(vols) != 2 {
 		t.Fatal("explicit extra copy missing")
 	}
-	// Cross-series format IDs must not create anything.
+	// Cross-series edition IDs must not create anything.
 	form.Set("series", "new")
 	form.Set("series_name", "Wrong parent")
 	w = call("POST", "/admin/items/new", form, true)
@@ -128,13 +128,13 @@ func TestItemEntryFlow(t *testing.T) {
 	if len(series) != 1 {
 		t.Fatal("bad relationship created series")
 	}
-	// Format defaults are available on the legacy entry URL and without JS.
+	// Edition defaults are available on the edition's add volume link and without JS.
 	price := int64(1499)
-	err = store.UpdateBookLine(lines[0].ID, db.BookLineWrite{Kind: "manga", DefaultCurrency: "CAD", DefaultMSRPCents: &price})
+	err = store.UpdateEdition(lines[0].ID, db.EditionWrite{Language: "en", DefaultCurrency: "CAD", DefaultMSRPCents: &price})
 	if err != nil {
 		t.Fatal(err)
 	}
-	w = call("GET", "/admin/book-lines/"+formatID(lines[0].ID)+"/volumes/new?n=2", nil, true)
+	w = call("GET", "/admin/editions/"+formatID(lines[0].ID)+"/volumes/new?n=2", nil, true)
 	if !strings.Contains(w.Body.String(), `value="14.99"`) || !strings.Contains(w.Body.String(), `value="2"`) {
 		t.Fatal(w.Body.String())
 	}

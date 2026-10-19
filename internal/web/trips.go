@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 )
 
 // TripTile is one item on a trip page, drawn with the "tile" template.
@@ -29,17 +29,17 @@ type tripLineView struct {
 	Items []TripTile
 }
 
-type lineChoiceView struct {
+type editionChoiceView struct {
 	ID    int64
 	Title string
 	Next  string
 }
 
 type addBooksForm struct {
-	ReceiptLine, BookLine, Numbers string
-	// Used when BookLine is "new".
-	SeriesName, Kind, Label string
-	AnotherCopy             bool
+	ReceiptLine, Edition, Numbers string
+	// Used when Edition is "new".
+	SeriesName, Kind, WorkTitle, Language, EditionName string
+	AnotherCopy                                        bool
 }
 
 type tripPageData struct {
@@ -51,7 +51,7 @@ type tripPageData struct {
 	Pager     Pager
 	Tags      []TagView
 	Taggable  []TripTile
-	Choices   []lineChoiceView
+	Choices   []editionChoiceView
 	Series    []string
 	Form      addBooksForm
 	Errors    map[string]string
@@ -70,10 +70,15 @@ func tripTile(i db.TripItem) TripTile {
 		return TripTile{Kind: "merch", ID: i.ID, URL: fmt.Sprintf("/merch/%d", i.ID), Image: nullImage(i.Image), Label: i.Name,
 			Name: i.Name, Sub: merchSub(i.Name, "", i.Quantity), EditURL: fmt.Sprintf("/admin/merch/%d/edit", i.ID)}
 	}
-	return TripTile{Kind: "volume", ID: i.ID, URL: "/series/" + i.SeriesSlug + "/" + i.LineSlug + "/" + i.VolumeNumber,
-		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: i.SeriesName + " vol. " + i.VolumeNumber,
-		Label: i.SeriesName + " vol. " + i.VolumeNumber + ", " + catalog.LineFullTitle(i.LineKind, i.LineLabel),
-		Sub:   catalog.LineFullTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
+	name := i.Volume(i.VolumeNumber, i.VolumeTitle)
+	sub := i.VolumeCaption(i.VolumeNumber, i.VolumeTitle)
+	label := name
+	if sub != "" {
+		label += ", " + sub
+	}
+	return TripTile{Kind: "volume", ID: i.ID, URL: i.VolumeURL(i.VolumeNumber),
+		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: name,
+		Label: label, Sub: sub, EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
 }
 
 type sameTripView struct {
@@ -180,7 +185,7 @@ func openLine(lines []db.ReceiptLine, books bool) string {
 }
 
 // nextMissing is the lowest volume number not owned yet, or "" when the line is complete.
-func nextMissing(c db.LineChoice) string {
+func nextMissing(c db.EditionChoice) string {
 	owned := map[string]bool{}
 	for _, n := range c.Owned {
 		owned[n] = true
@@ -267,13 +272,13 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 		}
 	}
 	if s.loggedIn(r) {
-		choices, err := s.db.LineChoices()
+		choices, err := s.db.EditionChoices()
 		if err != nil {
 			s.serverError(w, r, err)
 			return
 		}
 		for _, c := range choices {
-			d.Choices = append(d.Choices, lineChoiceView{ID: c.ID, Title: c.SeriesName + ", " + catalog.LineFullTitle(c.Kind, c.Label), Next: nextMissing(c)})
+			d.Choices = append(d.Choices, editionChoiceView{ID: c.ID, Title: c.SeriesName + ", " + c.Describe(), Next: nextMissing(c)})
 		}
 		series, err := s.db.ListSeries()
 		if err != nil {
@@ -285,6 +290,9 @@ func (s *Server) renderTrip(w http.ResponseWriter, r *http.Request, id int64, fo
 		}
 		if d.Form.Kind == "" {
 			d.Form.Kind = "manga"
+		}
+		if errs == nil {
+			d.Form.Language = "en"
 		}
 		if d.Form.ReceiptLine == "" && errs == nil {
 			d.Form.ReceiptLine = openLine(lines, true)
@@ -337,23 +345,29 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
-	form := addBooksForm{ReceiptLine: r.FormValue("receipt_line"), BookLine: r.FormValue("book_line"),
+	form := addBooksForm{ReceiptLine: r.FormValue("receipt_line"), Edition: r.FormValue("edition"),
 		Numbers: r.FormValue("volumes"), SeriesName: strings.TrimSpace(r.FormValue("series_name")),
-		Kind: r.FormValue("kind"), Label: strings.TrimSpace(r.FormValue("label")), AnotherCopy: r.FormValue("another_copy") == "1"}
+		Kind: r.FormValue("kind"), WorkTitle: strings.TrimSpace(r.FormValue("work_title")),
+		Language: r.FormValue("language"), EditionName: strings.TrimSpace(r.FormValue("edition_name")),
+		AnotherCopy: r.FormValue("another_copy") == "1"}
 	errs := map[string]string{}
-	var ref db.BookLineRef
-	if form.BookLine == "new" {
-		ref = db.BookLineRef{SeriesName: form.SeriesName, Kind: form.Kind, Label: form.Label}
+	var ref db.EditionRef
+	if form.Edition == "new" {
+		ref = db.EditionRef{SeriesName: form.SeriesName, NewEdition: db.NewEdition{
+			Kind: form.Kind, Title: form.WorkTitle, Language: form.Language, Name: form.EditionName}}
 		if form.SeriesName == "" {
 			errs["series_name"] = "Enter a series name."
 		}
-		if !catalog.ValidBookKind(form.Kind) {
-			errs["kind"] = "Choose a format."
+		if !names.ValidKind(form.Kind) {
+			errs["kind"] = "Choose a medium."
 		}
-	} else if ref.ID, err = parseID(form.BookLine); err != nil {
-		errs["book_line"] = "Choose a series and format."
-	} else if _, err := s.db.GetBookLine(ref.ID); err != nil {
-		errs["book_line"] = "Format not found. Choose another."
+		if !names.ValidLanguage(form.Language) {
+			errs["language"] = "Choose a language."
+		}
+	} else if ref.ID, err = parseID(form.Edition); err != nil {
+		errs["edition"] = "Choose a series and edition."
+	} else if _, err := s.db.GetEdition(ref.ID); err != nil {
+		errs["edition"] = "Edition not found. Choose another."
 	}
 	var receiptLine int64
 	if form.ReceiptLine != "" {
@@ -805,28 +819,6 @@ func (s *Server) storeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/admin?ok=updated", http.StatusSeeOther)
-}
-
-func (s *Server) groupTripsForm(w http.ResponseWriter, r *http.Request) {
-	items, trips, err := s.db.UngroupedPurchases()
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_group_trips", "Group into trips", map[string]int{"Items": items, "Trips": trips})
-}
-
-func (s *Server) groupTrips(w http.ResponseWriter, r *http.Request) {
-	name := "shelf-before-trips-" + time.Now().Format("20060102-150405") + ".db"
-	if err := s.db.Backup(filepath.Join(s.cfg.DataDir, "backups", name)); err != nil {
-		s.serverError(w, r, fmt.Errorf("backup before grouping: %w", err))
-		return
-	}
-	if _, _, err := s.db.GroupIntoTrips(); err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, "/stats?ok=grouped", http.StatusSeeOther)
 }
 
 func containsFold(list []string, s string) bool {

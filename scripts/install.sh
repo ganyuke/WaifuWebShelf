@@ -26,19 +26,14 @@ install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$ROOT/data"
 release=releases/$(date +%Y%m%d-%H%M%S)
 echo "==> Unpacking $tarball into $ROOT/$release"
 install -d -m 755 "$ROOT/releases" "$ROOT/$release"
-# Installs from before releases/ had app as a plain folder. It becomes the first release.
-if [[ -d "$ROOT/app" && ! -L "$ROOT/app" ]]; then
-  mv -T "$ROOT/app" "$ROOT/releases/first"
-fi
 tar -xzf "$tarball" -C "$ROOT/$release" --strip-components=1 --no-same-owner app
 ln -sfn "$release" "$ROOT/app.next"
 mv -T "$ROOT/app.next" "$ROOT/app"
 
 # Keep the newest five releases. Only real folders named like a release are
-# removed, never the one app points at, and first counts as the oldest.
+# removed, never the one app points at.
 current=$(readlink "$ROOT/app")
 mapfile -t old < <(
-  if [[ -d $ROOT/releases/first && ! -L $ROOT/releases/first ]]; then echo first; fi
   find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
     -regex '.*/[0-9]{8}-[0-9]{6}' -printf '%f\n' | sort
 )

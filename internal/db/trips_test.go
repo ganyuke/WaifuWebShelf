@@ -19,7 +19,7 @@ func tripFixture(t *testing.T) (*DB, int64) {
 		t.Fatal(err)
 	}
 	msrp := int64(1699)
-	lid, err := d.CreateBookLine(sid, BookLineWrite{Kind: "manga", Label: "English", DefaultMSRPCents: &msrp, DefaultCurrency: "CAD"})
+	lid, err := testEdition(d, sid, "manga", EditionWrite{Language: "en", DefaultMSRPCents: &msrp, DefaultCurrency: "CAD"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestTripReceiptPricesAndTotals(t *testing.T) {
 	if err != nil || len(lines) != 1 {
 		t.Fatalf("lines %v %v", lines, err)
 	}
-	if err := d.AddVolumes(tid, lines[0].ID, BookLineRef{ID: lid}, []string{"14", "15"}, []int{1400, 1500}, false); err != nil {
+	if err := d.AddVolumes(tid, lines[0].ID, EditionRef{ID: lid}, []string{"14", "15"}, []int{1400, 1500}, false); err != nil {
 		t.Fatal(err)
 	}
 	vols, err := d.ListVolumes(lid)
@@ -66,7 +66,7 @@ func TestTripReceiptPricesAndTotals(t *testing.T) {
 		t.Fatalf("entered %d", lines[0].Entered)
 	}
 
-	err = d.AddVolumes(tid, lines[0].ID, BookLineRef{ID: lid}, []string{"15", "16"}, []int{1500, 1600}, false)
+	err = d.AddVolumes(tid, lines[0].ID, EditionRef{ID: lid}, []string{"15", "16"}, []int{1500, 1600}, false)
 	var owned *OwnedError
 	if !errors.As(err, &owned) || len(owned.Numbers) != 1 || owned.Numbers[0] != "15" {
 		t.Fatalf("want owned 15, got %v", err)
@@ -135,59 +135,11 @@ func TestEmptyVisitAndMissingTotal(t *testing.T) {
 	}
 }
 
-func TestGroupIntoTrips(t *testing.T) {
-	d, lid := tripFixture(t)
-	for _, n := range []string{"1", "2"} {
-		if _, err := d.CreateVolume(lid, n, 0, Purchase{PurchasedAt: "2024-09-02", Store: "Book Off", Currency: "CAD",
-			PriceExTaxCents: ptr(800), PriceIncTaxCents: ptr(896)}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := d.CreateVolume(lid, "3", 0, Purchase{Store: "Book Off", Currency: "CAD"}); err != nil {
-		t.Fatal(err)
-	}
-	before, _ := d.ShelfStats()
-	items, trips, err := d.UngroupedPurchases()
-	if err != nil || items != 2 || trips != 1 {
-		t.Fatalf("ungrouped %d %d %v", items, trips, err)
-	}
-	if tn, in, err := d.GroupIntoTrips(); err != nil || tn != 1 || in != 2 {
-		t.Fatalf("group %d %d %v", tn, in, err)
-	}
-	all, _ := d.ListTrips()
-	if len(all) != 1 || all[0].StoreName != "Book Off" || all[0].PaidCents.Int64 != 1792 {
-		t.Fatalf("trip %+v", all)
-	}
-	after, _ := d.ShelfStats()
-	if before.ByCurrency[0].IncTaxCents != after.ByCurrency[0].IncTaxCents {
-		t.Fatalf("grouping changed the total paid: %d -> %d", before.ByCurrency[0].IncTaxCents, after.ByCurrency[0].IncTaxCents)
-	}
-	if items, _, _ := d.UngroupedPurchases(); items != 0 {
-		t.Fatalf("still ungrouped: %d", items)
-	}
-}
-
-func TestBackup(t *testing.T) {
-	d, _ := tripFixture(t)
-	path := filepath.Join(t.TempDir(), "backups", "copy.db")
-	if err := d.Backup(path); err != nil {
-		t.Fatal(err)
-	}
-	c, err := Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.Close()
-	if s, err := c.ListSeries(); err != nil || len(s) != 1 {
-		t.Fatalf("backup content %v %v", s, err)
-	}
-}
-
 func TestPhotoTags(t *testing.T) {
 	d, lid := tripFixture(t)
 	a, _ := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Book Off"}, VisitedOn: "2026-10-11", Currency: "CAD"})
 	b, _ := d.CreateTrip(TripWrite{StoreID: 1, VisitedOn: "2026-10-18", Currency: "CAD"})
-	if err := d.AddVolumes(a, 0, BookLineRef{ID: lid}, []string{"1"}, []int{100}, false); err != nil {
+	if err := d.AddVolumes(a, 0, EditionRef{ID: lid}, []string{"1"}, []int{100}, false); err != nil {
 		t.Fatal(err)
 	}
 	vols, _ := d.ListVolumes(lid)
@@ -224,12 +176,12 @@ func TestAddVolumesNewSeries(t *testing.T) {
 		t.Fatal(err)
 	}
 	lines, _ := d.ReceiptLines(tid)
-	fly := BookLineRef{SeriesName: "Fly Me to the Moon", Kind: "manga"}
+	fly := EditionRef{SeriesName: "Fly Me to the Moon", NewEdition: NewEdition{Kind: "manga", Language: "en"}}
 	if err := d.AddVolumes(tid, lines[0].ID, fly, []string{"1", "2", "3"}, []int{100, 200, 300}, false); err != nil {
 		t.Fatal(err)
 	}
-	// Typing the name again in other case lands on the same series and format.
-	again := BookLineRef{SeriesName: "fly me to the moon", Kind: "manga"}
+	// Typing the name again in other case lands on the same series and edition.
+	again := EditionRef{SeriesName: "fly me to the moon", NewEdition: NewEdition{Kind: "manga", Language: "en"}}
 	if err := d.AddVolumes(tid, lines[0].ID, again, []string{"4"}, []int{400}, false); err != nil {
 		t.Fatal(err)
 	}
@@ -246,20 +198,20 @@ func TestAddVolumesNewSeries(t *testing.T) {
 			flyID = s.ID
 		}
 	}
-	bls, err := d.ListBookLines(flyID)
-	if err != nil || len(bls) != 1 || bls[0].Kind != "manga" || bls[0].DefaultCurrency != "CAD" {
-		t.Fatalf("book lines %+v %v", bls, err)
+	bls, err := d.ListSeriesEditions(flyID)
+	if err != nil || len(bls) != 1 || bls[0].Medium != "manga" || bls[0].Language != "en" || bls[0].DefaultCurrency != "CAD" {
+		t.Fatalf("editions %+v %v", bls, err)
 	}
 	if vols, _ := d.ListVolumes(bls[0].ID); len(vols) != 4 || vols[0].PriceExTaxCents.Int64 != 200 {
 		t.Fatalf("vols %+v", vols)
 	}
 
-	// An existing series with its existing format adds to that format.
-	rag := BookLineRef{SeriesName: "rent-a-girlfriend", Kind: "manga", Label: "english"}
+	// An existing series with its existing edition adds to that edition.
+	rag := EditionRef{SeriesName: "rent-a-girlfriend", NewEdition: NewEdition{Kind: "manga", Language: "en"}}
 	if err := d.AddVolumes(tid, lines[0].ID, rag, []string{"9"}, []int{900}, false); err != nil {
 		t.Fatal(err)
 	}
 	if vols, _ := d.ListVolumes(lid); len(vols) != 1 {
-		t.Fatalf("want volume 9 on the existing format, have %d", len(vols))
+		t.Fatalf("want volume 9 on the existing edition, have %d", len(vols))
 	}
 }

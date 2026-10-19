@@ -18,7 +18,7 @@ func TestShelfStatsSkipsMissingMSRP(t *testing.T) {
 		t.Fatal(err)
 	}
 	total := int64(2)
-	lineID, err := store.CreateBookLine(id, BookLineWrite{Kind: "light_novel", TotalVolumes: &total})
+	lineID, err := testEdition(store, id, "light_novel", EditionWrite{TotalVolumes: &total})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestDuplicateVolumePurchases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lineID, err := store.CreateBookLine(id, BookLineWrite{Kind: "manga"})
+	lineID, err := testEdition(store, id, "manga", EditionWrite{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestListExpendituresOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lineID, err := store.CreateBookLine(id, BookLineWrite{Kind: "light_novel"})
+	lineID, err := testEdition(store, id, "light_novel", EditionWrite{})
 	if err != nil {
 		t.Fatal(err)
 	}

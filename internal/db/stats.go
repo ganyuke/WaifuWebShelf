@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"sort"
+
+	"waifuwebshelf/internal/names"
 )
 
 type MoneyTotals struct {
@@ -43,16 +45,14 @@ type Expenditure struct {
 	MSRPCents        sql.NullInt64
 	PriceExTaxCents  sql.NullInt64
 	PriceIncTaxCents sql.NullInt64
-	SeriesName       string
-	SeriesSlug       string
-	LineKind         string
-	LineLabel        string
-	LineSlug         string
 	VolumeNumber     string
+	VolumeTitle      string
 	Name             string
 	MerchKind        string
 	Quantity         int
 	TripID           sql.NullInt64
+	// Naming is set for volumes. Merch only has the series.
+	names.Naming
 }
 
 func (e Expenditure) Paid() sql.NullInt64 { return paid(e.PriceIncTaxCents, e.PriceExTaxCents) }
@@ -62,30 +62,28 @@ type Addition struct {
 	Kind         string
 	ID           int64
 	PurchasedAt  sql.NullString
-	SeriesName   string
-	SeriesSlug   string
-	LineKind     string
-	LineLabel    string
-	LineSlug     string
 	VolumeNumber string
+	VolumeTitle  string
 	Name         string
 	Image        sql.NullString
+	// Naming is set for volumes. Merch only has the series.
+	names.Naming
 }
 
 // RecentAdditions lists the latest dated purchases, newest first.
 func (d *DB) RecentAdditions(limit int) ([]Addition, error) {
 	rows, err := d.SQL.Query(`
-		SELECT kind, id, purchased_at, series_name, series_slug, line_kind, line_label, line_slug, volume_number, name, image
+		SELECT kind, id, purchased_at, volume_number, volume_title, name, image,
+			series_name, series_slug, work_title, kind_, work_slug, language, edition_name, edition_slug
 		FROM (
-			SELECT 'volume' AS kind, v.id, v.purchased_at, s.name AS series_name, s.slug AS series_slug,
-				bl.kind AS line_kind, bl.label AS line_label, bl.slug AS line_slug, v.volume_number,
-				'' AS name, COALESCE(c.image_path, v.image_path) AS image
+			SELECT 'volume' AS kind, v.id, v.purchased_at, v.volume_number, COALESCE(i.title, '') AS volume_title,
+				'' AS name, COALESCE(i.cover_path, v.image_path) AS image,
+				n.series_name, n.series_slug, n.work_title, n.kind AS kind_, n.work_slug, n.language, n.edition_name, n.edition_slug
 			FROM volumes v
-			JOIN book_lines bl ON bl.id = v.book_line_id
-			JOIN series s ON s.id = bl.series_id
-			LEFT JOIN volume_covers c ON c.book_line_id = v.book_line_id AND c.volume_number = v.volume_number
+			JOIN edition_names n ON n.edition_id = v.edition_id
+			LEFT JOIN volume_info i ON i.edition_id = v.edition_id AND i.volume_number = v.volume_number
 			UNION ALL
-			SELECT 'merch', m.id, m.purchased_at, s.name, s.slug, '', '', '', '', m.name, m.image_path
+			SELECT 'merch', m.id, m.purchased_at, '', '', m.name, m.image_path, s.name, s.slug, '', '', '', '', '', ''
 			FROM merch m
 			JOIN series s ON s.id = m.series_id
 		)
@@ -99,8 +97,8 @@ func (d *DB) RecentAdditions(limit int) ([]Addition, error) {
 	var out []Addition
 	for rows.Next() {
 		var a Addition
-		if err := rows.Scan(&a.Kind, &a.ID, &a.PurchasedAt, &a.SeriesName, &a.SeriesSlug,
-			&a.LineKind, &a.LineLabel, &a.LineSlug, &a.VolumeNumber, &a.Name, &a.Image); err != nil {
+		if err := rows.Scan(append([]any{&a.Kind, &a.ID, &a.PurchasedAt, &a.VolumeNumber, &a.VolumeTitle, &a.Name, &a.Image},
+			scanNaming(&a.Naming)...)...); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -111,7 +109,8 @@ func (d *DB) RecentAdditions(limit int) ([]Addition, error) {
 func (d *DB) ListExpenditures() ([]Expenditure, error) {
 	rows, err := d.SQL.Query(`
 		SELECT kind, id, purchased_at, store, currency, msrp_cents, price_ex_tax_cents, price_inc_tax_cents,
-			series_name, series_slug, line_kind, line_label, line_slug, volume_number, name, merch_kind, quantity, trip_id
+			volume_number, volume_title, name, merch_kind, quantity, trip_id,
+			series_name, series_slug, work_title, kind_, work_slug, language, edition_name, edition_slug
 		FROM (
 			SELECT
 				'volume' AS kind,
@@ -122,19 +121,23 @@ func (d *DB) ListExpenditures() ([]Expenditure, error) {
 				v.msrp_cents,
 				v.price_ex_tax_cents,
 				v.price_inc_tax_cents,
-				s.name AS series_name,
-				s.slug AS series_slug,
-				bl.kind AS line_kind,
-				bl.label AS line_label,
-				bl.slug AS line_slug,
 				v.volume_number,
+				COALESCE(i.title, '') AS volume_title,
 				'' AS name,
 				'' AS merch_kind,
 				1 AS quantity,
-				v.trip_id
+				v.trip_id,
+				n.series_name,
+				n.series_slug,
+				n.work_title,
+				n.kind AS kind_,
+				n.work_slug,
+				n.language,
+				n.edition_name,
+				n.edition_slug
 			FROM volumes v
-			JOIN book_lines bl ON bl.id = v.book_line_id
-			JOIN series s ON s.id = bl.series_id
+			JOIN edition_names n ON n.edition_id = v.edition_id
+			LEFT JOIN volume_info i ON i.edition_id = v.edition_id AND i.volume_number = v.volume_number
 			UNION ALL
 			SELECT
 				'merch',
@@ -145,16 +148,15 @@ func (d *DB) ListExpenditures() ([]Expenditure, error) {
 				m.msrp_cents,
 				m.price_ex_tax_cents,
 				m.price_inc_tax_cents,
-				s.name,
-				s.slug,
-				'',
-				'',
 				'',
 				'',
 				m.name,
 				m.kind,
 				m.quantity,
-				m.trip_id
+				m.trip_id,
+				s.name,
+				s.slug,
+				'', '', '', '', '', ''
 			FROM merch m
 			JOIN series s ON s.id = m.series_id
 		)
@@ -166,12 +168,11 @@ func (d *DB) ListExpenditures() ([]Expenditure, error) {
 	var out []Expenditure
 	for rows.Next() {
 		var e Expenditure
-		if err := rows.Scan(
+		if err := rows.Scan(append([]any{
 			&e.Kind, &e.ID, &e.PurchasedAt, &e.Store, &e.Currency,
 			&e.MSRPCents, &e.PriceExTaxCents, &e.PriceIncTaxCents,
-			&e.SeriesName, &e.SeriesSlug, &e.LineKind, &e.LineLabel, &e.LineSlug,
-			&e.VolumeNumber, &e.Name, &e.MerchKind, &e.Quantity, &e.TripID,
-		); err != nil {
+			&e.VolumeNumber, &e.VolumeTitle, &e.Name, &e.MerchKind, &e.Quantity, &e.TripID,
+		}, scanNaming(&e.Naming)...)...); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

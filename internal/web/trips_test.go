@@ -29,7 +29,11 @@ func TestTripFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lid, err := store.CreateBookLine(sid, db.BookLineWrite{Kind: "manga", Label: "English", DefaultCurrency: "CAD"})
+	wid, err := store.CreateWork(sid, db.WorkWrite{Kind: "manga"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lid, err := store.CreateEdition(wid, db.EditionWrite{Language: "en", DefaultCurrency: "CAD"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +95,7 @@ func TestTripFlow(t *testing.T) {
 		t.Fatalf("receipt lines %+v %v", lines, err)
 	}
 
-	books := url.Values{"receipt_line": {strconv.FormatInt(lines[0].ID, 10)}, "book_line": {strconv.FormatInt(lid, 10)}, "volumes": {"1-3"}}
+	books := url.Values{"receipt_line": {strconv.FormatInt(lines[0].ID, 10)}, "edition": {strconv.FormatInt(lid, 10)}, "volumes": {"1-3"}}
 	if res, body := post("/admin/trips/"+trip+"/books", books); res.StatusCode != 422 || !strings.Contains(body, "Already owned: 1.") {
 		t.Fatalf("owned volume should be refused: %d", res.StatusCode)
 	}
@@ -111,16 +115,16 @@ func TestTripFlow(t *testing.T) {
 			t.Fatalf("trip page missing %q", want)
 		}
 	}
-	if first := get("/series/rag/english/1"); !strings.Contains(first, `<span class="off">← Previous</span>`) || !strings.Contains(first, `rel="next"`) {
+	if first := get("/series/rag/manga/english/1"); !strings.Contains(first, `<span class="off">← Previous</span>`) || !strings.Contains(first, `rel="next"`) {
 		t.Fatal("the first volume should show Previous greyed out and link Next")
 	}
-	vol := get("/series/rag/english/2")
+	vol := get("/series/rag/manga/english/2")
 	if !strings.Contains(vol, "+ tax") || !strings.Contains(vol, "Same trip") || !strings.Contains(vol, `href="/trips/`+trip+`"`) {
 		t.Fatal("volume page should link its trip and show what else was bought")
 	}
 
 	// A series not on the shelf yet is added from the same form.
-	fly := url.Values{"receipt_line": {strconv.FormatInt(lines[0].ID, 10)}, "book_line": {"new"}, "kind": {"manga"}, "volumes": {"1-2"}}
+	fly := url.Values{"receipt_line": {strconv.FormatInt(lines[0].ID, 10)}, "edition": {"new"}, "kind": {"manga"}, "language": {"en"}, "volumes": {"1-2"}}
 	if res, body := post("/admin/trips/"+trip+"/books", fly); res.StatusCode != 422 || !strings.Contains(body, "Enter a series name.") {
 		t.Fatalf("missing series name should be refused: %d", res.StatusCode)
 	}
@@ -131,10 +135,10 @@ func TestTripFlow(t *testing.T) {
 	if page := get("/trips/" + trip); !strings.Contains(page, "4 of 8") || !strings.Contains(page, "Fly Me to the Moon") {
 		t.Fatal("trip page should show the new series' books on the receipt line")
 	}
-	get("/series/fly-me-to-the-moon/manga/2")
+	get("/series/fly-me-to-the-moon/manga/english/2")
 
 	// Hovering a small picture shows the same details as its page.
-	card := get("/preview/series/rag/english/2")
+	card := get("/preview/series/rag/manga/english/2")
 	for _, want := range []string{"Rent-A-Girlfriend vol. 2", "English manga", "11 Oct 2026 at Book Off Robson", "Before tax"} {
 		if !strings.Contains(card, want) {
 			t.Fatalf("volume card missing %q:\n%s", want, card)
@@ -143,7 +147,7 @@ func TestTripFlow(t *testing.T) {
 	if strings.Contains(card, "<html") {
 		t.Fatal("a card is a fragment, not a page")
 	}
-	if card := get("/preview/series/rag/english/9"); !strings.Contains(card, "Not owned") {
+	if card := get("/preview/series/rag/manga/english/9"); !strings.Contains(card, "Not owned") {
 		t.Fatal("a missing volume's card should say Not owned")
 	}
 	if card := get("/preview/trips/" + trip); !strings.Contains(card, "Book Off Robson") || !strings.Contains(card, "CA$23.52") {
@@ -174,18 +178,6 @@ func TestTripFlow(t *testing.T) {
 		if !strings.Contains(stats, want) {
 			t.Fatalf("spending page missing %q", want)
 		}
-	}
-
-	// Earlier purchases are grouped only after a backup.
-	if res, _ := post("/admin/trips/group", nil); res.StatusCode != 303 {
-		t.Fatalf("group %d", res.StatusCode)
-	}
-	backups, _ := filepath.Glob(filepath.Join(dir, "backups", "*.db"))
-	if len(backups) != 1 {
-		t.Fatalf("backups %v", backups)
-	}
-	if n, _, _ := store.UngroupedPurchases(); n != 0 {
-		t.Fatalf("still ungrouped: %d", n)
 	}
 }
 

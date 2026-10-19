@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,13 @@ import (
 
 //go:embed schema.sql
 var schemaFS embed.FS
+
+// schemaVersion is stored in the database file. Databases are never upgraded:
+// a file made by an older version is refused, and a new data folder is needed.
+const schemaVersion = 2
+
+// ErrOldDatabase means the database file was made by an older version.
+var ErrOldDatabase = errors.New("the database was made by an older version of WaifuWebShelf and cannot be opened. Move it out of the data folder to start a new one")
 
 type DB struct {
 	SQL *sql.DB
@@ -32,20 +40,35 @@ func Open(path string) (*DB, error) {
 		_ = sqlDB.Close()
 		return nil, err
 	}
-	schema, err := schemaFS.ReadFile("schema.sql")
-	if err != nil {
+	if err := applySchema(sqlDB); err != nil {
 		_ = sqlDB.Close()
 		return nil, err
 	}
-	if err := execScript(sqlDB, string(schema)); err != nil {
-		_ = sqlDB.Close()
-		return nil, fmt.Errorf("apply schema: %w", err)
-	}
-	if err := migrate(sqlDB); err != nil {
-		_ = sqlDB.Close()
-		return nil, fmt.Errorf("migrate: %w", err)
-	}
 	return &DB{SQL: sqlDB}, nil
+}
+
+// applySchema creates the tables in a new database and checks an existing
+// one was made with this schema.
+func applySchema(sqlDB *sql.DB) error {
+	var version, tables int
+	if err := sqlDB.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return err
+	}
+	if err := sqlDB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&tables); err != nil {
+		return err
+	}
+	if tables > 0 && version != schemaVersion {
+		return ErrOldDatabase
+	}
+	schema, err := schemaFS.ReadFile("schema.sql")
+	if err != nil {
+		return err
+	}
+	if err := execScript(sqlDB, string(schema)); err != nil {
+		return fmt.Errorf("apply schema: %w", err)
+	}
+	_, err = sqlDB.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
+	return err
 }
 
 func execScript(sqlDB *sql.DB, script string) error {

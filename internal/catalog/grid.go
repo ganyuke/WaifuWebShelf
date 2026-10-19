@@ -16,25 +16,22 @@ type GridCell struct {
 }
 
 type VolumeGrid struct {
-	Line         db.BookLine
-	Title        string
+	Edition      db.Edition
 	Cells        []GridCell
 	Extras       []db.Volume
 	WantedExtras []string
 	Owned        int
 	Copies       int
 	Total        *int
-	Caption      string
 }
 
-func BuildGrid(line db.BookLine, vols []db.Volume) VolumeGrid {
+func BuildGrid(ed db.Edition, vols []db.Volume) VolumeGrid {
 	g := VolumeGrid{
-		Line:   line,
-		Title:  LineTitle(line.Kind, line.Label),
-		Copies: len(vols),
+		Edition: ed,
+		Copies:  len(vols),
 	}
-	if line.TotalVolumes.Valid {
-		n := int(line.TotalVolumes.Int64)
+	if ed.TotalVolumes.Valid {
+		n := int(ed.TotalVolumes.Int64)
 		g.Total = &n
 	}
 
@@ -73,7 +70,6 @@ func BuildGrid(line db.BookLine, vols []db.Volume) VolumeGrid {
 	}
 	g.Extras = extras
 	g.Owned = len(numeric)
-	g.Caption = progressCaption(g.Title, g.Owned, g.Total, g.Copies, len(extras))
 	return g
 }
 
@@ -187,21 +183,6 @@ func (g *VolumeGrid) ApplyWishlist(wanted Remaining) {
 		}
 	}
 	g.WantedExtras = append([]string(nil), wanted.Keys...)
-}
-
-func progressCaption(title string, uniqueOwned int, total *int, copies, extras int) string {
-	base := title + "  "
-	if total != nil {
-		base += itoa(uniqueOwned) + " / " + itoa(*total)
-	} else if copies == 0 {
-		base += "0 owned"
-	} else {
-		base += itoa(uniqueOwned) + " owned"
-	}
-	if copies > uniqueOwned+extras {
-		base += ", " + itoa(copies) + " copies"
-	}
-	return base
 }
 
 func itoa(n int) string {

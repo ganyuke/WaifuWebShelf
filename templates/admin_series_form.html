@@ -23,17 +23,20 @@
 </div>
 {{if not .Data.New}}
 <section class="panel">
-  <h2>Formats</h2>
-  {{if .Data.Lines}}
+  <h2>Works</h2>
+  {{if .Data.Works}}
   <table class="admin-table">
     <tbody>
-    {{range .Data.Lines}}
-      <tr><td>{{lineFull .Kind .Label}}</td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/edit">Edit</a></td></tr>
+    {{range .Data.Works}}
+      <tr><td class="strong">{{.Heading}}{{if .Title}} <span class="muted">{{kindName .Kind}}</span>{{end}}</td><td class="link-col"><a href="/admin/works/{{.ID}}/editions/new">Add edition</a></td><td class="link-col"><a href="/admin/works/{{.ID}}/edit">Edit</a></td></tr>
+      {{range .Editions}}
+      <tr><td class="indent">{{.Edition}}</td><td class="link-col"><a href="/admin/editions/{{.ID}}/volumes/new">Add volume</a></td><td class="link-col"><a href="/admin/editions/{{.ID}}/edit">Edit</a></td></tr>
+      {{end}}
     {{end}}
     </tbody>
   </table>
   {{else}}<p class="muted">None yet</p>{{end}}
-  <p><a class="btn" href="/admin/series/{{.Data.ID}}/book-lines/new">Add format</a></p>
+  <p><a class="btn" href="/admin/series/{{.Data.ID}}/works/new">Add work</a></p>
 </section>
 <section class="panel">
   <h2>Merch</h2>
@@ -54,7 +57,7 @@
   <table class="admin-table">
     <tbody>
     {{range .Data.Wishlist}}
-      <tr><td>{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{if .RemainLabel}} {{.VolumesLabel}}{{end}}{{end}}</td><td class="link-col"><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></td></tr>
+      <tr><td>{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.Describe}}{{if .RemainLabel}} {{.VolumesLabel}}{{end}}{{end}}</td><td class="link-col"><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
     </tbody>
   </table>

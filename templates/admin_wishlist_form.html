@@ -1,6 +1,6 @@
 {{define "admin_wishlist_form"}}
 {{template "header" .}}
-<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a>{{if and (eq .Data.Kind "volumes") .Data.BookLineID}} › <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a>{{end}}</p>
+<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a>{{if and (eq .Data.Kind "volumes") .Data.EditionID}} › <a href="/admin/editions/{{.Data.EditionID}}/edit">{{.Data.EditionTitle}}</a>{{end}}</p>
 <div class="box">
   <div class="bar">
     <h1>{{if .Data.New}}Add to wishlist{{else}}Edit wishlist{{end}}</h1>
@@ -9,16 +9,16 @@
   <form class="stack" method="post" enctype="multipart/form-data">
     <input type="hidden" name="kind" value="{{.Data.Kind}}">
     {{if eq .Data.Kind "volumes"}}
-    {{if gt (len .Data.Lines) 1}}
-    <label>Format
-      <select name="book_line_id">
-        {{range .Data.Lines}}
-        <option value="{{.ID}}" {{if eq .ID $.Data.BookLineID}}selected{{end}}>{{lineFull .Kind .Label}}</option>
+    {{if gt (len .Data.Editions) 1}}
+    <label>Edition
+      <select name="edition_id">
+        {{range .Data.Editions}}
+        <option value="{{.ID}}" {{if eq .ID $.Data.EditionID}}selected{{end}}>{{.Describe}}</option>
         {{end}}
       </select>
     </label>
-    {{else if .Data.Lines}}
-    <input type="hidden" name="book_line_id" value="{{(index .Data.Lines 0).ID}}">
+    {{else if .Data.Editions}}
+    <input type="hidden" name="edition_id" value="{{(index .Data.Editions 0).ID}}">
     {{end}}
     <label>Volumes
       <span class="pair">
@@ -70,8 +70,8 @@
     <a class="btn" href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>
     <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=merch">Add to wishlist</a>
     {{else}}
-    <a class="btn" href="/admin/book-lines/{{.Data.BookLineID}}/volumes/new{{if .Data.VolFrom}}?n={{.Data.VolFrom}}{{end}}">Add volume</a>
-    <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.BookLineID}}">Add to wishlist</a>
+    <a class="btn" href="/admin/editions/{{.Data.EditionID}}/volumes/new{{if .Data.VolFrom}}?n={{.Data.VolFrom}}{{end}}">Add volume</a>
+    <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&edition={{.Data.EditionID}}">Add to wishlist</a>
     {{end}}
   </p>
 </section>

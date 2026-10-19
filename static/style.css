@@ -106,10 +106,12 @@ img { max-width: 100%; }
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
-.bar h1, .bar h2 { margin: 0; }
+.bar h1, .bar h2, .bar h3 { margin: 0; }
 h1, h1.bar, .bar h1 { font-size: 21px; line-height: 1.25; font-weight: 700; }
 h2, h2.bar, .bar h2, .panel h2 { font-size: 15px; line-height: 1.3; font-weight: 700; }
 h3 { font-size: 13px; font-weight: 700; margin: 14px 0 6px; }
+h4 { font-size: 12px; font-weight: 700; margin: 12px 0 6px; }
+.edition + .edition { margin-top: 16px; }
 .bar h1 a, .bar h2 a { color: inherit; }
 .bar:has(h1), h1.bar { border-bottom: 2px solid var(--bar); }
 .bar .count { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--muted); }
@@ -141,9 +143,10 @@ h3 { font-size: 13px; font-weight: 700; margin: 14px 0 6px; }
 }
 .catalog tbody tr:hover, .admin-table tbody tr:hover { background: var(--soft); }
 .admin-table .link-col { width: 1%; white-space: nowrap; }
+.admin-table .indent { padding-left: 26px; }
 .catalog .num, .admin-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .catalog .date { white-space: nowrap; }
-.catalog .strong { font-weight: 700; }
+.catalog .strong, .admin-table .strong { font-weight: 700; }
 .catalog .under { color: var(--ok); font-weight: 700; }
 .catalog .over { color: var(--danger); font-weight: 700; }
 .catalog td p { margin: 0; }

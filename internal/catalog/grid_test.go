@@ -16,7 +16,7 @@ func vols(numbers ...string) []db.Volume {
 }
 
 func TestGridKnownTotal(t *testing.T) {
-	line := db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 5, Valid: true}}
+	line := db.Edition{TotalVolumes: sql.NullInt64{Int64: 5, Valid: true}}
 	g := BuildGrid(line, vols("1", "3", "8.5"))
 	if len(g.Cells) != 5 {
 		t.Fatalf("cells %d", len(g.Cells))
@@ -27,13 +27,10 @@ func TestGridKnownTotal(t *testing.T) {
 	if len(g.Extras) != 1 || g.Extras[0].VolumeNumber != "8.5" {
 		t.Fatalf("extras %+v", g.Extras)
 	}
-	if g.Caption != "Manga  2 / 5" {
-		t.Fatalf("caption %q", g.Caption)
-	}
 }
 
 func TestGridDuplicateCopies(t *testing.T) {
-	line := db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}
+	line := db.Edition{TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}
 	g := BuildGrid(line, vols("1", "1", "1"))
 	if !g.Cells[0].Owned || len(g.Cells[0].Copies) != 3 {
 		t.Fatalf("copies %+v", g.Cells[0])
@@ -41,13 +38,10 @@ func TestGridDuplicateCopies(t *testing.T) {
 	if g.Owned != 1 || g.Copies != 3 {
 		t.Fatalf("owned %d copies %d", g.Owned, g.Copies)
 	}
-	if g.Caption != "Manga  1 / 3, 3 copies" {
-		t.Fatalf("caption %q", g.Caption)
-	}
 }
 
 func TestGridUnknownTotal(t *testing.T) {
-	line := db.BookLine{Kind: "light_novel"}
+	line := db.Edition{}
 	g := BuildGrid(line, vols("1", "2", "omake"))
 	if len(g.Cells) != 2 {
 		t.Fatalf("cells %d", len(g.Cells))
@@ -60,17 +54,8 @@ func TestGridUnknownTotal(t *testing.T) {
 	}
 }
 
-func TestLineTitle(t *testing.T) {
-	if LineTitle("manga", "") != "Manga" {
-		t.Fatal(LineTitle("manga", ""))
-	}
-	if LineTitle("manga", "Anthology") != "Anthology" {
-		t.Fatal(LineTitle("manga", "Anthology"))
-	}
-}
-
 func TestApplyWishlistUnknownTotal(t *testing.T) {
-	g := BuildGrid(db.BookLine{Kind: "manga"}, vols("1"))
+	g := BuildGrid(db.Edition{}, vols("1"))
 	g.ApplyWishlist(Remaining{Numbers: []int{8, 9, 10}})
 	if len(g.Cells) != 4 {
 		t.Fatalf("cells %d", len(g.Cells))
@@ -84,7 +69,7 @@ func TestApplyWishlistUnknownTotal(t *testing.T) {
 }
 
 func TestApplyWishlistKnownTotal(t *testing.T) {
-	g := BuildGrid(db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
+	g := BuildGrid(db.Edition{TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
 	g.ApplyWishlist(Remaining{Numbers: []int{2, 3, 9}, Keys: []string{"8.5"}})
 	if len(g.Cells) != 3 {
 		t.Fatalf("cells %d", len(g.Cells))
@@ -98,7 +83,7 @@ func TestApplyWishlistKnownTotal(t *testing.T) {
 }
 
 func TestApplyCoversGrowsUnknownTotal(t *testing.T) {
-	g := BuildGrid(db.BookLine{Kind: "manga"}, vols("1", "14"))
+	g := BuildGrid(db.Edition{}, vols("1", "14"))
 	g.ApplyCovers(map[string]string{"1": "a.jpg", "37": "b.jpg", "omake": "c.jpg"})
 	if len(g.Cells) != 37 {
 		t.Fatalf("cells %d", len(g.Cells))
@@ -112,7 +97,7 @@ func TestApplyCoversGrowsUnknownTotal(t *testing.T) {
 }
 
 func TestApplyCoversKeepsKnownTotal(t *testing.T) {
-	g := BuildGrid(db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
+	g := BuildGrid(db.Edition{TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
 	g.ApplyCovers(map[string]string{"2": "a.jpg", "9": "b.jpg"})
 	if len(g.Cells) != 3 || g.Cells[1].Cover != "a.jpg" {
 		t.Fatalf("cells %+v", g.Cells)

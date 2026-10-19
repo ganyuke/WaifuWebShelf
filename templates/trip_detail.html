@@ -99,24 +99,29 @@
       </select>
       {{template "item_error" dict "Key" "receipt_line" "Errors" .Data.Errors}}
       {{end}}
-      <label for="book_line">Series and format</label>
-      <select id="book_line" name="book_line">
+      <label for="edition">Series and edition</label>
+      <select id="edition" name="edition">
         <option value="">Choose</option>
-        {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.BookLine}}selected{{end}}>{{.Title}}{{if .Next}}, next is vol. {{.Next}}{{end}}</option>{{end}}
-        <option value="new" {{if eq $.Data.Form.BookLine "new"}}selected{{end}}>New series or format…</option>
+        {{range .Data.Choices}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Data.Form.Edition}}selected{{end}}>{{.Title}}{{if .Next}}, next is vol. {{.Next}}{{end}}</option>{{end}}
+        <option value="new" {{if eq $.Data.Form.Edition "new"}}selected{{end}}>New series or edition…</option>
       </select>
-      {{template "item_error" dict "Key" "book_line" "Errors" .Data.Errors}}
+      {{template "item_error" dict "Key" "edition" "Errors" .Data.Errors}}
       <fieldset class="new-store" data-new-line>
-        <legend>New series or format</legend>
-        <label for="series_name">Series <span class="hint" title="Type a series you already have to add a new format to it" tabindex="0">(?)</span></label>
+        <legend>New series or edition</legend>
+        <label for="series_name">Series <span class="hint" title="Type a series you already have to add a new edition to it" tabindex="0">(?)</span></label>
         <input id="series_name" name="series_name" value="{{.Data.Form.SeriesName}}" list="series-names" autocomplete="off">
         <datalist id="series-names">{{range .Data.Series}}<option value="{{.}}">{{end}}</datalist>
         {{template "item_error" dict "Key" "series_name" "Errors" .Data.Errors}}
-        <label for="kind">Format</label>
+        <label for="work_title">Title (optional) <span class="hint" title="For a spinoff or a book with its own name, like K-On! Shuffle. Leave empty for the series' own name." tabindex="0">(?)</span></label>
+        <input id="work_title" name="work_title" value="{{.Data.Form.WorkTitle}}" autocomplete="off">
+        <label for="kind">Medium</label>
         <select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Form.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>
         {{template "item_error" dict "Key" "kind" "Errors" .Data.Errors}}
-        <label for="label">Edition (optional)</label>
-        <input id="label" name="label" value="{{.Data.Form.Label}}" placeholder="English" autocomplete="off">
+        <label for="language">Language</label>
+        <select id="language" name="language"><option value="" {{if eq $.Data.Form.Language ""}}selected{{end}}>Not set</option>{{range languages}}<option value="{{.Code}}" {{if eq .Code $.Data.Form.Language}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+        {{template "item_error" dict "Key" "language" "Errors" .Data.Errors}}
+        <label for="edition_name">Edition name (optional) <span class="hint" title="For printings with their own numbering, like 3-in-1. It goes in each volume's name." tabindex="0">(?)</span></label>
+        <input id="edition_name" name="edition_name" value="{{.Data.Form.EditionName}}" placeholder="3-in-1" autocomplete="off">
       </fieldset>
       <label for="volumes">Volumes</label>
       <input id="volumes" name="volumes" value="{{.Data.Form.Numbers}}" placeholder="14, 15, 17-19" autocomplete="off">

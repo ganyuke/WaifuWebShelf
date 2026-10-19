@@ -9,12 +9,21 @@ import (
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 )
 
+// WorkPage is one work on its series page, with a grid per edition.
+type WorkPage struct {
+	db.Work
+	Heading  string
+	Links    []LinkView
+	Editions []GridPage
+}
+
+// GridPage is one edition's volume grid.
 type GridPage struct {
 	catalog.VolumeGrid
-	FullTitle string
-	Links     []LinkView
+	Links []LinkView
 }
 
 type MerchGroup struct {
@@ -102,41 +111,10 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lines, err := s.db.ListBookLines(series.ID)
+	works, err := s.seriesWorks(series.ID)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
-	}
-	grids := make([]GridPage, 0, len(lines))
-	for _, line := range lines {
-		vols, err := s.db.ListVolumes(line.ID)
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		ll, err := s.db.ListLinks("book_line", line.ID)
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		grid := GridPage{
-			VolumeGrid: catalog.BuildGrid(line, vols),
-			FullTitle:  catalog.LineFullTitle(line.Kind, line.Label),
-			Links:      s.linkViews(ll),
-		}
-		wanted, err := s.lineWanted(line.ID)
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		grid.ApplyWishlist(wanted)
-		covers, err := s.db.LineCovers(line.ID)
-		if err != nil {
-			s.serverError(w, r, err)
-			return
-		}
-		grid.ApplyCovers(covers)
-		grids = append(grids, grid)
 	}
 	merch, err := s.db.ListMerch(series.ID)
 	if err != nil {
@@ -168,11 +146,66 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 	s.renderPreview(w, r, "series_detail", series.Name, Preview{Image: cover}, map[string]any{
 		"Series":    series,
 		"Links":     s.linkViews(slinks),
-		"Grids":     grids,
+		"Works":     works,
 		"Merch":     merch,
 		"WantMerch": wantMerch,
 		"Cover":     cover,
 	})
+}
+
+// seriesWorks builds the series page's works, each with its editions' grids.
+func (s *Server) seriesWorks(seriesID int64) ([]WorkPage, error) {
+	works, err := s.db.ListWorks(seriesID)
+	if err != nil {
+		return nil, err
+	}
+	editions, err := s.db.ListSeriesEditions(seriesID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]WorkPage, 0, len(works))
+	for _, wk := range works {
+		ll, err := s.db.ListLinks("work", wk.ID)
+		if err != nil {
+			return nil, err
+		}
+		page := WorkPage{Work: wk, Heading: names.WorkHeading(wk.Title, wk.Kind), Links: s.linkViews(ll)}
+		for _, ed := range editions {
+			if ed.WorkID != wk.ID {
+				continue
+			}
+			grid, err := s.editionGrid(ed)
+			if err != nil {
+				return nil, err
+			}
+			page.Editions = append(page.Editions, grid)
+		}
+		out = append(out, page)
+	}
+	return out, nil
+}
+
+func (s *Server) editionGrid(ed db.Edition) (GridPage, error) {
+	vols, err := s.db.ListVolumes(ed.ID)
+	if err != nil {
+		return GridPage{}, err
+	}
+	ll, err := s.db.ListLinks("edition", ed.ID)
+	if err != nil {
+		return GridPage{}, err
+	}
+	grid := GridPage{VolumeGrid: catalog.BuildGrid(ed, vols), Links: s.linkViews(ll)}
+	wanted, err := s.editionWanted(ed.ID)
+	if err != nil {
+		return GridPage{}, err
+	}
+	grid.ApplyWishlist(wanted)
+	covers, err := s.db.EditionCovers(ed.ID)
+	if err != nil {
+		return GridPage{}, err
+	}
+	grid.ApplyCovers(covers)
+	return grid, nil
 }
 
 type CopyView struct {
@@ -190,7 +223,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	line, err := s.db.GetBookLineBySlug(ser.ID, r.PathValue("lineSlug"))
+	ed, err := s.db.GetEditionBySlugs(ser.ID, r.PathValue("workSlug"), r.PathValue("editionSlug"))
 	if db.IsNotFound(err) {
 		s.notFound(w, r)
 		return
@@ -200,7 +233,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	number := r.PathValue("number")
-	copies, err := s.db.ListVolumesByNumber(line.ID, number)
+	copies, err := s.db.ListVolumesByNumber(ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -209,7 +242,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	volumeLinks, err := s.db.ListLinksKeyed("volume_number", line.ID, number)
+	volumeLinks, err := s.db.ListLinksKeyed("volume_number", ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -223,12 +256,12 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		}
 		views[i] = CopyView{Volume: c, Links: s.linkViews(ll)}
 	}
-	cover, err := s.db.VolumeCover(line.ID, number)
+	info, err := s.db.GetVolumeInfo(ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	all, err := s.db.ListVolumes(line.ID)
+	all, err := s.db.ListVolumes(ed.ID)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -245,17 +278,19 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	title := catalog.LineFullTitle(line.Kind, line.Label)
-	s.renderPreview(w, r, "volume_detail", ser.Name+" vol. "+number, Preview{Text: title, Image: nullImage(cover)}, map[string]any{
-		"Series": ser,
-		"Line":   line,
-		"Title":  title,
-		"Number": number,
-		"Copies": views,
-		"Links":  s.linkViews(volumeLinks),
-		"Cover":  nullImage(cover),
-		"Pager":  volumePager(ser.Slug, line.Slug, prev, next),
-		"Same":   same,
+	name := ed.Volume(number, info.Title)
+	caption := ed.VolumeCaption(number, info.Title)
+	s.renderPreview(w, r, "volume_detail", name, Preview{Text: caption, Image: nullImage(info.Cover)}, map[string]any{
+		"Series":  ser,
+		"Edition": ed,
+		"Name":    name,
+		"Caption": caption,
+		"Number":  number,
+		"Copies":  views,
+		"Links":   s.linkViews(volumeLinks),
+		"Cover":   nullImage(info.Cover),
+		"Pager":   volumePager(ed.Naming, prev, next),
+		"Same":    same,
 	})
 }
 
@@ -267,13 +302,13 @@ type Pager struct {
 
 func (p Pager) Any() bool { return p.PrevURL != "" || p.NextURL != "" }
 
-func volumePager(seriesSlug, lineSlug, prev, next string) Pager {
+func volumePager(n names.Naming, prev, next string) Pager {
 	var p Pager
 	if prev != "" {
-		p.PrevURL, p.PrevTitle = volumePageURL(seriesSlug, lineSlug, prev), "Vol. "+prev
+		p.PrevURL, p.PrevTitle = n.VolumeURL(prev), "Vol. "+prev
 	}
 	if next != "" {
-		p.NextURL, p.NextTitle = volumePageURL(seriesSlug, lineSlug, next), "Vol. "+next
+		p.NextURL, p.NextTitle = n.VolumeURL(next), "Vol. "+next
 	}
 	return p
 }
@@ -392,15 +427,12 @@ type Trip struct {
 	order []string
 }
 
-// TripLine is one row of a trip: a run of volumes from one book line, or one merch item.
+// TripLine is one row of a trip: a run of volumes from one edition, or one merch item.
 type TripLine struct {
-	SeriesName string
-	SeriesSlug string
-	LineSlug   string
-	LineTitle  string
-	Volumes    []TripVolume
-	Merch      *db.Expenditure
-	Paid       string
+	names.Naming
+	Volumes []TripVolume
+	Merch   *db.Expenditure
+	Paid    string
 
 	lineKey  string
 	paid     int64
@@ -425,14 +457,14 @@ func (t *Trip) add(e db.Expenditure) {
 		t.paid[cur] += paid.Int64
 	}
 	if e.Kind != "volume" {
-		line := TripLine{SeriesName: e.SeriesName, SeriesSlug: e.SeriesSlug, Merch: &e}
+		line := TripLine{Naming: e.Naming, Merch: &e}
 		if paid.Valid {
 			line.Paid = money.Display(paid.Int64, cur)
 		}
 		t.Lines = append(t.Lines, line)
 		return
 	}
-	key := e.SeriesSlug + "/" + e.LineSlug + "/" + cur
+	key := e.SeriesSlug + "/" + e.WorkSlug + "/" + e.EditionSlug + "/" + cur
 	for i := range t.Lines {
 		if t.Lines[i].lineKey == key {
 			t.Lines[i].addVolume(e.VolumeNumber, paid)
@@ -440,12 +472,9 @@ func (t *Trip) add(e db.Expenditure) {
 		}
 	}
 	line := TripLine{
-		SeriesName: e.SeriesName,
-		SeriesSlug: e.SeriesSlug,
-		LineSlug:   e.LineSlug,
-		LineTitle:  catalog.LineFullTitle(e.LineKind, e.LineLabel),
-		lineKey:    key,
-		currency:   cur,
+		Naming:   e.Naming,
+		lineKey:  key,
+		currency: cur,
 	}
 	line.addVolume(e.VolumeNumber, paid)
 	t.Lines = append(t.Lines, line)

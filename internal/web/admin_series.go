@@ -3,12 +3,9 @@ package web
 import (
 	"database/sql"
 	"net/http"
-	"sort"
 	"strings"
 
-	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
-	"waifuwebshelf/internal/money"
 	"waifuwebshelf/internal/slug"
 )
 
@@ -23,14 +20,7 @@ func (s *Server) adminHome(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	items, trips, err := s.db.UngroupedPurchases()
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_home", "Admin", map[string]any{
-		"Series": cards, "Stores": stores, "Ungrouped": items, "UngroupedTrips": trips,
-	})
+	s.render(w, r, "admin_home", "Admin", map[string]any{"Series": cards, "Stores": stores})
 }
 
 type seriesFormData struct {
@@ -40,7 +30,7 @@ type seriesFormData struct {
 	Notes    string
 	Image    string
 	New      bool
-	Lines    []db.BookLine
+	Works    []WorkRow
 	Merch    []db.Merch
 	Wishlist []WishView
 	Links    []LinkView
@@ -89,7 +79,7 @@ func (s *Server) loadSeriesForm(id int64) (seriesFormData, error) {
 	if err != nil {
 		return seriesFormData{}, err
 	}
-	lines, err := s.db.ListBookLines(id)
+	works, err := s.workRows(id)
 	if err != nil {
 		return seriesFormData{}, err
 	}
@@ -115,7 +105,7 @@ func (s *Server) loadSeriesForm(id int64) (seriesFormData, error) {
 		Slug:     ser.Slug,
 		Notes:    ser.Notes,
 		Image:    nullImage(ser.ImagePath),
-		Lines:    lines,
+		Works:    works,
 		Merch:    merch,
 		Wishlist: wishItems,
 		Links:    s.linkViews(ll),
@@ -210,7 +200,7 @@ func (s *Server) seriesDeleteForm(w http.ResponseWriter, r *http.Request) {
 		"Title":  ser.Name,
 		"Action": "/admin/series/" + r.PathValue("id") + "/delete",
 		"Cancel": "/admin/series/" + r.PathValue("id") + "/edit",
-		"Body":   "This deletes the series, every format and volume, and all merch attached to it.",
+		"Body":   "This deletes the series, every work, edition and volume, and all merch attached to it.",
 	})
 }
 
@@ -225,278 +215,4 @@ func (s *Server) seriesDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/admin?ok=deleted", http.StatusSeeOther)
-}
-
-type bookLineFormData struct {
-	ID              int64
-	SeriesID        int64
-	SeriesName      string
-	SeriesSlug      string
-	Kind            string
-	Label           string
-	TotalVolumes    string
-	DefaultCurrency string
-	DefaultMSRP     string
-	New             bool
-	Links           []LinkView
-	Volumes         []db.Volume
-	// SpareCovers are covers stored for volumes that are not owned.
-	SpareCovers []SpareCover
-	// CoverSites names the sites covers can be fetched from.
-	CoverSites string
-	LineSlug   string
-}
-
-type SpareCover struct {
-	Number string
-	Image  string
-}
-
-func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	ser, err := s.db.GetSeries(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_bookline_form", "New format", bookLineFormData{
-		New:             true,
-		SeriesID:        ser.ID,
-		SeriesName:      ser.Name,
-		SeriesSlug:      ser.Slug,
-		Kind:            "manga",
-		DefaultCurrency: money.Default,
-	})
-}
-
-func (s *Server) bookLineSaveNew(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Reload the page and try again.")
-		return
-	}
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	ser, err := s.db.GetSeries(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	data := bookLineFormData{
-		New: true, SeriesID: ser.ID, SeriesName: ser.Name, SeriesSlug: ser.Slug,
-		Kind: r.FormValue("kind"), Label: r.FormValue("label"), TotalVolumes: r.FormValue("total_volumes"),
-		DefaultCurrency: r.FormValue("default_currency"), DefaultMSRP: r.FormValue("default_msrp"),
-	}
-	in, msg, err := parseBookLineWrite(r)
-	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "New format", msg, data)
-		return
-	}
-	data.Kind = in.Kind
-	if !catalog.ValidBookKind(in.Kind) {
-		s.renderErr(w, r, "admin_bookline_form", "New format", "Pick a book format.", data)
-		return
-	}
-	lineID, err := s.db.CreateBookLine(ser.ID, in)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(lineID)+"/edit?ok=created", http.StatusSeeOther)
-}
-
-func (s *Server) bookLineEdit(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	data, err := s.loadBookLineForm(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_bookline_form", "Edit format", data)
-}
-
-func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
-	line, err := s.db.GetBookLine(id)
-	if err != nil {
-		return bookLineFormData{}, err
-	}
-	ser, err := s.db.GetSeries(line.SeriesID)
-	if err != nil {
-		return bookLineFormData{}, err
-	}
-	ll, err := s.db.ListLinks("book_line", id)
-	if err != nil {
-		return bookLineFormData{}, err
-	}
-	vols, err := s.db.ListVolumes(id)
-	if err != nil {
-		return bookLineFormData{}, err
-	}
-	covers, err := s.db.LineCovers(id)
-	if err != nil {
-		return bookLineFormData{}, err
-	}
-	for _, v := range vols {
-		delete(covers, v.VolumeNumber)
-	}
-	spare := make([]SpareCover, 0, len(covers))
-	for number, image := range covers {
-		spare = append(spare, SpareCover{Number: number, Image: image})
-	}
-	sort.Slice(spare, func(i, j int) bool {
-		return volumeSortOrder(spare[i].Number) < volumeSortOrder(spare[j].Number)
-	})
-	return bookLineFormData{
-		SpareCovers:     spare,
-		CoverSites:      joinOr(s.covers.Names()),
-		LineSlug:        line.Slug,
-		ID:              line.ID,
-		SeriesID:        ser.ID,
-		SeriesName:      ser.Name,
-		SeriesSlug:      ser.Slug,
-		Kind:            line.Kind,
-		Label:           line.Label,
-		TotalVolumes:    totalVolumesValue(line.TotalVolumes),
-		DefaultCurrency: line.DefaultCurrency,
-		DefaultMSRP:     moneyVal(line.DefaultMSRPCents, line.DefaultCurrency),
-		Links:           s.linkViews(ll),
-		Volumes:         vols,
-	}, nil
-}
-
-func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Reload the page and try again.")
-		return
-	}
-	number := normalizeVolumeNumber(r.FormValue("volume_number"))
-	existing, err := s.db.VolumeCover(id, number)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	if err := s.db.SetVolumeCover(id, number, sql.NullString{}); err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.deleteImage(existing)
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=deleted", http.StatusSeeOther)
-}
-
-func (s *Server) bookLineSaveEdit(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Reload the page and try again.")
-		return
-	}
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	data, err := s.loadBookLineForm(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	data.Kind = r.FormValue("kind")
-	data.Label = r.FormValue("label")
-	data.TotalVolumes = r.FormValue("total_volumes")
-	data.DefaultCurrency = r.FormValue("default_currency")
-	data.DefaultMSRP = r.FormValue("default_msrp")
-	in, msg, err := parseBookLineWrite(r)
-	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "Edit format", msg, data)
-		return
-	}
-	data.Kind = in.Kind
-	if !catalog.ValidBookKind(in.Kind) {
-		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Pick a book format.", data)
-		return
-	}
-	if err := s.db.UpdateBookLine(id, in); err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
-}
-
-func (s *Server) bookLineDeleteForm(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	data, err := s.loadBookLineForm(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	s.render(w, r, "admin_confirm_delete", "Delete format", map[string]any{
-		"Title":  catalog.LineFullTitle(data.Kind, data.Label),
-		"Action": "/admin/book-lines/" + r.PathValue("id") + "/delete",
-		"Cancel": "/admin/book-lines/" + r.PathValue("id") + "/edit",
-		"Body":   "This deletes the format and every volume on it.",
-	})
-}
-
-func (s *Server) bookLineDelete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	line, err := s.db.GetBookLine(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	ser, err := s.db.GetSeries(line.SeriesID)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	if err := s.db.DeleteBookLine(id); err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, "/admin/series/"+formatID(ser.ID)+"/edit?ok=deleted", http.StatusSeeOther)
 }

@@ -11,28 +11,26 @@ import (
 
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 )
-
-type itemLine struct {
-	db.BookLine
-	SeriesName string
-}
 
 type itemForm struct {
 	WishlistID int64
 	volumeFormData
-	Type, SeriesChoice, LineChoice, SeriesNameNew, Kind, Label, Name, MerchKind, Quantity string
-	Series                                                                                []db.Series
-	Lines                                                                                 []itemLine
-	Errors                                                                                map[string]string
-	AnotherCopy                                                                           bool
+	Type, SeriesChoice, EditionChoice, SeriesNameNew, Name, MerchKind, Quantity string
+	// Kind, WorkTitle, Language and EditionName describe a new edition.
+	Kind, WorkTitle, Language, EditionName string
+	Series                                 []db.Series
+	Editions                               []db.Edition
+	Errors                                 map[string]string
+	AnotherCopy                            bool
 	// Trip is set when the item is being added to a trip, which supplies its date, store and currency.
 	Trip itemTripFields
 }
 
 func (s *Server) itemForm(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	d := itemForm{Type: q.Get("type"), SeriesChoice: q.Get("series"), LineChoice: q.Get("line"), Kind: "manga", Quantity: "1", Errors: map[string]string{}}
+	d := itemForm{Type: q.Get("type"), SeriesChoice: q.Get("series"), EditionChoice: q.Get("edition"), Kind: "manga", Language: "en", Quantity: "1", Errors: map[string]string{}}
 	if d.Type != "merch" {
 		d.Type = "book"
 	}
@@ -57,11 +55,11 @@ func (s *Server) itemForm(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if id, e := parseID(d.LineChoice); e == nil {
-		if line, e := s.db.GetBookLine(id); e == nil {
-			d.SeriesChoice = formatID(line.SeriesID)
-			d.Currency = line.DefaultCurrency
-			d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+	if id, e := parseID(d.EditionChoice); e == nil {
+		if ed, e := s.db.GetEdition(id); e == nil {
+			d.SeriesChoice = formatID(ed.SeriesID)
+			d.Currency = ed.DefaultCurrency
+			d.MSRP = moneyVal(ed.DefaultMSRPCents, d.Currency)
 		}
 	}
 	if id, e := parseID(q.Get("trip")); e == nil {
@@ -87,15 +85,10 @@ func (s *Server) renderItem(w http.ResponseWriter, r *http.Request, d itemForm, 
 		s.serverError(w, r, err)
 		return
 	}
-	for _, ser := range d.Series {
-		lines, e := s.db.ListBookLines(ser.ID)
-		if e != nil {
-			s.serverError(w, r, e)
-			return
-		}
-		for _, line := range lines {
-			d.Lines = append(d.Lines, itemLine{BookLine: line, SeriesName: ser.Name})
-		}
+	d.Editions, err = s.db.ListAllEditions()
+	if err != nil {
+		s.serverError(w, r, err)
+		return
 	}
 	if id, e := parseID(d.SeriesChoice); e == nil {
 		if ser, e := s.db.GetSeries(id); e == nil {
@@ -118,7 +111,7 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 	}
 	f := r.FormValue
-	d := itemForm{Type: f("type"), SeriesChoice: f("series"), LineChoice: f("line"), SeriesNameNew: f("series_name"), Kind: f("kind"), Label: f("label"), Name: f("name"), MerchKind: f("merch_kind"), Quantity: f("quantity"), AnotherCopy: f("another_copy") == "1", Errors: map[string]string{}}
+	d := itemForm{Type: f("type"), SeriesChoice: f("series"), EditionChoice: f("edition"), SeriesNameNew: f("series_name"), Kind: f("kind"), WorkTitle: f("work_title"), Language: f("language"), EditionName: f("edition_name"), Name: f("name"), MerchKind: f("merch_kind"), Quantity: f("quantity"), AnotherCopy: f("another_copy") == "1", Errors: map[string]string{}}
 	d.New = true
 	d.VolumeNumber = f("volume_number")
 	d.PurchasedAt = f("purchased_at")
@@ -136,21 +129,25 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if f("action") == "defaults" {
-		if id, e := parseID(d.LineChoice); e == nil {
-			if line, e := s.db.GetBookLine(id); e == nil && formatID(line.SeriesID) == d.SeriesChoice {
+		if id, e := parseID(d.EditionChoice); e == nil {
+			if ed, e := s.db.GetEdition(id); e == nil && formatID(ed.SeriesID) == d.SeriesChoice {
 				// On a trip the currency is the trip's, and a list price in another currency doesn't fit.
 				if d.Trip.TripID == 0 {
-					d.Currency = line.DefaultCurrency
+					d.Currency = ed.DefaultCurrency
 				}
-				if d.Currency == line.DefaultCurrency {
-					d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+				if d.Currency == ed.DefaultCurrency {
+					d.MSRP = moneyVal(ed.DefaultMSRPCents, d.Currency)
 				}
 			}
 		}
 		s.renderItem(w, r, d, "")
 		return
 	}
-	in := db.ItemWrite{Merch: d.Type == "merch", SeriesName: strings.TrimSpace(d.SeriesNameNew), Kind: d.Kind, Label: strings.TrimSpace(d.Label), Number: normalizeVolumeNumber(d.VolumeNumber), Name: strings.TrimSpace(d.Name), MerchKind: strings.TrimSpace(d.MerchKind), AnotherCopy: d.AnotherCopy}
+	in := db.ItemWrite{
+		Merch: d.Type == "merch", SeriesName: strings.TrimSpace(d.SeriesNameNew), Number: normalizeVolumeNumber(d.VolumeNumber),
+		Name: strings.TrimSpace(d.Name), MerchKind: strings.TrimSpace(d.MerchKind), AnotherCopy: d.AnotherCopy,
+		NewEdition: db.NewEdition{Kind: d.Kind, Title: d.WorkTitle, Language: d.Language, Name: d.EditionName},
+	}
 	if d.Type != "book" && d.Type != "merch" {
 		d.Errors["type"] = "Choose Books or Merch."
 	}
@@ -177,27 +174,28 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !in.Merch {
-		if d.LineChoice == "new" {
-			switch d.Kind {
-			case "manga", "light_novel", "artbook", "other":
-			default:
-				d.Errors["kind"] = "Choose a format."
+		if d.EditionChoice == "new" {
+			if !names.ValidKind(d.Kind) {
+				d.Errors["kind"] = "Choose a medium."
+			}
+			if !names.ValidLanguage(d.Language) {
+				d.Errors["language"] = "Choose a language."
 			}
 		} else {
-			id, e := parseID(d.LineChoice)
+			id, e := parseID(d.EditionChoice)
 			if e != nil {
-				d.Errors["line"] = "Choose a format or create one."
-			} else if line, e := s.db.GetBookLine(id); e != nil || line.SeriesID != in.SeriesID {
-				d.Errors["line"] = "Choose a format belonging to this series."
+				d.Errors["edition"] = "Choose an edition or create one."
+			} else if ed, e := s.db.GetEdition(id); e != nil || ed.SeriesID != in.SeriesID {
+				d.Errors["edition"] = "Choose an edition belonging to this series."
 			} else {
-				in.LineID = id
+				in.EditionID = id
 				if d.Currency == "" {
-					d.Currency = line.DefaultCurrency
+					d.Currency = ed.DefaultCurrency
 					r.Form.Set("currency", d.Currency)
 				}
 				// An absent field means no-JavaScript entry without explicitly supplying a value.
 				if _, present := r.Form["msrp"]; !present {
-					d.MSRP = moneyVal(line.DefaultMSRPCents, d.Currency)
+					d.MSRP = moneyVal(ed.DefaultMSRPCents, d.Currency)
 					r.Form.Set("msrp", d.MSRP)
 				}
 			}
@@ -296,7 +294,7 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		dest = "/trips/" + formatID(d.Trip.TripID) + "?ok=" + code
 	}
 	if f("action") == "again" {
-		q := url.Values{"type": {d.Type}, "series": {strconv.FormatInt(sid, 10)}, "line": {strconv.FormatInt(lid, 10)}, "again": {"1"}, "date": {d.PurchasedAt}, "store": {d.Store}, "currency": {p.Currency}, "ok": {code}}
+		q := url.Values{"type": {d.Type}, "series": {strconv.FormatInt(sid, 10)}, "edition": {strconv.FormatInt(lid, 10)}, "again": {"1"}, "date": {d.PurchasedAt}, "store": {d.Store}, "currency": {p.Currency}, "ok": {code}}
 		if d.Trip.TripID != 0 {
 			q.Set("trip", formatID(d.Trip.TripID))
 			q.Set("receipt_line", d.Trip.ReceiptLine)

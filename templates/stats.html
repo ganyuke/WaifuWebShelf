@@ -37,7 +37,7 @@
                 {{if .Merch}}
                 <a href="/merch/{{.Merch.ID}}" data-preview="/merch/{{.Merch.ID}}">{{.Merch.Name}}</a>{{if gt .Merch.Quantity 1}} ×{{.Merch.Quantity}}{{end}} <span class="muted">from {{.SeriesName}}{{if .Paid}}, {{.Paid}}{{end}}</span>
                 {{else}}
-                {{.SeriesName}} vol. {{range $i, $n := .Volumes}}{{if $i}}, {{end}}<a href="/series/{{$line.SeriesSlug}}/{{$line.LineSlug}}/{{$n.Number}}" data-preview="/series/{{$line.SeriesSlug}}/{{$line.LineSlug}}/{{$n.Number}}">{{$n.Number}}</a>{{if gt $n.Copies 1}} ×{{$n.Copies}}{{end}}{{end}} <span class="muted">{{.LineTitle}}{{if .Paid}}, {{.Paid}}{{end}}</span>
+                {{.Numbered}} vol. {{range $i, $n := .Volumes}}{{if $i}}, {{end}}<a href="{{$line.VolumeURL $n.Number}}" data-preview="{{$line.VolumeURL $n.Number}}">{{$n.Number}}</a>{{if gt $n.Copies 1}} ×{{$n.Copies}}{{end}}{{end}} <span class="muted">{{.Caption}}{{if .Paid}}, {{.Paid}}{{end}}</span>
                 {{end}}
               </p>
               {{else}}

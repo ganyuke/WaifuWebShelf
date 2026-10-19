@@ -16,6 +16,7 @@ import (
 
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/money"
+	"waifuwebshelf/internal/names"
 	"waifuwebshelf/internal/photos"
 )
 
@@ -184,12 +185,6 @@ func (s *Server) imageServer() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		// Pictures from before small versions existed fall back to the full one.
-		if full, ok := photos.FullName(name); ok {
-			if _, err := os.Stat(filepath.Join(s.imagesDir, name)); os.IsNotExist(err) {
-				name = full
-			}
-		}
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		r.URL.Path = name
 		fs.ServeHTTP(w, r)
@@ -214,25 +209,31 @@ func volumeSortOrder(number string) int {
 	return 100000
 }
 
-func parseBookLineWrite(r *http.Request) (db.BookLineWrite, string, error) {
-	kind := r.FormValue("kind")
-	label := strings.TrimSpace(r.FormValue("label"))
+func parseWorkWrite(r *http.Request) (db.WorkWrite, string) {
+	in := db.WorkWrite{Title: strings.TrimSpace(r.FormValue("title")), Kind: r.FormValue("kind")}
+	if !names.ValidKind(in.Kind) {
+		return in, "Pick a medium."
+	}
+	return in, ""
+}
+
+func parseEditionWrite(r *http.Request) (db.EditionWrite, string) {
+	in := db.EditionWrite{Language: r.FormValue("language"), Name: strings.TrimSpace(r.FormValue("edition_name"))}
+	if !names.ValidLanguage(in.Language) {
+		return in, "Pick a language."
+	}
 	total, err := parseOptionalInt(r.FormValue("total_volumes"))
 	if err != nil {
-		return db.BookLineWrite{}, "Enter total volumes as a whole number.", err
+		return in, "Enter total volumes as a whole number."
 	}
-	currency := money.NormalizeCurrency(r.FormValue("default_currency"))
-	msrp, err := money.Parse(r.FormValue("default_msrp"), currency)
+	in.TotalVolumes = total
+	in.DefaultCurrency = money.NormalizeCurrency(r.FormValue("default_currency"))
+	msrp, err := money.Parse(r.FormValue("default_msrp"), in.DefaultCurrency)
 	if err != nil {
-		return db.BookLineWrite{}, "List price per volume: " + err.Error(), err
+		return in, "List price per volume: " + err.Error()
 	}
-	return db.BookLineWrite{
-		Kind:             kind,
-		Label:            label,
-		TotalVolumes:     total,
-		DefaultMSRPCents: msrp,
-		DefaultCurrency:  currency,
-	}, "", nil
+	in.DefaultMSRPCents = msrp
+	return in, ""
 }
 
 func parseOptionalInt(s string) (*int64, error) {

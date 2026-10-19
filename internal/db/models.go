@@ -5,8 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"waifuwebshelf/internal/money"
-	"waifuwebshelf/internal/slug"
+	"waifuwebshelf/internal/names"
 )
 
 type Series struct {
@@ -19,29 +18,9 @@ type Series struct {
 	UpdatedAt string
 }
 
-type BookLine struct {
-	ID               int64
-	SeriesID         int64
-	Kind             string
-	Label            string
-	Slug             string
-	TotalVolumes     sql.NullInt64
-	DefaultMSRPCents sql.NullInt64
-	DefaultCurrency  string
-	SortOrder        int
-}
-
-type BookLineWrite struct {
-	Kind             string
-	Label            string
-	TotalVolumes     *int64
-	DefaultMSRPCents *int64
-	DefaultCurrency  string
-}
-
 type Volume struct {
 	ID               int64
-	BookLineID       int64
+	EditionID        int64
 	VolumeNumber     string
 	SortOrder        int
 	PurchasedAt      sql.NullString
@@ -107,25 +86,24 @@ type Link struct {
 type SeriesCard struct {
 	Series
 	Cover      string
-	Lines      []LineProgress
+	Editions   []EditionProgress
 	MerchCount int
 }
 
-// VolumesOwned counts volumes owned across all formats.
+// VolumesOwned counts volumes owned across all editions.
 func (c SeriesCard) VolumesOwned() int {
 	n := 0
-	for _, l := range c.Lines {
-		n += l.Owned
+	for _, e := range c.Editions {
+		n += e.Owned
 	}
 	return n
 }
 
-type LineProgress struct {
+type EditionProgress struct {
 	ID    int64
-	Kind  string
-	Label string
 	Owned int
 	Total *int
+	names.Naming
 }
 
 type MerchRow struct {
@@ -218,24 +196,10 @@ func (d *DB) deleteSeriesLinks(seriesID int64) error {
 	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'series' AND owner_id = ?`, seriesID); err != nil {
 		return err
 	}
-	if _, err := d.SQL.Exec(`
-		DELETE FROM links WHERE owner_type = 'book_line' AND owner_id IN (
-			SELECT id FROM book_lines WHERE series_id = ?
-		)`, seriesID); err != nil {
+	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'work' AND owner_id IN (SELECT id FROM works WHERE series_id = ?)`, seriesID); err != nil {
 		return err
 	}
-	if _, err := d.SQL.Exec(`
-		DELETE FROM links WHERE owner_type = 'volume' AND owner_id IN (
-			SELECT v.id FROM volumes v
-			JOIN book_lines bl ON bl.id = v.book_line_id
-			WHERE bl.series_id = ?
-		)`, seriesID); err != nil {
-		return err
-	}
-	if _, err := d.SQL.Exec(`
-		DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id IN (
-			SELECT id FROM book_lines WHERE series_id = ?
-		)`, seriesID); err != nil {
+	if err := deleteEditionLinks(d.SQL, `SELECT edition_id FROM edition_names WHERE series_id = ?`, seriesID); err != nil {
 		return err
 	}
 	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'merch' AND owner_id IN (SELECT id FROM merch WHERE series_id = ?)`, seriesID); err != nil {
@@ -250,7 +214,7 @@ func (d *DB) SeriesCards() ([]SeriesCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	lines, err := d.allLineProgress()
+	editions, err := d.allEditionProgress()
 	if err != nil {
 		return nil, err
 	}
@@ -263,14 +227,14 @@ func (d *DB) SeriesCards() ([]SeriesCard, error) {
 		return nil, err
 	}
 
-	bySeries := map[int64][]LineProgress{}
-	for _, lp := range lines {
-		bySeries[lp.seriesID] = append(bySeries[lp.seriesID], lp.LineProgress)
+	bySeries := map[int64][]EditionProgress{}
+	for _, ep := range editions {
+		bySeries[ep.seriesID] = append(bySeries[ep.seriesID], ep.EditionProgress)
 	}
 
 	out := make([]SeriesCard, 0, len(series))
 	for _, s := range series {
-		card := SeriesCard{Series: s, Lines: bySeries[s.ID], MerchCount: merchCounts[s.ID]}
+		card := SeriesCard{Series: s, Editions: bySeries[s.ID], MerchCount: merchCounts[s.ID]}
 		if s.ImagePath.Valid {
 			card.Cover = s.ImagePath.String
 		} else if c, ok := covers[s.ID]; ok {
@@ -281,27 +245,28 @@ func (d *DB) SeriesCards() ([]SeriesCard, error) {
 	return out, nil
 }
 
-type lineProgressRow struct {
+type editionProgressRow struct {
 	seriesID int64
-	LineProgress
+	EditionProgress
 }
 
-func (d *DB) allLineProgress() ([]lineProgressRow, error) {
+func (d *DB) allEditionProgress() ([]editionProgressRow, error) {
 	rows, err := d.SQL.Query(`
-		SELECT bl.id, bl.series_id, bl.kind, bl.label, bl.total_volumes, COUNT(DISTINCT v.volume_number)
-		FROM book_lines bl
-		LEFT JOIN volumes v ON v.book_line_id = bl.id
-		GROUP BY bl.id
-		ORDER BY bl.sort_order, bl.id`)
+		SELECT e.id, n.series_id, e.total_volumes, COUNT(DISTINCT v.volume_number), ` + namingCols("n") + `
+		FROM editions e
+		JOIN edition_names n ON n.edition_id = e.id
+		LEFT JOIN volumes v ON v.edition_id = e.id
+		GROUP BY e.id
+		ORDER BY n.work_order, n.work_id, e.sort_order, e.id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []lineProgressRow
+	var out []editionProgressRow
 	for rows.Next() {
-		var r lineProgressRow
+		var r editionProgressRow
 		var total sql.NullInt64
-		if err := rows.Scan(&r.ID, &r.seriesID, &r.Kind, &r.Label, &total, &r.Owned); err != nil {
+		if err := rows.Scan(append([]any{&r.ID, &r.seriesID, &total, &r.Owned}, scanNaming(&r.Naming)...)...); err != nil {
 			return nil, err
 		}
 		if total.Valid {
@@ -334,11 +299,11 @@ func (d *DB) merchCounts() (map[int64]int, error) {
 func (d *DB) fallbackCovers() (map[int64]string, error) {
 	out := map[int64]string{}
 	rows, err := d.SQL.Query(`
-		SELECT bl.series_id, c.image_path
-		FROM volume_covers c
-		JOIN book_lines bl ON bl.id = c.book_line_id
-		WHERE c.image_path IS NOT NULL AND c.image_path != ''
-		ORDER BY bl.sort_order, c.volume_number, c.book_line_id`)
+		SELECT n.series_id, i.cover_path
+		FROM volume_info i
+		JOIN edition_names n ON n.edition_id = i.edition_id
+		WHERE i.cover_path IS NOT NULL AND i.cover_path != ''
+		ORDER BY n.work_order, n.edition_order, i.volume_number, i.edition_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -360,11 +325,11 @@ func (d *DB) fallbackCovers() (map[int64]string, error) {
 	rows.Close()
 
 	rows, err = d.SQL.Query(`
-		SELECT bl.series_id, v.image_path
+		SELECT n.series_id, v.image_path
 		FROM volumes v
-		JOIN book_lines bl ON bl.id = v.book_line_id
+		JOIN edition_names n ON n.edition_id = v.edition_id
 		WHERE v.image_path IS NOT NULL AND v.image_path != ''
-		ORDER BY bl.sort_order, v.sort_order, v.id`)
+		ORDER BY n.work_order, n.edition_order, v.sort_order, v.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -382,123 +347,21 @@ func (d *DB) fallbackCovers() (map[int64]string, error) {
 	return out, rows.Err()
 }
 
-func bookLineCols() string {
-	return `id, series_id, kind, label, slug, total_volumes, default_msrp_cents, default_currency, sort_order`
-}
-
-func scanBookLine(b *BookLine) []any {
-	return []any{&b.ID, &b.SeriesID, &b.Kind, &b.Label, &b.Slug, &b.TotalVolumes, &b.DefaultMSRPCents, &b.DefaultCurrency, &b.SortOrder}
-}
-
-func (d *DB) ListBookLines(seriesID int64) ([]BookLine, error) {
-	rows, err := d.SQL.Query(`SELECT `+bookLineCols()+` FROM book_lines WHERE series_id = ? ORDER BY sort_order, id`, seriesID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []BookLine
-	for rows.Next() {
-		var b BookLine
-		if err := rows.Scan(scanBookLine(&b)...); err != nil {
-			return nil, err
-		}
-		out = append(out, b)
-	}
-	return out, rows.Err()
-}
-
-func (d *DB) GetBookLine(id int64) (BookLine, error) {
-	var b BookLine
-	err := d.SQL.QueryRow(`SELECT `+bookLineCols()+` FROM book_lines WHERE id = ?`, id).Scan(scanBookLine(&b)...)
-	return b, err
-}
-
-func (d *DB) GetBookLineBySlug(seriesID int64, lineSlug string) (BookLine, error) {
-	var b BookLine
-	err := d.SQL.QueryRow(`SELECT `+bookLineCols()+` FROM book_lines WHERE series_id = ? AND slug = ?`, seriesID, lineSlug).Scan(scanBookLine(&b)...)
-	return b, err
-}
-
-func (d *DB) lineSlugFor(seriesID, exceptID int64, kind, label string) string {
-	return uniqueLineSlug(d.SQL, seriesID, exceptID, slug.ForBookLine(kind, label))
-}
-
-func uniqueLineSlug(sqlDB *sql.DB, seriesID, exceptID int64, base string) string {
-	return slug.Unique(base, func(candidate string) bool {
-		var n int
-		_ = sqlDB.QueryRow(`SELECT COUNT(*) FROM book_lines WHERE series_id = ? AND slug = ? AND id != ?`, seriesID, candidate, exceptID).Scan(&n)
-		return n > 0
-	})
-}
-
-func (d *DB) CreateBookLine(seriesID int64, in BookLineWrite) (int64, error) {
-	var next int
-	if err := d.SQL.QueryRow(`SELECT COALESCE(MAX(sort_order), -1) + 1 FROM book_lines WHERE series_id = ?`, seriesID).Scan(&next); err != nil {
-		return 0, err
-	}
-	now := nowUTC()
-	lineSlug := d.lineSlugFor(seriesID, 0, in.Kind, in.Label)
-	res, err := d.SQL.Exec(
-		`INSERT INTO book_lines (series_id, kind, label, slug, total_volumes, default_msrp_cents, default_currency, sort_order, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		seriesID, in.Kind, in.Label, lineSlug, nullInt64Ptr(in.TotalVolumes),
-		nullInt64Ptr(in.DefaultMSRPCents), money.NormalizeCurrency(in.DefaultCurrency), next, now, now,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
-}
-
-func (d *DB) UpdateBookLine(id int64, in BookLineWrite) error {
-	line, err := d.GetBookLine(id)
-	if err != nil {
-		return err
-	}
-	lineSlug := d.lineSlugFor(line.SeriesID, id, in.Kind, in.Label)
-	_, err = d.SQL.Exec(
-		`UPDATE book_lines SET kind = ?, label = ?, slug = ?, total_volumes = ?, default_msrp_cents = ?, default_currency = ?, updated_at = ? WHERE id = ?`,
-		in.Kind, in.Label, lineSlug, nullInt64Ptr(in.TotalVolumes),
-		nullInt64Ptr(in.DefaultMSRPCents), money.NormalizeCurrency(in.DefaultCurrency), nowUTC(), id,
-	)
-	return err
-}
-
-func (d *DB) DeleteBookLine(id int64) error {
-	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'book_line' AND owner_id = ?`, id); err != nil {
-		return err
-	}
-	if _, err := d.SQL.Exec(`
-		DELETE FROM links WHERE owner_type = 'volume' AND owner_id IN (
-			SELECT id FROM volumes WHERE book_line_id = ?
-		)`, id); err != nil {
-		return err
-	}
-	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id = ?`, id); err != nil {
-		return err
-	}
-	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'wishlist' AND owner_id IN (SELECT id FROM wishlist WHERE book_line_id = ?)`, id); err != nil {
-		return err
-	}
-	_, err := d.SQL.Exec(`DELETE FROM book_lines WHERE id = ?`, id)
-	return err
-}
-
 func volumeCols() string {
-	return `id, book_line_id, volume_number, sort_order, purchased_at, store,
+	return `id, edition_id, volume_number, sort_order, purchased_at, store,
 		msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes, trip_id, receipt_line_id`
 }
 
 func scanVolume(v *Volume) []any {
 	return []any{
-		&v.ID, &v.BookLineID, &v.VolumeNumber, &v.SortOrder, &v.PurchasedAt, &v.Store,
+		&v.ID, &v.EditionID, &v.VolumeNumber, &v.SortOrder, &v.PurchasedAt, &v.Store,
 		&v.MSRPCents, &v.PriceExTaxCents, &v.PriceIncTaxCents, &v.Currency, &v.ImagePath, &v.Notes,
 		&v.TripID, &v.ReceiptLineID,
 	}
 }
 
-func (d *DB) ListVolumes(bookLineID int64) ([]Volume, error) {
-	rows, err := d.SQL.Query(`SELECT `+volumeCols()+` FROM volumes WHERE book_line_id = ? ORDER BY sort_order, id`, bookLineID)
+func (d *DB) ListVolumes(editionID int64) ([]Volume, error) {
+	rows, err := d.SQL.Query(`SELECT `+volumeCols()+` FROM volumes WHERE edition_id = ? ORDER BY sort_order, id`, editionID)
 	if err != nil {
 		return nil, err
 	}
@@ -514,8 +377,8 @@ func (d *DB) ListVolumes(bookLineID int64) ([]Volume, error) {
 	return out, rows.Err()
 }
 
-func (d *DB) ListVolumesByNumber(bookLineID int64, number string) ([]Volume, error) {
-	rows, err := d.SQL.Query(`SELECT `+volumeCols()+` FROM volumes WHERE book_line_id = ? AND volume_number = ? ORDER BY purchased_at, id`, bookLineID, number)
+func (d *DB) ListVolumesByNumber(editionID int64, number string) ([]Volume, error) {
+	rows, err := d.SQL.Query(`SELECT `+volumeCols()+` FROM volumes WHERE edition_id = ? AND volume_number = ? ORDER BY purchased_at, id`, editionID, number)
 	if err != nil {
 		return nil, err
 	}
@@ -537,15 +400,15 @@ func (d *DB) GetVolume(id int64) (Volume, error) {
 	return v, err
 }
 
-func (d *DB) CreateVolume(bookLineID int64, number string, sortOrder int, p Purchase) (int64, error) {
+func (d *DB) CreateVolume(editionID int64, number string, sortOrder int, p Purchase) (int64, error) {
 	now := nowUTC()
 	res, err := d.SQL.Exec(`
 		INSERT INTO volumes (
-			book_line_id, volume_number, sort_order, purchased_at, store,
+			edition_id, volume_number, sort_order, purchased_at, store,
 			msrp_cents, price_ex_tax_cents, price_inc_tax_cents, currency, image_path, notes,
 			created_at, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		bookLineID, number, sortOrder, nullStr(p.PurchasedAt), p.Store,
+		editionID, number, sortOrder, nullStr(p.PurchasedAt), p.Store,
 		nullInt64Ptr(p.MSRPCents), nullInt64Ptr(p.PriceExTaxCents), nullInt64Ptr(p.PriceIncTaxCents),
 		p.Currency, p.ImagePath, p.Notes, now, now,
 	)
@@ -574,7 +437,7 @@ func (d *DB) UpdateVolume(id int64, number string, sortOrder int, p Purchase) er
 		return err
 	}
 	if old.VolumeNumber != number {
-		return d.pruneVolumeNumber(old.BookLineID, old.VolumeNumber)
+		return d.pruneVolumeNumber(old.EditionID, old.VolumeNumber)
 	}
 	return nil
 }
@@ -590,69 +453,100 @@ func (d *DB) DeleteVolume(id int64) error {
 	if _, err := d.SQL.Exec(`DELETE FROM volumes WHERE id = ?`, id); err != nil {
 		return err
 	}
-	return d.pruneVolumeNumber(v.BookLineID, v.VolumeNumber)
+	return d.pruneVolumeNumber(v.EditionID, v.VolumeNumber)
 }
 
-func (d *DB) pruneVolumeNumber(bookLineID int64, number string) error {
+func (d *DB) pruneVolumeNumber(editionID int64, number string) error {
 	var n int
-	if err := d.SQL.QueryRow(`SELECT COUNT(*) FROM volumes WHERE book_line_id = ? AND volume_number = ?`, bookLineID, number).Scan(&n); err != nil {
+	if err := d.SQL.QueryRow(`SELECT COUNT(*) FROM volumes WHERE edition_id = ? AND volume_number = ?`, editionID, number).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
 		return nil
 	}
-	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id = ? AND owner_key = ?`, bookLineID, number); err != nil {
+	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id = ? AND owner_key = ?`, editionID, number); err != nil {
 		return err
 	}
-	_, err := d.SQL.Exec(`DELETE FROM volume_covers WHERE book_line_id = ? AND volume_number = ?`, bookLineID, number)
+	_, err := d.SQL.Exec(`DELETE FROM volume_info WHERE edition_id = ? AND volume_number = ?`, editionID, number)
 	return err
 }
 
-func (d *DB) VolumeCover(bookLineID int64, number string) (sql.NullString, error) {
-	var path sql.NullString
-	err := d.SQL.QueryRow(
-		`SELECT image_path FROM volume_covers WHERE book_line_id = ? AND volume_number = ?`,
-		bookLineID, number,
-	).Scan(&path)
+// VolumeInfo is what belongs to a volume number rather than to one copy.
+type VolumeInfo struct {
+	Title string
+	Cover sql.NullString
+}
+
+func (d *DB) GetVolumeInfo(editionID int64, number string) (VolumeInfo, error) {
+	var vi VolumeInfo
+	err := d.SQL.QueryRow(`SELECT title, cover_path FROM volume_info WHERE edition_id = ? AND volume_number = ?`, editionID, number).Scan(&vi.Title, &vi.Cover)
 	if err == sql.ErrNoRows {
-		return sql.NullString{}, nil
+		return VolumeInfo{}, nil
 	}
-	return path, err
+	return vi, err
 }
 
-func (d *DB) SetVolumeCover(bookLineID int64, number string, path sql.NullString) error {
+func (d *DB) VolumeCover(editionID int64, number string) (sql.NullString, error) {
+	vi, err := d.GetVolumeInfo(editionID, number)
+	return vi.Cover, err
+}
+
+// SetVolumeCover sets or, with an empty path, clears a volume number's cover.
+func (d *DB) SetVolumeCover(editionID int64, number string, path sql.NullString) error {
 	if !path.Valid || path.String == "" {
-		_, err := d.SQL.Exec(`DELETE FROM volume_covers WHERE book_line_id = ? AND volume_number = ?`, bookLineID, number)
+		path = sql.NullString{}
+	}
+	return setVolumeInfo(d.SQL, editionID, number, `cover_path`, path)
+}
+
+// SetVolumeTitle sets or, with an empty title, clears a volume number's own title.
+func (d *DB) SetVolumeTitle(editionID int64, number, title string) error {
+	return setVolumeInfo(d.SQL, editionID, number, `title`, strings.TrimSpace(title))
+}
+
+func setVolumeInfo(q queryer, editionID int64, number, column string, value any) error {
+	if _, err := q.Exec(`
+		INSERT INTO volume_info (edition_id, volume_number, `+column+`) VALUES (?, ?, ?)
+		ON CONFLICT(edition_id, volume_number) DO UPDATE SET `+column+` = excluded.`+column,
+		editionID, number, value); err != nil {
 		return err
 	}
-	_, err := d.SQL.Exec(`
-		INSERT INTO volume_covers (book_line_id, volume_number, image_path)
-		VALUES (?, ?, ?)
-		ON CONFLICT(book_line_id, volume_number) DO UPDATE SET image_path = excluded.image_path`,
-		bookLineID, number, path.String,
-	)
+	_, err := q.Exec(`DELETE FROM volume_info WHERE edition_id = ? AND volume_number = ? AND title = '' AND cover_path IS NULL`, editionID, number)
 	return err
 }
 
-// LineCovers maps volume number to cover image for one book line.
-func (d *DB) LineCovers(bookLineID int64) (map[string]string, error) {
-	rows, err := d.SQL.Query(
-		`SELECT volume_number, image_path FROM volume_covers WHERE book_line_id = ? AND image_path != ''`,
-		bookLineID,
-	)
+// EditionInfo maps volume number to what is stored for it in one edition.
+func (d *DB) EditionInfo(editionID int64) (map[string]VolumeInfo, error) {
+	rows, err := d.SQL.Query(`SELECT volume_number, title, cover_path FROM volume_info WHERE edition_id = ?`, editionID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := map[string]string{}
+	out := map[string]VolumeInfo{}
 	for rows.Next() {
-		var number, path string
-		if err := rows.Scan(&number, &path); err != nil {
+		var number string
+		var vi VolumeInfo
+		if err := rows.Scan(&number, &vi.Title, &vi.Cover); err != nil {
 			return nil, err
 		}
-		out[number] = path
+		out[number] = vi
 	}
 	return out, rows.Err()
+}
+
+// EditionCovers maps volume number to cover image for one edition.
+func (d *DB) EditionCovers(editionID int64) (map[string]string, error) {
+	info, err := d.EditionInfo(editionID)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	for number, vi := range info {
+		if vi.Cover.Valid && vi.Cover.String != "" {
+			out[number] = vi.Cover.String
+		}
+	}
+	return out, nil
 }
 
 func merchCols() string {

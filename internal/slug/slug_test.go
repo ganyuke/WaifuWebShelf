@@ -18,14 +18,17 @@ func TestUnique(t *testing.T) {
 	}
 }
 
-func TestForBookLine(t *testing.T) {
-	if ForBookLine("manga", "") != "manga" {
-		t.Fatal(ForBookLine("manga", ""))
-	}
-	if ForBookLine("light_novel", "") != "light-novel" {
-		t.Fatal(ForBookLine("light_novel", ""))
-	}
-	if ForBookLine("manga", "Official Comic Anthology") != "official-comic-anthology" {
-		t.Fatal(ForBookLine("manga", "Official Comic Anthology"))
+func TestForWorkAndEdition(t *testing.T) {
+	for got, want := range map[string]string{
+		ForWork("", "manga"):              "manga",
+		ForWork("", "light_novel"):        "light-novel",
+		ForWork("K-On! Shuffle", "manga"): "k-on-shuffle",
+		ForEdition("English", ""):         "english",
+		ForEdition("English", "3-in-1"):   "english-3-in-1",
+		ForEdition("", ""):                "edition",
+	} {
+		if got != want {
+			t.Errorf("got %q want %q", got, want)
+		}
 	}
 }

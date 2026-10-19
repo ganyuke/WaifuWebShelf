@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"waifuwebshelf/internal/photos"
 )
 
 const (
@@ -31,7 +33,7 @@ type dexCoverPage struct {
 }
 
 func newHTTP() *http.Client {
-	return &http.Client{Timeout: 30 * time.Second}
+	return &http.Client{Timeout: 30 * time.Second, Transport: newCachingTransport()}
 }
 
 func getJSON(client *http.Client, rawURL string, dest any) error {
@@ -98,47 +100,50 @@ func dexCoverURL(mangaID, fileName string) string {
 	return fmt.Sprintf("https://uploads.mangadex.org/covers/%s/%s.512.jpg", mangaID, fileName)
 }
 
-func download(client *http.Client, rawURL, dest string) error {
+// download fetches a picture and saves it in imagesDir as base plus the
+// extension the app picks, along with the small version, the same way an
+// upload is saved. It returns the saved name.
+func download(client *http.Client, rawURL, imagesDir, base string) (string, error) {
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("User-Agent", "WaifuWebShelf-seed/1.0")
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("download %s: %s", rawURL, res.Status)
+		return "", fmt.Errorf("download %s: %s", rawURL, res.Status)
 	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return err
-	}
-	tmp := dest + ".tmp"
-	out, err := os.Create(tmp)
+	data, err := io.ReadAll(io.LimitReader(res.Body, 8<<20))
 	if err != nil {
-		return err
+		return "", err
 	}
-	_, err = io.Copy(out, io.LimitReader(res.Body, 8<<20))
-	closeErr := out.Close()
-	if err != nil {
-		_ = os.Remove(tmp)
-		return err
-	}
-	if closeErr != nil {
-		_ = os.Remove(tmp)
-		return closeErr
-	}
-	return os.Rename(tmp, dest)
+	return savePicture(imagesDir, base, data)
 }
 
-func saveCover(client *http.Client, imagesDir, name, mangaID, fileName string) (string, error) {
-	dest := filepath.Join(imagesDir, name)
-	if err := download(client, dexCoverURL(mangaID, fileName), dest); err != nil {
+func savePicture(imagesDir, base string, data []byte) (string, error) {
+	pic, err := photos.Process(data, true)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(imagesDir, 0o755); err != nil {
+		return "", err
+	}
+	name := base + pic.Ext
+	if err := os.WriteFile(filepath.Join(imagesDir, name), pic.Full, 0o644); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(imagesDir, photos.SmallName(name)), pic.Small, 0o644); err != nil {
 		return "", err
 	}
 	return name, nil
+}
+
+func saveCover(client *http.Client, imagesDir, base, mangaID, fileName string) (string, error) {
+	return download(client, dexCoverURL(mangaID, fileName), imagesDir, base)
 }
 
 func volKey(n int) string {

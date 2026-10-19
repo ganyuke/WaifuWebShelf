@@ -86,25 +86,25 @@ func (s *Server) previewSeries(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	lines, err := s.db.ListBookLines(ser.ID)
+	editions, err := s.db.ListSeriesEditions(ser.ID)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	card := PreviewCard{Image: nullImage(ser.ImagePath), Title: ser.Name, Tally: true}
-	for _, line := range lines {
-		vols, err := s.db.ListVolumes(line.ID)
+	for _, ed := range editions {
+		vols, err := s.db.ListVolumes(ed.ID)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
 		}
 		owned := len(ownedNumbers(vols))
 		var total *int
-		if line.TotalVolumes.Valid {
-			t := int(line.TotalVolumes.Int64)
+		if ed.TotalVolumes.Valid {
+			t := int(ed.TotalVolumes.Int64)
 			total = &t
 		}
-		card.Facts = append(card.Facts, PreviewFact{catalog.LineFullTitle(line.Kind, line.Label), catalog.VolumesOwned(owned, total)})
+		card.Facts = append(card.Facts, PreviewFact{ed.Describe(), catalog.VolumesOwned(owned, total)})
 	}
 	merch, err := s.db.ListMerch(ser.ID)
 	if err != nil {
@@ -120,10 +120,10 @@ func (s *Server) previewSeries(w http.ResponseWriter, r *http.Request) {
 func (s *Server) previewVolume(w http.ResponseWriter, r *http.Request) {
 	ser, err := s.db.GetSeriesBySlug(r.PathValue("slug"))
 	if err == nil {
-		var line db.BookLine
-		line, err = s.db.GetBookLineBySlug(ser.ID, r.PathValue("lineSlug"))
+		var ed db.Edition
+		ed, err = s.db.GetEditionBySlugs(ser.ID, r.PathValue("workSlug"), r.PathValue("editionSlug"))
 		if err == nil {
-			s.previewLineVolume(w, r, ser, line, normalizeVolumeNumber(r.PathValue("number")))
+			s.previewEditionVolume(w, r, ed, normalizeVolumeNumber(r.PathValue("number")))
 			return
 		}
 	}
@@ -134,27 +134,27 @@ func (s *Server) previewVolume(w http.ResponseWriter, r *http.Request) {
 	s.serverError(w, r, err)
 }
 
-func (s *Server) previewLineVolume(w http.ResponseWriter, r *http.Request, ser db.Series, line db.BookLine, number string) {
-	copies, err := s.db.ListVolumesByNumber(line.ID, number)
+func (s *Server) previewEditionVolume(w http.ResponseWriter, r *http.Request, ed db.Edition, number string) {
+	copies, err := s.db.ListVolumesByNumber(ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
-	cover, err := s.db.VolumeCover(line.ID, number)
+	info, err := s.db.GetVolumeInfo(ed.ID, number)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
 	}
 	card := PreviewCard{
-		Image: nullImage(cover),
-		Title: ser.Name + " vol. " + number,
-		Sub:   catalog.LineFullTitle(line.Kind, line.Label),
+		Image: nullImage(info.Cover),
+		Title: ed.Volume(number, info.Title),
+		Sub:   ed.VolumeCaption(number, info.Title),
 	}
 	signedIn := s.loggedIn(r)
 	switch len(copies) {
 	case 0:
 		card.Note = "Not owned"
-		if price, ok, err := s.wantedPrice(line.ID, number); err != nil {
+		if price, ok, err := s.wantedPrice(ed.ID, number); err != nil {
 			s.serverError(w, r, err)
 			return
 		} else if ok {
@@ -188,17 +188,17 @@ func (s *Server) previewLineVolume(w http.ResponseWriter, r *http.Request, ser d
 }
 
 // wantedPrice reports whether volume number is on an open wishlist item for
-// the line, and its list price for one volume when known.
-func (s *Server) wantedPrice(lineID int64, number string) (string, bool, error) {
+// the edition, and its list price for one volume when known.
+func (s *Server) wantedPrice(editionID int64, number string) (string, bool, error) {
 	n, err := strconv.Atoi(number)
 	if err != nil {
 		return "", false, nil
 	}
-	wants, err := s.db.ListOpenWishlistForLine(lineID)
+	wants, err := s.db.ListOpenWishlistForEdition(editionID)
 	if err != nil {
 		return "", false, err
 	}
-	owned, err := s.db.LineOwnedKeys(lineID)
+	owned, err := s.db.EditionOwnedKeys(editionID)
 	if err != nil {
 		return "", false, err
 	}
@@ -259,12 +259,12 @@ func (s *Server) previewWishlist(w http.ResponseWriter, r *http.Request) {
 	}
 	owned := map[string]bool{}
 	var covers map[string]string
-	if row.Kind == "volumes" && row.BookLineID.Valid {
-		if owned, err = s.db.LineOwnedKeys(row.BookLineID.Int64); err != nil {
+	if row.Kind == "volumes" && row.EditionID.Valid {
+		if owned, err = s.db.EditionOwnedKeys(row.EditionID.Int64); err != nil {
 			s.serverError(w, r, err)
 			return
 		}
-		if covers, err = s.db.LineCovers(row.BookLineID.Int64); err != nil {
+		if covers, err = s.db.EditionCovers(row.EditionID.Int64); err != nil {
 			s.serverError(w, r, err)
 			return
 		}
@@ -277,7 +277,7 @@ func (s *Server) previewWishlist(w http.ResponseWriter, r *http.Request) {
 	v.applyCovers(covers)
 	card := PreviewCard{Image: v.Picture(), Title: wishTitle(v), Sub: v.SeriesName, Note: "On the wishlist"}
 	if v.Kind == "volumes" {
-		card.Sub = v.LineTitle
+		card.Sub = v.Describe()
 	}
 	if v.MSRPValid() {
 		price := money.Display(v.MSRPAmount(), v.Currency)

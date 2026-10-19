@@ -1,21 +1,19 @@
-{{define "admin_bookline_form"}}
+{{define "admin_edition_form"}}
 {{template "header" .}}
-<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
+<p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a> › <a href="/admin/works/{{.Data.WorkID}}/edit">{{.Data.WorkHeading}}</a></p>
 <div class="box">
   <div class="bar">
-    <h1>{{if .Data.New}}New format{{else}}Edit format{{end}}</h1>
-    {{if not .Data.New}}<span><a href="/series/{{.Data.SeriesSlug}}#{{.Data.LineSlug}}">View public page</a></span>{{end}}
+    <h1>{{if .Data.New}}New edition{{else}}Edit {{.Data.Edition}}{{end}}</h1>
+    {{if not .Data.New}}<span><a href="{{.Data.EditionURL}}">View public page</a></span>{{end}}
   </div>
   <form class="stack" method="post">
-    <label>Format
-      <select name="kind">
-        <option value="manga" {{if eq .Data.Kind "manga"}}selected{{end}}>Manga</option>
-        <option value="light_novel" {{if eq .Data.Kind "light_novel"}}selected{{end}}>Light novel</option>
-        <option value="artbook" {{if eq .Data.Kind "artbook"}}selected{{end}}>Artbook</option>
-        <option value="other" {{if eq .Data.Kind "other"}}selected{{end}}>Other</option>
-      </select>
-    </label>
-    <label>Edition (optional) <input name="label" value="{{.Data.Label}}" placeholder="English"></label>
+    <label for="language">Language</label>
+    <select id="language" name="language">
+      <option value="" {{if eq .Data.Language ""}}selected{{end}}>Not set</option>
+      {{range languages}}<option value="{{.Code}}" {{if eq .Code $.Data.Language}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <label for="edition_name">Edition name (optional) <span class="hint" title="For printings with their own numbering, like 3-in-1. It goes in each volume's name." tabindex="0">(?)</span></label>
+    <input id="edition_name" name="edition_name" value="{{.Data.EditionName}}" placeholder="3-in-1">
     <details {{if or .Data.TotalVolumes .Data.DefaultMSRP .Err}}open{{end}}><summary>Volumes and prices (optional)</summary>
     <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="Blank if ongoing"></label>
     <label>Default currency
@@ -26,7 +24,7 @@
     </datalist>
     <label>List price per volume <input name="default_msrp" inputmode="decimal" value="{{.Data.DefaultMSRP}}"></label>
     </details>
-    <div class="form-actions"><button type="submit">Save</button><a href="/admin/series/{{.Data.SeriesID}}/edit">Cancel</a></div>
+    <div class="form-actions"><button type="submit">Save</button><a href="/admin/works/{{.Data.WorkID}}/edit">Cancel</a></div>
   </form>
 </div>
 {{if not .Data.New}}
@@ -42,8 +40,8 @@
     </tbody>
   </table>
   {{else}}<p class="muted">None yet</p>{{end}}
-  <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a>
-  <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
+  <p><a class="btn" href="/admin/editions/{{.Data.ID}}/volumes/new">Add volume</a>
+  <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&edition={{.Data.ID}}">Add to wishlist</a></p>
 </section>
 <section class="panel">
   <h2>Covers</h2>
@@ -54,7 +52,7 @@
     <li>
       <img class="thumb" src="{{smallURL .Image}}" alt="">
       <span>Vol. {{.Number}}</span>
-      <form class="inline" method="post" action="/admin/book-lines/{{$.Data.ID}}/covers/delete">
+      <form class="inline" method="post" action="/admin/editions/{{$.Data.ID}}/covers/delete">
         <input type="hidden" name="volume_number" value="{{.Number}}">
         <button type="submit" class="danger-text">Remove</button>
       </form>
@@ -62,14 +60,14 @@
     {{end}}
   </ul>
   {{end}}
-  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers" enctype="multipart/form-data" data-covers="upload">
+  <form class="stack" method="post" action="/admin/editions/{{.Data.ID}}/covers" enctype="multipart/form-data" data-covers="upload">
     <label for="cover_volume">Volume number <span class="hint" title="Leave empty to take each volume number from the file name, like vol-14.jpg" tabindex="0">(?)</span></label>
     <input id="cover_volume" name="volume_number">
     <label for="cover_files">Covers <span class="hint" title="Replaces covers you already have. The old ones are kept in backups in the data folder." tabindex="0">(?)</span></label>
     <input id="cover_files" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
     <button type="submit">Add covers</button>
   </form>
-  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers/find" data-covers="find" data-get="/admin/book-lines/{{.Data.ID}}/covers/get">
+  <form class="stack" method="post" action="/admin/editions/{{.Data.ID}}/covers/find" data-covers="find" data-get="/admin/editions/{{.Data.ID}}/covers/get">
     <label for="cover_link">Book page <span class="hint" title="A link to any volume on {{.Data.CoverSites}}. Saves the cover of every volume in the series and replaces covers you already have." tabindex="0">(?)</span></label>
     <input id="cover_link" type="url" name="link" placeholder="https://www.kobo.com/ww/en/ebook/…" required>
     <button type="submit">Get covers</button>
@@ -77,8 +75,8 @@
   <p data-covers-status role="status" hidden></p>
 </section>
 <script src="{{assetURL "covers.js"}}" defer></script>
-{{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
-<p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete format</a></p>
+{{template "links_editor" dict "Links" .Data.Links "OwnerType" "edition" "OwnerID" .Data.ID "Next" (printf "/admin/editions/%d/edit" .Data.ID)}}
+<p class="admin-actions"><a class="danger-text" href="/admin/editions/{{.Data.ID}}/delete">Delete edition</a></p>
 {{end}}
 {{template "footer" .}}
 {{end}}

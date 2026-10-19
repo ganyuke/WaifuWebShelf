@@ -13,7 +13,6 @@ import (
 
 type WishView struct {
 	db.WishlistRow
-	LineTitle   string
 	Remain      catalog.Remaining
 	RemainLabel string
 	RemainCount int
@@ -103,30 +102,31 @@ type wishlistFormData struct {
 	SeriesID   int64
 	SeriesName string
 	SeriesSlug string
-	BookLineID int64
-	LineTitle  string
-	Lines      []db.BookLine
-	VolFrom    string
-	VolTo      string
-	Name       string
-	MerchKind  string
-	Quantity   string
-	Currency   string
-	MSRP       string
-	Notes      string
-	Image      string
-	New        bool
-	Links      []LinkView
+	EditionID  int64
+	// EditionTitle describes the chosen edition, like "English manga".
+	EditionTitle string
+	Editions     []db.Edition
+	VolFrom      string
+	VolTo        string
+	Name         string
+	MerchKind    string
+	Quantity     string
+	Currency     string
+	MSRP         string
+	Notes        string
+	Image        string
+	New          bool
+	Links        []LinkView
 }
 
-func (data *wishlistFormData) applyLine(id int64) {
-	data.BookLineID = id
-	data.LineTitle = ""
-	for _, line := range data.Lines {
-		if line.ID != id {
+func (data *wishlistFormData) applyEdition(id int64) {
+	data.EditionID = id
+	data.EditionTitle = ""
+	for _, ed := range data.Editions {
+		if ed.ID != id {
 			continue
 		}
-		data.LineTitle = catalog.LineFullTitle(line.Kind, line.Label)
+		data.EditionTitle = ed.Describe()
 		return
 	}
 }
@@ -139,10 +139,7 @@ func wishlistFormTitle(data wishlistFormData) string {
 }
 
 func (s *Server) wishView(row db.WishlistRow, owned map[string]bool) WishView {
-	v := WishView{
-		WishlistRow: row,
-		LineTitle:   catalog.LineFullTitle(row.LineKind, row.LineLabel),
-	}
+	v := WishView{WishlistRow: row}
 	if row.Kind == "volumes" {
 		v.Remain = catalog.SpanRemaining(row.VolFrom, row.VolTo, owned)
 		v.RemainCount = v.Remain.Count()
@@ -166,19 +163,19 @@ func (s *Server) activeWishViews(rows []db.WishlistRow) ([]WishView, error) {
 	for _, row := range rows {
 		owned := map[string]bool{}
 		var covers map[string]string
-		if row.Kind == "volumes" && row.BookLineID.Valid {
-			id := row.BookLineID.Int64
+		if row.Kind == "volumes" && row.EditionID.Valid {
+			id := row.EditionID.Int64
 			if _, ok := ownedCache[id]; !ok {
-				keys, err := s.db.LineOwnedKeys(id)
+				keys, err := s.db.EditionOwnedKeys(id)
 				if err != nil {
 					return nil, err
 				}
 				ownedCache[id] = keys
-				lineCovers, err := s.db.LineCovers(id)
+				editionCovers, err := s.db.EditionCovers(id)
 				if err != nil {
 					return nil, err
 				}
-				coverCache[id] = lineCovers
+				coverCache[id] = editionCovers
 			}
 			owned = ownedCache[id]
 			covers = coverCache[id]
@@ -241,12 +238,12 @@ func wishMoneyTotals(items []WishView) []db.MoneyTotals {
 	return out
 }
 
-func (s *Server) lineWanted(lineID int64) (catalog.Remaining, error) {
-	wants, err := s.db.ListOpenWishlistForLine(lineID)
+func (s *Server) editionWanted(editionID int64) (catalog.Remaining, error) {
+	wants, err := s.db.ListOpenWishlistForEdition(editionID)
 	if err != nil {
 		return catalog.Remaining{}, err
 	}
-	owned, err := s.db.LineOwnedKeys(lineID)
+	owned, err := s.db.EditionOwnedKeys(editionID)
 	if err != nil {
 		return catalog.Remaining{}, err
 	}
@@ -300,13 +297,13 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	owned := map[string]bool{}
 	var covers map[string]string
-	if row.Kind == "volumes" && row.BookLineID.Valid {
-		owned, err = s.db.LineOwnedKeys(row.BookLineID.Int64)
+	if row.Kind == "volumes" && row.EditionID.Valid {
+		owned, err = s.db.EditionOwnedKeys(row.EditionID.Int64)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
 		}
-		covers, err = s.db.LineCovers(row.BookLineID.Int64)
+		covers, err = s.db.EditionCovers(row.EditionID.Int64)
 		if err != nil {
 			s.serverError(w, r, err)
 			return
@@ -332,7 +329,7 @@ func wishTitle(v WishView) string {
 		return v.Name
 	}
 	if v.RemainLabel != "" {
-		return v.SeriesName + " " + v.VolumesLabel()
+		return v.Numbered() + " " + v.VolumesLabel()
 	}
 	return "Wishlist"
 }
@@ -360,7 +357,7 @@ func (s *Server) newWishlistForm(seriesID int64, r *http.Request) (wishlistFormD
 	if err != nil {
 		return wishlistFormData{}, err
 	}
-	lines, err := s.db.ListBookLines(seriesID)
+	lines, err := s.db.ListSeriesEditions(seriesID)
 	if err != nil {
 		return wishlistFormData{}, err
 	}
@@ -377,22 +374,22 @@ func (s *Server) newWishlistForm(seriesID int64, r *http.Request) (wishlistFormD
 		SeriesID:   ser.ID,
 		SeriesName: ser.Name,
 		SeriesSlug: ser.Slug,
-		Lines:      lines,
+		Editions:   lines,
 		Quantity:   "1",
 		Currency:   money.Default,
 		VolFrom:    strings.TrimSpace(r.URL.Query().Get("from")),
 		Name:       r.FormValue("name"),
 		MerchKind:  r.FormValue("kind_name"),
 	}
-	if lineID, err := parseID(r.URL.Query().Get("line")); err == nil {
-		data.applyLine(lineID)
+	if lineID, err := parseID(r.URL.Query().Get("edition")); err == nil {
+		data.applyEdition(lineID)
 	}
-	if kind == "volumes" && data.BookLineID == 0 && len(lines) == 1 {
-		data.applyLine(lines[0].ID)
+	if kind == "volumes" && data.EditionID == 0 && len(lines) == 1 {
+		data.applyEdition(lines[0].ID)
 	}
-	if kind == "volumes" && data.BookLineID != 0 {
+	if kind == "volumes" && data.EditionID != 0 {
 		for _, line := range lines {
-			if line.ID != data.BookLineID {
+			if line.ID != data.EditionID {
 				continue
 			}
 			data.Currency = line.DefaultCurrency
@@ -464,7 +461,7 @@ func (s *Server) loadWishlistForm(id int64) (wishlistFormData, error) {
 	if err != nil {
 		return wishlistFormData{}, err
 	}
-	lines, err := s.db.ListBookLines(w.SeriesID)
+	lines, err := s.db.ListSeriesEditions(w.SeriesID)
 	if err != nil {
 		return wishlistFormData{}, err
 	}
@@ -477,8 +474,8 @@ func (s *Server) loadWishlistForm(id int64) (wishlistFormData, error) {
 		to = ""
 	}
 	lineID := int64(0)
-	if w.BookLineID.Valid {
-		lineID = w.BookLineID.Int64
+	if w.EditionID.Valid {
+		lineID = w.EditionID.Int64
 	}
 	data := wishlistFormData{
 		ID:         w.ID,
@@ -486,7 +483,7 @@ func (s *Server) loadWishlistForm(id int64) (wishlistFormData, error) {
 		SeriesID:   w.SeriesID,
 		SeriesName: ser.Name,
 		SeriesSlug: ser.Slug,
-		Lines:      lines,
+		Editions:   lines,
 		VolFrom:    w.VolFrom,
 		VolTo:      to,
 		Name:       w.Name,
@@ -498,7 +495,7 @@ func (s *Server) loadWishlistForm(id int64) (wishlistFormData, error) {
 		Image:      nullImage(w.ImagePath),
 		Links:      s.linkViews(ll),
 	}
-	data.applyLine(lineID)
+	data.applyEdition(lineID)
 	return data, nil
 }
 
@@ -603,8 +600,8 @@ func (s *Server) fillWishlistForm(data *wishlistFormData, r *http.Request) {
 	data.Currency = r.FormValue("currency")
 	data.MSRP = r.FormValue("msrp")
 	data.Notes = r.FormValue("notes")
-	if id, err := parseID(r.FormValue("book_line_id")); err == nil {
-		data.applyLine(id)
+	if id, err := parseID(r.FormValue("edition_id")); err == nil {
+		data.applyEdition(id)
 	}
 }
 
@@ -631,21 +628,21 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 		if err != nil {
 			return in, existing, err.Error(), err
 		}
-		lineID, err := parseID(r.FormValue("book_line_id"))
+		lineID, err := parseID(r.FormValue("edition_id"))
 		if err != nil || lineID == 0 {
-			return in, existing, "Pick a format.", errWishlist
+			return in, existing, "Pick an edition.", errWishlist
 		}
 		ok := false
-		for _, line := range data.Lines {
+		for _, line := range data.Editions {
 			if line.ID == lineID {
 				ok = true
 				break
 			}
 		}
 		if !ok {
-			return in, existing, "Pick a format.", errWishlist
+			return in, existing, "Pick an edition.", errWishlist
 		}
-		in.BookLineID = sql.NullInt64{Int64: lineID, Valid: true}
+		in.EditionID = sql.NullInt64{Int64: lineID, Valid: true}
 		in.VolFrom = from
 		in.VolTo = to
 		return in, existing, "", nil

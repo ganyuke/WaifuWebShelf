@@ -7,12 +7,12 @@
   </div>
   {{if .Data.Series}}
   <table class="admin-table">
-    <thead><tr><th>Series</th><th class="num">Formats</th><th class="num">Volumes</th><th class="num">Merch</th><th></th></tr></thead>
+    <thead><tr><th>Series</th><th class="num">Editions</th><th class="num">Volumes</th><th class="num">Merch</th><th></th></tr></thead>
     <tbody>
     {{range .Data.Series}}
       <tr>
         <td><a href="/series/{{.Slug}}" data-preview="/series/{{.Slug}}">{{.Name}}</a></td>
-        <td class="num">{{len .Lines}}</td>
+        <td class="num">{{len .Editions}}</td>
         <td class="num">{{.VolumesOwned}}</td>
         <td class="num">{{.MerchCount}}</td>
         <td class="link-col"><a href="/admin/series/{{.ID}}/edit">Edit</a></td>
@@ -24,15 +24,6 @@
   <p class="muted">No series yet.</p>
   {{end}}
 </div>
-{{if .Data.Ungrouped}}
-<div class="box">
-  <div class="bar">
-    <h2>Earlier purchases</h2>
-    <a href="/admin/trips/group">Group into trips</a>
-  </div>
-  <p>{{.Data.Ungrouped}} {{if eq .Data.Ungrouped 1}}item{{else}}items{{end}} with a purchase date {{if eq .Data.Ungrouped 1}}isn't{{else}}aren't{{end}} on a trip.</p>
-</div>
-{{end}}
 <div class="box">
   <div class="bar">
     <h2>Stores</h2>

@@ -18,7 +18,7 @@ func TestWishlistVolumeRangeAndMerch(t *testing.T) {
 		t.Fatal(err)
 	}
 	total := int64(3)
-	lineID, err := store.CreateBookLine(sid, BookLineWrite{Kind: "light_novel", TotalVolumes: &total})
+	lineID, err := testEdition(store, sid, "light_novel", EditionWrite{TotalVolumes: &total})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,12 +29,12 @@ func TestWishlistVolumeRangeAndMerch(t *testing.T) {
 	target := int64(1400)
 	wid, err := store.CreateWishlist(WishlistWrite{
 		Kind: "volumes", SeriesID: sid,
-		BookLineID: nullInt64Ptr(&lineID),
-		VolFrom:    "1",
-		VolTo:      "3",
-		Quantity:   1,
-		MSRPCents:  &target,
-		Currency:   "CAD",
+		EditionID: nullInt64Ptr(&lineID),
+		VolFrom:   "1",
+		VolTo:     "3",
+		Quantity:  1,
+		MSRPCents: &target,
+		Currency:  "CAD",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -43,11 +43,11 @@ func TestWishlistVolumeRangeAndMerch(t *testing.T) {
 		t.Fatal("id")
 	}
 
-	open, err := store.ListOpenWishlistForLine(lineID)
+	open, err := store.ListOpenWishlistForEdition(lineID)
 	if err != nil || len(open) != 1 {
 		t.Fatalf("open %v %v", open, err)
 	}
-	owned, err := store.LineOwnedKeys(lineID)
+	owned, err := store.EditionOwnedKeys(lineID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestWishlistVolumeRangeAndMerch(t *testing.T) {
 	if _, err := store.CreateVolume(lineID, "2", 200, Purchase{Currency: "CAD", PriceExTaxCents: &paid}); err != nil {
 		t.Fatal(err)
 	}
-	owned, err = store.LineOwnedKeys(lineID)
+	owned, err = store.EditionOwnedKeys(lineID)
 	if err != nil {
 		t.Fatal(err)
 	}

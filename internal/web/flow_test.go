@@ -98,30 +98,39 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res = post("/admin/series/"+strconv.FormatInt(ser.ID, 10)+"/book-lines/new", url.Values{
-		"kind": {"light_novel"}, "total_volumes": {"3"},
-		"default_currency": {"CAD"}, "default_msrp": {"14.99"},
+	res = post("/admin/series/"+strconv.FormatInt(ser.ID, 10)+"/works/new", url.Values{
+		"kind": {"light_novel"}, "language": {"en"},
 	})
 	res.Body.Close()
 	if res.StatusCode != 303 {
-		t.Fatalf("create line %d", res.StatusCode)
+		t.Fatalf("create work %d", res.StatusCode)
 	}
-	lines, err := store.ListBookLines(ser.ID)
+	lines, err := store.ListSeriesEditions(ser.ID)
 	if err != nil || len(lines) != 1 {
-		t.Fatalf("lines %v %v", lines, err)
+		t.Fatalf("editions %v %v", lines, err)
 	}
-	res = post("/admin/book-lines/"+strconv.FormatInt(lines[0].ID, 10)+"/volumes/new", url.Values{
+	if loc := res.Header.Get("Location"); loc != "/admin/editions/"+strconv.FormatInt(lines[0].ID, 10)+"/edit?ok=created" {
+		t.Fatalf("create work location %s", loc)
+	}
+	res = post("/admin/editions/"+strconv.FormatInt(lines[0].ID, 10)+"/edit", url.Values{
+		"language": {"en"}, "total_volumes": {"3"}, "default_currency": {"CAD"}, "default_msrp": {"14.99"},
+	})
+	res.Body.Close()
+	if res.StatusCode != 303 {
+		t.Fatalf("edit edition %d", res.StatusCode)
+	}
+	res = post("/admin/editions/"+strconv.FormatInt(lines[0].ID, 10)+"/volumes/new", url.Values{
 		"volume_number": {"1"}, "currency": {"CAD"}, "msrp": {"15.00"}, "price_ex_tax": {"12.00"}, "price_inc_tax": {"13.80"},
 	})
 	res.Body.Close()
 	if res.StatusCode != 303 {
 		t.Fatalf("create volume %d", res.StatusCode)
 	}
-	if loc := res.Header.Get("Location"); !strings.Contains(loc, "/admin/book-lines/") {
+	if loc := res.Header.Get("Location"); !strings.Contains(loc, "/admin/editions/") {
 		t.Fatalf("create volume location %s", loc)
 	}
 	for _, price := range []string{"2.00", "10.00", "2.00"}[1:] {
-		res = post("/admin/book-lines/"+strconv.FormatInt(lines[0].ID, 10)+"/volumes/new", url.Values{
+		res = post("/admin/editions/"+strconv.FormatInt(lines[0].ID, 10)+"/volumes/new", url.Values{
 			"volume_number": {"1"}, "currency": {"CAD"}, "store": {"Book Off"}, "price_ex_tax": {price},
 		})
 		res.Body.Close()
@@ -161,8 +170,8 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	if err != nil || len(vols) != 3 {
 		t.Fatalf("volumes %v %v", vols, err)
 	}
-	if lines[0].Slug != "light-novel" {
-		t.Fatalf("book line slug %q", lines[0].Slug)
+	if lines[0].WorkSlug != "light-novel" || lines[0].EditionSlug != "english" {
+		t.Fatalf("slugs %q %q", lines[0].WorkSlug, lines[0].EditionSlug)
 	}
 	res = post("/admin/links", url.Values{
 		"owner_type": {"volume_number"},
@@ -176,7 +185,7 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	if res.StatusCode != 303 {
 		t.Fatalf("create volume link %d", res.StatusCode)
 	}
-	copiesPage := mustOK("/series/spice-and-wolf/light-novel/1")
+	copiesPage := mustOK("/series/spice-and-wolf/light-novel/english/1")
 	if !strings.Contains(copiesPage, "3 copies") {
 		t.Fatalf("copies page:\n%s", copiesPage)
 	}
@@ -190,7 +199,7 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	mustOK("/merch/" + strconv.FormatInt(merch[0].ID, 10))
 
 	res = post("/admin/series/"+strconv.FormatInt(ser.ID, 10)+"/wishlist/new", url.Values{
-		"kind": {"volumes"}, "book_line_id": {strconv.FormatInt(lines[0].ID, 10)},
+		"kind": {"volumes"}, "edition_id": {strconv.FormatInt(lines[0].ID, 10)},
 		"vol_from": {"2"}, "vol_to": {"3"}, "currency": {"CAD"}, "msrp": {"14.99"},
 	})
 	res.Body.Close()
@@ -241,14 +250,17 @@ func TestPublicAndAdminFlow(t *testing.T) {
 	if !strings.Contains(seriesEdit, "Holo 1/7") || !strings.Contains(seriesEdit, "2–3") {
 		t.Fatalf("series admin missing wishlist:\n%s", seriesEdit)
 	}
-	adminGet("/admin/book-lines/" + strconv.FormatInt(lines[0].ID, 10) + "/edit")
-	newVol := adminGet("/admin/book-lines/" + strconv.FormatInt(lines[0].ID, 10) + "/volumes/new")
+	adminGet("/admin/editions/" + strconv.FormatInt(lines[0].ID, 10) + "/edit")
+	adminGet("/admin/works/" + strconv.FormatInt(lines[0].WorkID, 10) + "/edit")
+	adminGet("/admin/works/" + strconv.FormatInt(lines[0].WorkID, 10) + "/editions/new")
+	adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/works/new")
+	newVol := adminGet("/admin/editions/" + strconv.FormatInt(lines[0].ID, 10) + "/volumes/new")
 	if !strings.Contains(newVol, `value="14.99"`) {
 		t.Fatalf("new volume form missing default MSRP:\n%s", newVol)
 	}
 	adminGet("/admin/volumes/" + strconv.FormatInt(vols[0].ID, 10) + "/edit")
 	adminGet("/admin/merch/" + strconv.FormatInt(merch[0].ID, 10) + "/edit")
-	adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/wishlist/new?kind=volumes&line=" + strconv.FormatInt(lines[0].ID, 10))
+	adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/wishlist/new?kind=volumes&edition=" + strconv.FormatInt(lines[0].ID, 10))
 	newWishMerch := adminGet("/admin/series/" + strconv.FormatInt(ser.ID, 10) + "/wishlist/new?kind=merch")
 	if !strings.Contains(newWishMerch, `value="USD"`) {
 		t.Fatalf("new merch want missing USD default:\n%s", newWishMerch)

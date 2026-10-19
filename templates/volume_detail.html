@@ -1,18 +1,19 @@
 {{define "volume_detail"}}
 {{template "header" .}}
 <div class="crumb-row">
-  <p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> › <a href="/series/{{.Data.Series.Slug}}#{{.Data.Line.Slug}}">{{.Data.Title}}</a></p>
+  <p class="crumb"><a href="/series/{{.Data.Series.Slug}}">{{.Data.Series.Name}}</a> › <a href="{{.Data.Edition.EditionURL}}">{{.Data.Edition.Describe}}</a></p>
   {{template "pager" .Data.Pager}}
 </div>
 <div class="box">
   <div class="bar">
-    <h1>{{.Data.Series.Name}} vol. {{.Data.Number}}{{if gt (len .Data.Copies) 1}} <span class="count">{{len .Data.Copies}} copies</span>{{end}}</h1>
+    <h1>{{.Data.Name}}{{if gt (len .Data.Copies) 1}} <span class="count">{{len .Data.Copies}} copies</span>{{end}}</h1>
     {{if $.SignedIn}}
     <span>
-      <a href="/admin/book-lines/{{.Data.Line.ID}}/volumes/new?n={{.Data.Number}}&amp;copy=1">Add copy</a>
+      <a href="/admin/editions/{{.Data.Edition.ID}}/volumes/new?n={{.Data.Number}}&amp;copy=1">Add copy</a>
     </span>
     {{end}}
   </div>
+  {{if .Data.Caption}}<p class="subhead">{{.Data.Caption}}</p>{{end}}
   <article class="detail book{{if not .Data.Cover}} no-pic{{end}}">
     {{if .Data.Cover}}<img class="hero-img" src="{{smallURL .Data.Cover}}" alt="">{{end}}
     <div>

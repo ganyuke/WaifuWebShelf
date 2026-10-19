@@ -3,17 +3,17 @@
 <p class="crumb"><a href="/wishlist">Wishlist</a> › <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a></p>
 <div class="box">
   <div class="bar">
-    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.SeriesName}} {{.Data.VolumesLabel}}{{end}}</h1>
+    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.Numbered}} {{.Data.VolumesLabel}}{{end}}</h1>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/wishlist/{{.Data.ID}}/edit">Edit</a>
       {{if eq .Data.Kind "merch"}}<a href="/admin/series/{{.Data.SeriesID}}/merch/new?wish={{.Data.ID}}">Add merch</a>{{end}}
-      {{if eq .Data.Kind "volumes"}}<a href="/admin/book-lines/{{.Data.BookLineID.Int64}}/volumes/new{{if .Data.Remain.Numbers}}?n={{index .Data.Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
+      {{if eq .Data.Kind "volumes"}}<a href="/admin/editions/{{.Data.EditionID.Int64}}/volumes/new{{if .Data.Remain.Numbers}}?n={{index .Data.Remain.Numbers 0}}{{end}}">Add volume</a>{{end}}
     </span>
     {{end}}
   </div>
   {{if eq .Data.Kind "volumes"}}
-  <p class="muted">{{.Data.LineTitle}}</p>
+  <p class="muted">{{.Data.Caption}}</p>
   {{template "links_list" .Data.Links}}
   <dl class="facts">
     {{if gt .Data.RemainCount 1}}<dt>Volumes</dt><dd>{{.Data.RemainCount}}</dd>{{end}}
