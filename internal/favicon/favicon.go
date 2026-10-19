@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -91,13 +92,37 @@ func New(dir string, allowPrivate bool) (*Store, error) {
 	return s, nil
 }
 
+// special lists reserved ranges that IsGlobalUnicast and IsPrivate let
+// through, including IPv6 ranges that carry an IPv4 address inside them.
+var special = func() []netip.Prefix {
+	var out []netip.Prefix
+	for _, p := range []string{
+		"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "192.88.99.0/24",
+		"198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4",
+		"64:ff9b::/96", "64:ff9b:1::/48", "100::/64", "2001::/23", "2001:db8::/32", "2002::/16",
+	} {
+		out = append(out, netip.MustParsePrefix(p))
+	}
+	return out
+}()
+
 func publicOnly(_, address string, _ syscall.RawConn) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
 	}
-	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsGlobalUnicast() || ip.IsPrivate() {
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return err
+	}
+	ip = ip.Unmap()
+	ok := ip.IsGlobalUnicast() && !ip.IsPrivate()
+	for _, p := range special {
+		if p.Contains(ip) {
+			ok = false
+		}
+	}
+	if !ok {
 		return fmt.Errorf("%s is not a public address", host)
 	}
 	return nil
