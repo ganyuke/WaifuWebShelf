@@ -12,7 +12,7 @@
       <option value="" {{if eq .Data.Language ""}}selected{{end}}>Not set</option>
       {{range languages}}<option value="{{.Code}}" {{if eq .Code $.Data.Language}}selected{{end}}>{{.Name}}</option>{{end}}
     </select>
-    <label for="edition_name">Edition name (optional) <span class="hint" title="For printings with their own numbering, like 3-in-1. It goes in each volume's name." tabindex="0">(?)</span></label>
+    <label for="edition_name">Edition name (optional) <span class="hint" title="For editions numbered on their own, like 3-in-1. Added to each volume's name." tabindex="0">(?)</span></label>
     <input id="edition_name" name="edition_name" value="{{.Data.EditionName}}" placeholder="3-in-1">
     <details {{if or .Data.TotalVolumes .Data.DefaultMSRP .Err}}open{{end}}><summary>Volumes and prices (optional)</summary>
     <label>Total volumes <input name="total_volumes" inputmode="numeric" value="{{.Data.TotalVolumes}}" placeholder="Blank if ongoing"></label>
@@ -61,14 +61,14 @@
   </ul>
   {{end}}
   <form class="stack" method="post" action="/admin/editions/{{.Data.ID}}/covers" enctype="multipart/form-data" data-covers="upload">
-    <label for="cover_volume">Volume number <span class="hint" title="Leave empty to take each volume number from the file name, like vol-14.jpg" tabindex="0">(?)</span></label>
+    <label for="cover_volume">Volume number <span class="hint" title="Leave empty to read the volume number from each file name, like vol-14.jpg." tabindex="0">(?)</span></label>
     <input id="cover_volume" name="volume_number">
-    <label for="cover_files">Covers <span class="hint" title="Replaces covers you already have. The old ones are kept in backups in the data folder." tabindex="0">(?)</span></label>
+    <label for="cover_files">Covers <span class="hint" title="Replaces existing covers. Old covers are backed up in the data folder." tabindex="0">(?)</span></label>
     <input id="cover_files" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
     <button type="submit">Add covers</button>
   </form>
   <form class="stack" method="post" action="/admin/editions/{{.Data.ID}}/covers/find" data-covers="find" data-get="/admin/editions/{{.Data.ID}}/covers/get">
-    <label for="cover_link">Book page <span class="hint" title="A link to any volume on {{.Data.CoverSites}}. Saves the cover of every volume in the series and replaces covers you already have." tabindex="0">(?)</span></label>
+    <label for="cover_link">Book page <span class="hint" title="Paste any volume's page on {{.Data.CoverSites}} to get covers for the whole series. Replaces existing covers." tabindex="0">(?)</span></label>
     <input id="cover_link" type="url" name="link" placeholder="https://www.kobo.com/ww/en/ebook/…" required>
     <button type="submit">Get covers</button>
   </form>

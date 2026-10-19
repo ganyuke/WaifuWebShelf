@@ -8,7 +8,7 @@
   </div>
   <form class="stack" method="post" enctype="multipart/form-data">
     <label>Volume number <input name="volume_number" {{if fieldError .Err "volume_number"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.VolumeNumber}}" required placeholder="1, 8.5, omake…"></label>
-    <label for="volume_title">Title (optional) <span class="hint" title="For a volume with its own name, like Rascal Does Not Dream of Bunny Girl Senpai. Shown instead of the work name and number. Shared by every copy." tabindex="0">(?)</span></label>
+    <label for="volume_title">Title (optional) <span class="hint" title="For volumes with their own name, like Rascal Does Not Dream of Bunny Girl Senpai. Shown instead of the work name and number, on every copy." tabindex="0">(?)</span></label>
     <input id="volume_title" name="volume_title" value="{{.Data.VolumeTitle}}">
     <details {{if or .Data.Cover .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>
     <label>Cover <input type="file" name="cover" {{if fieldError .Err "cover"}}aria-invalid="true" aria-describedby="form-error"{{end}} accept="image/jpeg,image/png,image/webp,image/gif"></label>

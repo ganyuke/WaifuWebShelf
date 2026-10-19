@@ -63,7 +63,7 @@
         <thead><tr><th>Month</th><th class="num">Trips</th><th class="num">Paid</th></tr></thead>
         <tbody>
           {{range .Data.ByMonth}}
-          <tr><td>{{month .Key}}</td><td class="num">{{if .Visits}}{{.Visits}}{{else}}—{{end}}</td><td class="num strong">{{amount .Paid .Currency}}{{if .NoTotal}}<span class="hint" title="Plus {{.NoTotal}} {{if eq .NoTotal 1}}trip{{else}}trips{{end}} with no total yet" tabindex="0"> +?</span>{{end}}</td></tr>
+          <tr><td>{{month .Key}}</td><td class="num">{{if .Visits}}{{.Visits}}{{else}}—{{end}}</td><td class="num strong">{{amount .Paid .Currency}}{{if .NoTotal}}<span class="hint" title="{{.NoTotal}} more {{if eq .NoTotal 1}}trip has{{else}}trips have{{end}} no total yet." tabindex="0"> +?</span>{{end}}</td></tr>
           {{end}}
         </tbody>
       </table>
@@ -76,7 +76,7 @@
         <thead><tr><th>Store</th><th class="num">Trips</th><th class="num">Paid</th></tr></thead>
         <tbody>
           {{range .Data.ByStore}}
-          <tr><td>{{if .Key}}{{.Key}}{{else}}—{{end}}</td><td class="num">{{if .Visits}}{{.Visits}}{{else}}—{{end}}</td><td class="num strong">{{amount .Paid .Currency}}{{if .NoTotal}}<span class="hint" title="Plus {{.NoTotal}} {{if eq .NoTotal 1}}trip{{else}}trips{{end}} with no total yet" tabindex="0"> +?</span>{{end}}</td></tr>
+          <tr><td>{{if .Key}}{{.Key}}{{else}}—{{end}}</td><td class="num">{{if .Visits}}{{.Visits}}{{else}}—{{end}}</td><td class="num strong">{{amount .Paid .Currency}}{{if .NoTotal}}<span class="hint" title="{{.NoTotal}} more {{if eq .NoTotal 1}}trip has{{else}}trips have{{end}} no total yet." tabindex="0"> +?</span>{{end}}</td></tr>
           {{end}}
         </tbody>
       </table>
@@ -84,7 +84,7 @@
     {{end}}
     {{if .Data.Receipts}}
     <div class="box">
-      <h2 class="bar">Receipt lines <span class="hint" title="Receipt prices, before tax" tabindex="0">(?)</span></h2>
+      <h2 class="bar">Receipt lines <span class="hint" title="Before tax." tabindex="0">(?)</span></h2>
       <table class="catalog spend">
         <thead><tr><th>Line</th><th class="num">Bought</th><th class="num">Total</th></tr></thead>
         <tbody>

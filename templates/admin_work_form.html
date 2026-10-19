@@ -7,7 +7,7 @@
     {{if not .Data.New}}<span><a href="/series/{{.Data.SeriesSlug}}#{{.Data.Slug}}">View public page</a></span>{{end}}
   </div>
   <form class="stack" method="post">
-    <label for="title">Title (optional) <span class="hint" title="For a spinoff or a book with its own name, like K-On! Shuffle. Leave empty for the series' own name." tabindex="0">(?)</span></label>
+    <label for="title">Title (optional) <span class="hint" title="For spinoffs like K-On! Shuffle. Leave empty to use the series name." tabindex="0">(?)</span></label>
     <input id="title" name="title" value="{{.Data.Title}}" placeholder="{{.Data.SeriesName}}">
     <label for="kind">Medium</label>
     <select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>
@@ -17,7 +17,7 @@
       <option value="" {{if eq .Data.Language ""}}selected{{end}}>Not set</option>
       {{range languages}}<option value="{{.Code}}" {{if eq .Code $.Data.Language}}selected{{end}}>{{.Name}}</option>{{end}}
     </select>
-    <label for="edition_name">Edition name (optional) <span class="hint" title="For printings with their own numbering, like 3-in-1. It goes in each volume's name." tabindex="0">(?)</span></label>
+    <label for="edition_name">Edition name (optional) <span class="hint" title="For editions numbered on their own, like 3-in-1. Added to each volume's name." tabindex="0">(?)</span></label>
     <input id="edition_name" name="edition_name" value="{{.Data.EditionName}}" placeholder="3-in-1">
     {{end}}
     <div class="form-actions"><button type="submit">Save</button><a href="/admin/series/{{.Data.SeriesID}}/edit">Cancel</a></div>

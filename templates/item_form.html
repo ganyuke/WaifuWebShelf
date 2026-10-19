@@ -20,12 +20,12 @@
 <select id="edition" name="edition"><option value="">Choose an edition</option>{{range .Data.Editions}}<option value="{{.ID}}" data-series="{{.SeriesID}}" data-currency="{{.DefaultCurrency}}" data-msrp="{{moneyInput .DefaultMSRPCents .DefaultCurrency}}" {{if eq (printf "%d" .ID) $.Data.EditionChoice}}selected{{end}}>{{.SeriesName}}, {{.Describe}}</option>{{end}}<option value="new" {{if eq .Data.EditionChoice "new"}}selected{{end}}>New edition…</option></select>
 {{template "item_error" dict "Key" "edition" "Errors" .Data.Errors}}
 <div data-new-edition>
-<label for="work_title">Title (optional) <span class="hint" title="For a spinoff or a book with its own name, like K-On! Shuffle. Leave empty for the series' own name." tabindex="0">(?)</span></label><input id="work_title" name="work_title" type="text" value="{{.Data.WorkTitle}}">
+<label for="work_title">Title (optional) <span class="hint" title="For spinoffs like K-On! Shuffle. Leave empty to use the series name." tabindex="0">(?)</span></label><input id="work_title" name="work_title" type="text" value="{{.Data.WorkTitle}}">
 <label for="kind">Medium</label><select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>
 {{template "item_error" dict "Key" "kind" "Errors" .Data.Errors}}
 <label for="language">Language</label><select id="language" name="language"><option value="" {{if eq .Data.Language ""}}selected{{end}}>Not set</option>{{range languages}}<option value="{{.Code}}" {{if eq .Code $.Data.Language}}selected{{end}}>{{.Name}}</option>{{end}}</select>
 {{template "item_error" dict "Key" "language" "Errors" .Data.Errors}}
-<label for="edition_name">Edition name (optional) <span class="hint" title="For printings with their own numbering, like 3-in-1. It goes in each volume's name." tabindex="0">(?)</span></label><input id="edition_name" name="edition_name" type="text" value="{{.Data.EditionName}}" placeholder="3-in-1">
+<label for="edition_name">Edition name (optional) <span class="hint" title="For editions numbered on their own, like 3-in-1. Added to each volume's name." tabindex="0">(?)</span></label><input id="edition_name" name="edition_name" type="text" value="{{.Data.EditionName}}" placeholder="3-in-1">
 </div>
 <p data-defaults><button type="submit" name="action" value="defaults" formnovalidate>Fill in edition prices</button></p>
 <label for="volume_number">Volume number</label><input id="volume_number" name="volume_number" type="text" value="{{.Data.VolumeNumber}}" aria-describedby="volume_number-error">{{template "item_error" dict "Key" "volume_number" "Errors" .Data.Errors}}

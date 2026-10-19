@@ -25,7 +25,7 @@
     <div class="trip-grid three">
       <div><label for="store_name">Name</label><input id="store_name" name="store_name" value="{{$d.StoreName}}" placeholder="Book Off Downtown">{{template "item_error" dict "Key" "store_name" "Errors" $d.Errors}}</div>
       <div><label for="store_currency">Currency</label><input id="store_currency" name="store_currency" value="{{$d.StoreCurrency}}" list="currencies" maxlength="8"></div>
-      <div><label for="store_tax">Tax % <span class="hint" title="Used to suggest the total when you enter a receipt" tabindex="0">(?)</span></label><input id="store_tax" name="store_tax" value="{{$d.StoreTax}}" inputmode="decimal" placeholder="7.75">{{template "item_error" dict "Key" "store_tax" "Errors" $d.Errors}}</div>
+      <div><label for="store_tax">Tax % <span class="hint" title="Used to fill in the total from receipt prices." tabindex="0">(?)</span></label><input id="store_tax" name="store_tax" value="{{$d.StoreTax}}" inputmode="decimal" placeholder="7.75">{{template "item_error" dict "Key" "store_tax" "Errors" $d.Errors}}</div>
     </div>
   </fieldset>
   <datalist id="currencies"><option value="CAD"><option value="USD"><option value="JPY"><option value="EUR"></datalist>
@@ -68,7 +68,7 @@
       {{if $d.Photo}}<p class="thumb-row"><img src="{{smallURL $d.Photo}}" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_photo" value="1"> Remove</label></p>{{end}}
     </div>
     <div>
-      <label for="receipt">Receipt photo <span class="hint" title="Only you can open it, when logged in" tabindex="0">(?)</span></label>
+      <label for="receipt">Receipt photo <span class="hint" title="Receipt photos are only shown when logged in." tabindex="0">(?)</span></label>
       <input id="receipt" type="file" name="receipt" accept="image/jpeg,image/png,image/webp,image/gif">
       {{template "item_error" dict "Key" "receipt" "Errors" $d.Errors}}
       {{if $d.Receipt}}<p class="thumb-row"><img src="/admin/trips/{{$d.ID}}/receipt" alt="" class="thumb"><label class="check"><input type="checkbox" name="remove_receipt" value="1"> Remove</label></p>{{end}}
