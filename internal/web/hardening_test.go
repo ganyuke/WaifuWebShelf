@@ -243,3 +243,44 @@ func TestResponsesCarryBrowserProtections(t *testing.T) {
 		}
 	}
 }
+
+func TestErrorsUseSiteLayout(t *testing.T) {
+	srv, ts := newTestServer(t)
+	send := func(method, path, body string, hdr map[string]string) (int, string) {
+		t.Helper()
+		req, _ := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for k, v := range hdr {
+			req.Header.Set(k, v)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		var b bytes.Buffer
+		_, _ = b.ReadFrom(res.Body)
+		if ct := res.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+			t.Errorf("%s %s: Content-Type %q", method, path, ct)
+		}
+		if !strings.Contains(b.String(), "site-footer") {
+			t.Errorf("%s %s: no site layout in %q", method, path, b.String())
+		}
+		return res.StatusCode, b.String()
+	}
+
+	if code, _ := send(http.MethodPost, "/series", "", nil); code != http.StatusMethodNotAllowed {
+		t.Errorf("wrong method: status %d", code)
+	}
+	if code, body := send(http.MethodPost, "/login", "username=%zz", nil); code != http.StatusBadRequest || !strings.Contains(body, "Could not read the form.") {
+		t.Errorf("unreadable form: status %d", code)
+	}
+	code, body := send(http.MethodPost, "/login", "", map[string]string{"Origin": "https://evil.example", "Referer": "https://evil.example/x"})
+	if code != http.StatusForbidden || !strings.Contains(body, `href="/"`) {
+		t.Errorf("cross-site: status %d, back link should stay on this site: %s", code, body)
+	}
+	_ = srv.db.Close()
+	if code, body := send(http.MethodGet, "/stats", "", map[string]string{"Referer": ts.URL + "/series?x=1"}); code != http.StatusInternalServerError || !strings.Contains(body, `href="/series?x=1"`) {
+		t.Errorf("server error: status %d: %s", code, body)
+	}
+}

@@ -212,7 +212,16 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/links", s.requireAdmin(s.linkCreate))
 	mux.HandleFunc("POST /admin/links/{id}/delete", s.requireAdmin(s.linkDelete))
 
-	return withHeaders(s.guardWrites(s.withPageCache(mux)))
+	// The mux answers a wrong method with a plain-text page, so it gets the
+	// not-found page instead. HEAD is matched by GET patterns.
+	routes := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, pattern := mux.Handler(r); pattern == "" {
+			s.renderStatus(w, r, http.StatusMethodNotAllowed, "notfound", "Not found", nil)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+	return withHeaders(s.guardWrites(s.withPageCache(routes)))
 }
 
 func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
@@ -284,13 +293,34 @@ func (s *Server) renderView(w http.ResponseWriter, r *http.Request, name, title,
 }
 
 func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
-	s.render(w, r, "notfound", "Not found", nil)
+	s.renderStatus(w, r, http.StatusNotFound, "notfound", "Not found", nil)
 }
 
 func (s *Server) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("error: %v", err)
-	http.Error(w, "internal server error", http.StatusInternalServerError)
+	s.errorPage(w, r, http.StatusInternalServerError, "Something went wrong", "Try again. If it keeps happening, the server log has the details.")
+}
+
+// badRequest is for posts that can't be read at all. Mistakes in what was
+// typed go back to the form instead.
+func (s *Server) badRequest(w http.ResponseWriter, r *http.Request, msg string) {
+	s.errorPage(w, r, http.StatusBadRequest, "Couldn't save", msg)
+}
+
+// errorPage shows msg in the site layout, with a link back to the page the
+// visitor came from when it is on this site.
+func (s *Server) errorPage(w http.ResponseWriter, r *http.Request, status int, title, msg string) {
+	back := "/"
+	if ref, err := url.Parse(r.Referer()); err == nil && ref.Host == r.Host && r.Host != "" {
+		back = safeNext(ref.RequestURI())
+	}
+	s.renderStatus(w, r, status, "error", title, map[string]string{"Message": msg, "Back": back})
+}
+
+func (s *Server) renderStatus(w http.ResponseWriter, r *http.Request, status int, name, title string, data any) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	s.render(w, r, name, title, data)
 }
 
 func findDir(name string) (string, error) {

@@ -12,25 +12,25 @@ import (
 
 func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	ownerType := r.FormValue("owner_type")
 	switch ownerType {
 	case "series", "book_line", "volume", "volume_number", "merch", "wishlist":
 	default:
-		http.Error(w, "invalid owner", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	ownerID, err := parseID(r.FormValue("owner_id"))
 	if err != nil {
-		http.Error(w, "invalid owner id", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	ownerKey := strings.TrimSpace(r.FormValue("owner_key"))
 	if ownerType == "volume_number" {
 		if ownerKey == "" {
-			http.Error(w, "invalid volume number", http.StatusBadRequest)
+			s.badRequest(w, r, "Could not read the form.")
 			return
 		}
 	} else {
@@ -44,7 +44,7 @@ func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := links.NormalizeURL(raw)
 	if err != nil || u == "" {
-		http.Error(w, "Use a web address starting with http or https.", http.StatusBadRequest)
+		s.badRequest(w, r, "Use a web address starting with http or https.")
 		return
 	}
 	if _, err := s.db.CreateLink(ownerType, ownerID, ownerKey, label, u); err != nil {

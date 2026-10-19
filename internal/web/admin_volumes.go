@@ -65,7 +65,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	line, ser, err := s.volumeContext(id)
@@ -196,7 +196,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	v, err := s.db.GetVolume(id)

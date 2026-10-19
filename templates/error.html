@@ -1,0 +1,9 @@
+{{define "error"}}
+{{template "header" .}}
+<div class="box">
+  <h1 class="bar">{{.Title}}</h1>
+  <p>{{.Data.Message}}</p>
+  <p><a href="{{.Data.Back}}">Go back</a></p>
+</div>
+{{template "footer" .}}
+{{end}}

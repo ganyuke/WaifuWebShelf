@@ -29,7 +29,7 @@ func (s *Server) guardWrites(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
 			if !sameOrigin(r) {
-				http.Error(w, "request came from another site", http.StatusForbidden)
+				s.errorPage(w, r, http.StatusForbidden, "Couldn't save", "This was sent from another site, so nothing was changed.")
 				return
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, maxBody)

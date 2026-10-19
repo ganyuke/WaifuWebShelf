@@ -111,7 +111,7 @@ func (s *Server) renderItem(w http.ResponseWriter, r *http.Request, d itemForm, 
 
 func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {

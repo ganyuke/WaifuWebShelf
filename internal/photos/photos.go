@@ -35,7 +35,7 @@ const (
 	webpQuality = 80
 )
 
-var ErrTooLarge = fmt.Errorf("image has too many pixels, use one under %d megapixels", maxPixels/1_000_000)
+var ErrTooLarge = fmt.Errorf("Photos must be under %d megapixels.", maxPixels/1_000_000)
 
 // Result holds the encoded versions and the file extension they share.
 type Result struct {

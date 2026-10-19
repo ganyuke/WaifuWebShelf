@@ -147,7 +147,7 @@ func (s *Server) seriesSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	ser, err := s.db.GetSeries(id)
@@ -276,7 +276,7 @@ func (s *Server) bookLineNewForm(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) bookLineSaveNew(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	id, err := parseID(r.PathValue("id"))
@@ -389,7 +389,7 @@ func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	data, err := s.loadBookLineForm(id)
@@ -434,7 +434,7 @@ func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	number := normalizeVolumeNumber(r.FormValue("volume_number"))
@@ -453,7 +453,7 @@ func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) bookLineSaveEdit(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form.")
 		return
 	}
 	id, err := parseID(r.PathValue("id"))

@@ -410,7 +410,7 @@ func (s *Server) wishlistSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	data, err := s.newWishlistForm(id, r)
@@ -509,7 +509,7 @@ func (s *Server) wishlistSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	existing, err := s.db.GetWishlist(id)

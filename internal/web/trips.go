@@ -334,7 +334,7 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	form := addBooksForm{ReceiptLine: r.FormValue("receipt_line"), BookLine: r.FormValue("book_line"),
@@ -590,7 +590,7 @@ func (s *Server) parseTripForm(r *http.Request, d *tripFormData) db.TripWrite {
 
 func (s *Server) tripSaveNew(w http.ResponseWriter, r *http.Request) {
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {
@@ -632,7 +632,7 @@ func (s *Server) tripSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {
@@ -898,7 +898,7 @@ func (s *Server) tagAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Could not read the form. Photos must be under 25 MB each.", http.StatusBadRequest)
+		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
 		return
 	}
 	kind, item, _ := strings.Cut(r.FormValue("item"), ":")

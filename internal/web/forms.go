@@ -94,27 +94,27 @@ func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (st
 	}
 	defer file.Close()
 	if header.Size > maxUpload {
-		return "", false, fmt.Errorf("image is larger than 25 MB")
+		return "", false, fmt.Errorf("Photos must be under 25 MB.")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
 	if err != nil {
 		return "", false, err
 	}
 	if len(data) > maxUpload {
-		return "", false, fmt.Errorf("image is larger than 25 MB")
+		return "", false, fmt.Errorf("Photos must be under 25 MB.")
 	}
 	// The file's own bytes decide the type. The name and the browser's claim are ignored.
 	switch http.DetectContentType(data) {
 	case "image/jpeg", "image/png", "image/webp", "image/gif":
 	default:
-		return "", false, fmt.Errorf("unsupported image type (use jpg, png, webp, or gif)")
+		return "", false, fmt.Errorf("Use a JPEG, PNG, WebP, or GIF photo.")
 	}
 	pic, err := photos.Process(data, withSmall)
 	if errors.Is(err, photos.ErrTooLarge) {
 		return "", false, err
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("could not read this image, try saving it again")
+		return "", false, fmt.Errorf("Could not read this photo. Try saving it again.")
 	}
 
 	var buf [16]byte
@@ -232,7 +232,7 @@ func parseQuantity(s string) (int, error) {
 	}
 	n, err := strconv.Atoi(s)
 	if err != nil || n < 1 {
-		return 0, fmt.Errorf("quantity must be at least 1")
+		return 0, fmt.Errorf("Quantity must be at least 1.")
 	}
 	return n, nil
 }
