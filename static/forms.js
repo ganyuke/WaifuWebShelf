@@ -14,6 +14,6 @@ document.addEventListener('change', e => {
  const input = e.target;
  if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
  const big = [...input.files].some(f => f.size > 25 << 20);
- input.setCustomValidity(big ? 'Photos must be under 25 MB.' : '');
+ input.setCustomValidity(big ? 'Use a photo under 25 MB.' : '');
  if (big) input.reportValidity();
 });

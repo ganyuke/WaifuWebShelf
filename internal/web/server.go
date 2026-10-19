@@ -298,13 +298,13 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Printf("error: %v", err)
-	s.errorPage(w, r, http.StatusInternalServerError, "Something went wrong", "Try again. If it keeps happening, the server log has the details.")
+	s.errorPage(w, r, http.StatusInternalServerError, "Something went wrong", "Please try again later.")
 }
 
 // badRequest is for posts that can't be read at all. Mistakes in what was
 // typed go back to the form instead.
 func (s *Server) badRequest(w http.ResponseWriter, r *http.Request, msg string) {
-	s.errorPage(w, r, http.StatusBadRequest, "Couldn't save", msg)
+	s.errorPage(w, r, http.StatusBadRequest, "Bad request", msg)
 }
 
 // errorPage shows msg in the site layout, with a link back to the page the

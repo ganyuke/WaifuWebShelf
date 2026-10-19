@@ -272,7 +272,7 @@ func TestErrorsUseSiteLayout(t *testing.T) {
 	if code, _ := send(http.MethodPost, "/series", "", nil); code != http.StatusMethodNotAllowed {
 		t.Errorf("wrong method: status %d", code)
 	}
-	if code, body := send(http.MethodPost, "/login", "username=%zz", nil); code != http.StatusBadRequest || !strings.Contains(body, "Could not read the form.") {
+	if code, body := send(http.MethodPost, "/login", "username=%zz", nil); code != http.StatusBadRequest || !strings.Contains(body, "Reload the page and try again.") {
 		t.Errorf("unreadable form: status %d", code)
 	}
 	code, body := send(http.MethodPost, "/login", "", map[string]string{"Origin": "https://evil.example", "Referer": "https://evil.example/x"})

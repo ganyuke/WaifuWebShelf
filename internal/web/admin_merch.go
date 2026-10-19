@@ -46,7 +46,7 @@ func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	ser, err := s.db.GetSeries(id)
@@ -69,7 +69,7 @@ func (s *Server) merchSaveNew(w http.ResponseWriter, r *http.Request) {
 		data.WishlistID = wishID
 	}
 	if strings.TrimSpace(data.Name) == "" {
-		s.renderErr(w, r, "admin_merch_form", "Add merch", "Name is required.", data)
+		s.renderErr(w, r, "admin_merch_form", "Add merch", "Enter a name.", data)
 		return
 	}
 	qty, err := parseQuantity(data.Quantity)
@@ -177,7 +177,7 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	m, err := s.db.GetMerch(id)
@@ -205,7 +205,7 @@ func (s *Server) merchSaveEdit(w http.ResponseWriter, r *http.Request) {
 	data.PriceInc = r.FormValue("price_inc_tax")
 	data.Notes = r.FormValue("notes")
 	if strings.TrimSpace(data.Name) == "" {
-		s.renderErr(w, r, "admin_merch_form", "Edit merch", "Name is required.", data)
+		s.renderErr(w, r, "admin_merch_form", "Edit merch", "Enter a name.", data)
 		return
 	}
 	qty, err := parseQuantity(data.Quantity)

@@ -101,7 +101,7 @@ func TestItemEntryFlow(t *testing.T) {
 	form.Set("line", formatID(lines[0].ID))
 	form.Set("action", "save")
 	w = call("POST", "/admin/items/new", form, true)
-	if !strings.Contains(w.Body.String(), "already owned") {
+	if !strings.Contains(w.Body.String(), "This volume is already owned.") {
 		t.Fatal(w.Body.String())
 	}
 	vols, _ := store.ListVolumes(lines[0].ID)
@@ -184,7 +184,7 @@ func TestItemEntryFlow(t *testing.T) {
 	}
 	// An already-purchased wish cannot create a second item on re-submit.
 	w = call("POST", "/admin/items/new", merch, true)
-	if !strings.Contains(w.Body.String(), "wishlist item is unavailable") {
+	if !strings.Contains(w.Body.String(), "Wishlist item not found in this series.") {
 		t.Fatal(w.Body.String())
 	}
 	// Editing preserves the expanded purchase form and returns to the series.

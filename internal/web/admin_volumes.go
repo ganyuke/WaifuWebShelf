@@ -65,7 +65,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	line, ser, err := s.volumeContext(id)
@@ -87,7 +87,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 	}
 	number := normalizeVolumeNumber(data.VolumeNumber)
 	if number == "" {
-		s.renderErr(w, r, "admin_volume_form", "Add volume", "Volume number is required.", data)
+		s.renderErr(w, r, "admin_volume_form", "Add volume", "Enter a volume number.", data)
 		return
 	}
 	p, err := s.parsePurchase(r)
@@ -196,7 +196,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	v, err := s.db.GetVolume(id)
@@ -223,7 +223,7 @@ func (s *Server) volumeSaveEdit(w http.ResponseWriter, r *http.Request) {
 	data.Notes = r.FormValue("notes")
 	number := normalizeVolumeNumber(data.VolumeNumber)
 	if number == "" {
-		s.renderErr(w, r, "admin_volume_form", "Edit volume", "Volume number is required.", data)
+		s.renderErr(w, r, "admin_volume_form", "Edit volume", "Enter a volume number.", data)
 		return
 	}
 	p, err := s.parsePurchase(r)

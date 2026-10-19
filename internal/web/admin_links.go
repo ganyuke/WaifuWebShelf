@@ -12,25 +12,25 @@ import (
 
 func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Could not read the form.")
+		s.badRequest(w, r, "Reload the page and try again.")
 		return
 	}
 	ownerType := r.FormValue("owner_type")
 	switch ownerType {
 	case "series", "book_line", "volume", "volume_number", "merch", "wishlist":
 	default:
-		s.badRequest(w, r, "Could not read the form.")
+		s.badRequest(w, r, "Reload the page and try again.")
 		return
 	}
 	ownerID, err := parseID(r.FormValue("owner_id"))
 	if err != nil {
-		s.badRequest(w, r, "Could not read the form.")
+		s.badRequest(w, r, "Reload the page and try again.")
 		return
 	}
 	ownerKey := strings.TrimSpace(r.FormValue("owner_key"))
 	if ownerType == "volume_number" {
 		if ownerKey == "" {
-			s.badRequest(w, r, "Could not read the form.")
+			s.badRequest(w, r, "Reload the page and try again.")
 			return
 		}
 	} else {

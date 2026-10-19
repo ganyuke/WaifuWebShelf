@@ -125,12 +125,12 @@ func TestProcessKeepsTransparency(t *testing.T) {
 }
 
 func TestProcessRefusesHugePictures(t *testing.T) {
-	// A PNG header claiming 10000×10000 is refused before any decoding.
+	// A PNG header claiming 20000×20000 is refused before any decoding.
 	var buf bytes.Buffer
 	_ = png.Encode(&buf, image.NewGray(image.Rect(0, 0, 1, 1)))
 	b := buf.Bytes()
-	binary.BigEndian.PutUint32(b[16:], 10000)
-	binary.BigEndian.PutUint32(b[20:], 10000)
+	binary.BigEndian.PutUint32(b[16:], 20000)
+	binary.BigEndian.PutUint32(b[20:], 20000)
 	binary.BigEndian.PutUint32(b[29:], crc32.ChecksumIEEE(b[12:29]))
 	if _, err := Process(b, false); err != ErrTooLarge {
 		t.Fatalf("want ErrTooLarge, got %v", err)

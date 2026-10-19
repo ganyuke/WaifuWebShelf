@@ -29,13 +29,13 @@ const (
 	FullMax  = 2000
 	SmallMax = 600
 	// maxPixels keeps one upload from taking more memory than a small server has.
-	maxPixels = 50_000_000
+	maxPixels = 200_000_000
 
 	jpegQuality = 82
 	webpQuality = 80
 )
 
-var ErrTooLarge = fmt.Errorf("Photos must be under %d megapixels.", maxPixels/1_000_000)
+var ErrTooLarge = fmt.Errorf("Use a photo under %d megapixels.", maxPixels/1_000_000)
 
 // Result holds the encoded versions and the file extension they share.
 type Result struct {

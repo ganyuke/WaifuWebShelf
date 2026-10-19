@@ -410,7 +410,7 @@ func (s *Server) wishlistSaveNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	data, err := s.newWishlistForm(id, r)
@@ -509,7 +509,7 @@ func (s *Server) wishlistSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	existing, err := s.db.GetWishlist(id)
@@ -629,7 +629,7 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 	if kind == "volumes" {
 		from, to, err := catalog.ParseVolumeSpan(data.VolFrom, data.VolTo)
 		if err != nil {
-			return in, existing, err.Error() + ".", err
+			return in, existing, err.Error(), err
 		}
 		lineID, err := parseID(r.FormValue("book_line_id"))
 		if err != nil || lineID == 0 {
@@ -653,7 +653,7 @@ func (s *Server) parseWishlistWrite(r *http.Request, data wishlistFormData, exis
 
 	name := strings.TrimSpace(data.Name)
 	if name == "" {
-		return in, existing, "Name is required.", errWishlist
+		return in, existing, "Enter a name.", errWishlist
 	}
 	qty, err := parseQuantity(data.Quantity)
 	if err != nil {

@@ -334,7 +334,7 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	form := addBooksForm{ReceiptLine: r.FormValue("receipt_line"), BookLine: r.FormValue("book_line"),
@@ -353,7 +353,7 @@ func (s *Server) tripAddBooks(w http.ResponseWriter, r *http.Request) {
 	} else if ref.ID, err = parseID(form.BookLine); err != nil {
 		errs["book_line"] = "Choose a series and format."
 	} else if _, err := s.db.GetBookLine(ref.ID); err != nil {
-		errs["book_line"] = "This format is unavailable."
+		errs["book_line"] = "Format not found. Choose another."
 	}
 	var receiptLine int64
 	if form.ReceiptLine != "" {
@@ -536,7 +536,7 @@ func (s *Server) parseTripForm(r *http.Request, d *tripFormData) db.TripWrite {
 	} else if id, err := parseID(d.StoreChoice); err != nil {
 		d.Errors["store"] = "Choose a store."
 	} else if st, err := s.db.GetStore(id); err != nil {
-		d.Errors["store"] = "This store is unavailable."
+		d.Errors["store"] = "Store not found. Choose another."
 	} else {
 		in.StoreID = id
 		if d.Currency == "" {
@@ -578,7 +578,7 @@ func (s *Server) parseTripForm(r *http.Request, d *tripFormData) db.TripWrite {
 		}
 		if row.Count != "" {
 			if n, err := strconv.Atoi(row.Count); err != nil || n < 1 {
-				d.Errors["lines"] = "Counts are whole numbers, 1 or more."
+				d.Errors["lines"] = "Enter each count as a whole number, 1 or more."
 			} else {
 				w.Count = n
 			}
@@ -590,7 +590,7 @@ func (s *Server) parseTripForm(r *http.Request, d *tripFormData) db.TripWrite {
 
 func (s *Server) tripSaveNew(w http.ResponseWriter, r *http.Request) {
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {
@@ -632,7 +632,7 @@ func (s *Server) tripSaveEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {
@@ -898,7 +898,7 @@ func (s *Server) tagAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := r.ParseForm(); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	kind, item, _ := strings.Cut(r.FormValue("item"), ":")

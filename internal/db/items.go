@@ -7,7 +7,7 @@ import (
 	"waifuwebshelf/internal/slug"
 )
 
-var ErrOwned = errors.New("This volume is already owned. Select Add another copy to continue.")
+var ErrOwned = errors.New("This volume is already owned. Select Add another copy to add it anyway.")
 
 type ItemWrite struct {
 	WishlistID                                       int64
@@ -86,7 +86,7 @@ func (d *DB) CreateItem(in ItemWrite) (seriesID, lineID int64, seriesSlug string
 				return
 			}
 			if parent != seriesID {
-				err = errors.New("Format does not belong to this series.")
+				err = errors.New("Choose a format belonging to this series.")
 				return
 			}
 		}

@@ -11,7 +11,7 @@ func ParseVolumeSpan(from, to string) (string, string, error) {
 	from = normalizeNumber(from)
 	to = normalizeNumber(to)
 	if from == "" {
-		return "", "", fmt.Errorf("volume is required")
+		return "", "", fmt.Errorf("Enter a volume number.")
 	}
 	if to == "" || to == from {
 		return from, from, nil
@@ -19,10 +19,10 @@ func ParseVolumeSpan(from, to string) (string, string, error) {
 	a, errA := strconv.Atoi(from)
 	b, errB := strconv.Atoi(to)
 	if errA != nil || errB != nil || a < 1 || b < 1 {
-		return "", "", fmt.Errorf("range needs whole numbers")
+		return "", "", fmt.Errorf("Enter whole numbers for a range.")
 	}
 	if a > b {
-		return "", "", fmt.Errorf("range is backwards")
+		return "", "", fmt.Errorf("Put the lower volume number first.")
 	}
 	return from, to, nil
 }

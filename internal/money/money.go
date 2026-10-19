@@ -35,7 +35,7 @@ func Parse(s, currency string) (*int64, error) {
 		return nil, nil
 	}
 	if strings.ContainsAny(s, " \t") {
-		return nil, fmt.Errorf("invalid amount")
+		return nil, fmt.Errorf("enter an amount like 17.92")
 	}
 	if strings.HasPrefix(s, "-") {
 		return nil, fmt.Errorf("amount cannot be negative")
@@ -44,13 +44,13 @@ func Parse(s, currency string) (*int64, error) {
 	dec := Decimals(currency)
 	parts := strings.Split(s, ".")
 	if len(parts) > 2 {
-		return nil, fmt.Errorf("invalid amount")
+		return nil, fmt.Errorf("enter an amount like 17.92")
 	}
 	if parts[0] == "" {
 		parts[0] = "0"
 	}
 	if strings.ContainsFunc(parts[0], func(r rune) bool { return r < '0' || r > '9' }) {
-		return nil, fmt.Errorf("invalid amount")
+		return nil, fmt.Errorf("enter an amount like 17.92")
 	}
 
 	var whole int64
@@ -67,16 +67,16 @@ func Parse(s, currency string) (*int64, error) {
 	if len(parts) == 2 {
 		fracStr := parts[1]
 		if fracStr == "" {
-			return nil, fmt.Errorf("invalid amount")
+			return nil, fmt.Errorf("enter an amount like 17.92")
 		}
 		if dec == 0 {
-			return nil, fmt.Errorf("%s does not use decimal places", NormalizeCurrency(currency))
+			return nil, fmt.Errorf("enter %s as a whole number", NormalizeCurrency(currency))
 		}
 		if len(fracStr) > dec {
-			return nil, fmt.Errorf("too many decimal places")
+			return nil, fmt.Errorf("use 2 decimal places at most")
 		}
 		if strings.ContainsFunc(fracStr, func(r rune) bool { return r < '0' || r > '9' }) {
-			return nil, fmt.Errorf("invalid amount")
+			return nil, fmt.Errorf("enter an amount like 17.92")
 		}
 		for len(fracStr) < dec {
 			fracStr += "0"

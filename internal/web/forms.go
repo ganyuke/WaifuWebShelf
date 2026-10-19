@@ -94,14 +94,14 @@ func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (st
 	}
 	defer file.Close()
 	if header.Size > maxUpload {
-		return "", false, fmt.Errorf("Photos must be under 25 MB.")
+		return "", false, fmt.Errorf("Use a photo under 25 MB.")
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
 	if err != nil {
 		return "", false, err
 	}
 	if len(data) > maxUpload {
-		return "", false, fmt.Errorf("Photos must be under 25 MB.")
+		return "", false, fmt.Errorf("Use a photo under 25 MB.")
 	}
 	// The file's own bytes decide the type. The name and the browser's claim are ignored.
 	switch http.DetectContentType(data) {
@@ -114,7 +114,7 @@ func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (st
 		return "", false, err
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("Could not read this photo. Try saving it again.")
+		return "", false, fmt.Errorf("Photo file is broken. Re-save it and upload again.")
 	}
 
 	var buf [16]byte
@@ -194,7 +194,7 @@ func parseBookLineWrite(r *http.Request) (db.BookLineWrite, string, error) {
 	label := strings.TrimSpace(r.FormValue("label"))
 	total, err := parseOptionalInt(r.FormValue("total_volumes"))
 	if err != nil {
-		return db.BookLineWrite{}, "Total volumes " + err.Error() + ".", err
+		return db.BookLineWrite{}, "Enter total volumes as a whole number.", err
 	}
 	currency := money.NormalizeCurrency(r.FormValue("default_currency"))
 	msrp, err := money.Parse(r.FormValue("default_msrp"), currency)
@@ -232,7 +232,7 @@ func parseQuantity(s string) (int, error) {
 	}
 	n, err := strconv.Atoi(s)
 	if err != nil || n < 1 {
-		return 0, fmt.Errorf("Quantity must be at least 1.")
+		return 0, fmt.Errorf("Enter a quantity of 1 or more.")
 	}
 	return n, nil
 }

@@ -111,7 +111,7 @@ func (s *Server) renderItem(w http.ResponseWriter, r *http.Request, d itemForm, 
 
 func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Could not read the form. Photos must be under 25 MB each.")
+		s.badRequest(w, r, "Use photos under 25 MB each.")
 		return
 	}
 	if r.MultipartForm != nil {
@@ -163,7 +163,7 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			d.Errors["series"] = "Choose a series or create one."
 		} else if _, e = s.db.GetSeries(id); e != nil {
-			d.Errors["series"] = "This series is unavailable."
+			d.Errors["series"] = "Series not found. Choose another."
 		} else {
 			in.SeriesID = id
 		}
@@ -171,7 +171,7 @@ func (s *Server) itemSave(w http.ResponseWriter, r *http.Request) {
 	if d.WishlistID > 0 {
 		wish, e := s.db.GetWishlist(d.WishlistID)
 		if e != nil || !in.Merch || wish.Kind != "merch" || wish.SeriesID != in.SeriesID || wish.Status != "open" {
-			d.Errors["series"] = "This wishlist item is unavailable or belongs to another series."
+			d.Errors["series"] = "Wishlist item not found in this series."
 		} else {
 			in.WishlistID = d.WishlistID
 		}
