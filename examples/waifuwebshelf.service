@@ -22,8 +22,9 @@ AmbientCapabilities=
 NoNewPrivileges=true
 RestrictSUIDSGID=true
 
-# Make the filesystem read-only except the data directory (if you change
-# DATA_DIR in .env, set ReadWritePaths to the same path)
+# Make the filesystem read-only except the data directory. If you change
+# DATA_DIR in .env, set ReadWritePaths to the same path with
+# sudo systemctl edit waifuwebshelf, which deploys leave alone.
 ProtectSystem=strict
 ReadWritePaths=/opt/waifuwebshelf/data
 ProtectHome=true

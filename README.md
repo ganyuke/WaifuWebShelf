@@ -56,7 +56,9 @@ Money is stored as integer minor units (cents for CAD/USD, yen for JPY). Leave M
 scripts/deploy.sh user@host
 ```
 
-This builds for the server's CPU, installs to `/opt/waifuwebshelf` with a hardened systemd service, and prints the admin password on the first run. Settings are in `/opt/waifuwebshelf/.env`. Run it again to update.
+This builds for the server's CPU, installs to `/opt/waifuwebshelf` with a hardened systemd service, and prints the admin password on the first run. Settings are in `/opt/waifuwebshelf/.env`. Run it again to update. The five newest releases are kept in `/opt/waifuwebshelf/releases/`.
+
+Each deploy replaces the service file. Put your own service changes in `sudo systemctl edit waifuwebshelf` so they stay.
 
 ### By hand
 

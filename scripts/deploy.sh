@@ -18,7 +18,20 @@ case "$cpu" in
 esac
 
 make dist ARCH="$arch"
-scp -q "dist/waifuwebshelf-linux-$arch.tar.gz" "$host:/tmp/waifuwebshelf.tar.gz"
-ssh -t "$host" 'sudo install -d -m 755 /opt/waifuwebshelf \
-  && sudo tar -xzf /tmp/waifuwebshelf.tar.gz -C /opt/waifuwebshelf --no-same-owner bin \
-  && sudo /opt/waifuwebshelf/bin/install.sh /tmp/waifuwebshelf.tar.gz'
+
+# The tarball waits in a private folder with a random name, so no other
+# account on the server can put its own tarball in front of root.
+tmp=$(ssh "$host" mktemp -d)
+remote=$(printf %q "$tmp/waifuwebshelf.tar.gz")
+# Paths are quoted with %q and meant to expand here, before they are sent.
+# shellcheck disable=SC2029
+cleanup() {
+  # The file is missing when the copy failed before writing it.
+  ssh "$host" "if [ -e $remote ]; then rm -- $remote; fi; rmdir -- $(printf %q "$tmp")"
+}
+trap cleanup EXIT
+
+scp -q "dist/waifuwebshelf-linux-$arch.tar.gz" "$host:$tmp/waifuwebshelf.tar.gz"
+ssh -t "$host" "sudo install -d -m 755 /opt/waifuwebshelf \
+  && sudo tar -xzf $remote -C /opt/waifuwebshelf --no-same-owner bin \
+  && sudo /opt/waifuwebshelf/bin/install.sh $remote"

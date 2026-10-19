@@ -34,6 +34,21 @@ tar -xzf "$tarball" -C "$ROOT/$release" --strip-components=1 --no-same-owner app
 ln -sfn "$release" "$ROOT/app.next"
 mv -T "$ROOT/app.next" "$ROOT/app"
 
+# Keep the newest five releases. Only real folders named like a release are
+# removed, never the one app points at, and first counts as the oldest.
+current=$(readlink "$ROOT/app")
+mapfile -t old < <(
+  if [[ -d $ROOT/releases/first && ! -L $ROOT/releases/first ]]; then echo first; fi
+  find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended \
+    -regex '.*/[0-9]{8}-[0-9]{6}' -printf '%f\n' | sort
+)
+for ((i = 0; i < ${#old[@]} - 5; i++)); do
+  name=${old[i]}
+  [[ releases/$name == "$current" ]] && continue
+  echo "==> Removing old release $name"
+  rm -r --one-file-system -- "$ROOT/releases/$name"
+done
+
 if [[ ! -f "$ROOT/.env" ]]; then
   echo "==> Creating $ROOT/.env"
   install -m 600 "$ROOT/app/env.example" "$ROOT/.env"

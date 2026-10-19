@@ -55,7 +55,7 @@ save() {
     mv "$out.part" "$out"
     echo "Saved $out"
   else
-    rm -f "$out.part"
+    if [[ -e $out.part ]]; then rm -- "$out.part"; fi
     echo "Could not download $name" >&2
     failed=1
   fi
