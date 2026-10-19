@@ -118,7 +118,7 @@ func (s *Server) loadSeriesForm(id int64) (seriesFormData, error) {
 		Lines:    lines,
 		Merch:    merch,
 		Wishlist: wishItems,
-		Links:    toLinkViews(ll),
+		Links:    s.linkViews(ll),
 	}, nil
 }
 
@@ -376,7 +376,7 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 		TotalVolumes:    totalVolumesValue(line.TotalVolumes),
 		DefaultCurrency: line.DefaultCurrency,
 		DefaultMSRP:     moneyVal(line.DefaultMSRPCents, line.DefaultCurrency),
-		Links:           toLinkViews(ll),
+		Links:           s.linkViews(ll),
 		Volumes:         vols,
 	}, nil
 }

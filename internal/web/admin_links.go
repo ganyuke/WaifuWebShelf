@@ -1,6 +1,8 @@
 package web
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"strings"
 
@@ -49,6 +51,7 @@ func (s *Server) linkCreate(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	s.fetchFavicon(u)
 	http.Redirect(w, r, appendOK(redirectAfterLink(r), "linked"), http.StatusSeeOther)
 }
 
@@ -86,4 +89,33 @@ func appendOK(path, code string) string {
 		return path + "&ok=" + code
 	}
 	return path + "?ok=" + code
+}
+
+// StartFavicons turns on downloading site icons for links and fetches the
+// ones missing for links saved earlier.
+func (s *Server) StartFavicons() {
+	s.fetchIcons.Store(true)
+	go func() {
+		urls, err := s.db.ListLinkURLs()
+		if err != nil {
+			log.Printf("site icons: %v", err)
+			return
+		}
+		for _, u := range urls {
+			if s.favicons.File(u) == "" {
+				s.fetchFavicon(u)
+			}
+		}
+	}()
+}
+
+func (s *Server) fetchFavicon(rawURL string) {
+	if !s.fetchIcons.Load() {
+		return
+	}
+	go func() {
+		if s.favicons.Fetch(context.Background(), rawURL) {
+			s.bumpPages()
+		}
+	}()
 }

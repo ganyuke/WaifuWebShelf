@@ -122,7 +122,7 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 		grid := GridPage{
 			VolumeGrid: catalog.BuildGrid(line, vols),
 			FullTitle:  catalog.LineFullTitle(line.Kind, line.Label),
-			Links:      toLinkViews(ll),
+			Links:      s.linkViews(ll),
 		}
 		wanted, err := s.lineWanted(line.ID)
 		if err != nil {
@@ -167,7 +167,7 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 	cover := nullImage(series.ImagePath)
 	s.renderPreview(w, r, "series_detail", series.Name, Preview{Image: cover}, map[string]any{
 		"Series":    series,
-		"Links":     toLinkViews(slinks),
+		"Links":     s.linkViews(slinks),
 		"Grids":     grids,
 		"Merch":     merch,
 		"WantMerch": wantMerch,
@@ -221,7 +221,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, err)
 			return
 		}
-		views[i] = CopyView{Volume: c, Links: toLinkViews(ll)}
+		views[i] = CopyView{Volume: c, Links: s.linkViews(ll)}
 	}
 	cover, err := s.db.VolumeCover(line.ID, number)
 	if err != nil {
@@ -252,7 +252,7 @@ func (s *Server) volumePage(w http.ResponseWriter, r *http.Request) {
 		"Title":  title,
 		"Number": number,
 		"Copies": views,
-		"Links":  toLinkViews(volumeLinks),
+		"Links":  s.linkViews(volumeLinks),
 		"Cover":  nullImage(cover),
 		"Pager":  volumePager(ser.Slug, line.Slug, prev, next),
 		"Same":   same,
@@ -370,7 +370,7 @@ func (s *Server) merchDetail(w http.ResponseWriter, r *http.Request) {
 	s.renderPreview(w, r, "merch_detail", row.Name, Preview{Text: row.SeriesName, Image: nullImage(row.ImagePath)}, map[string]any{
 		"Same":  same,
 		"Merch": row,
-		"Links": toLinkViews(ll),
+		"Links": s.linkViews(ll),
 		"Pager": pager,
 	})
 }

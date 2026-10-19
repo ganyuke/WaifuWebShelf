@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/ebitengine/purego v0.11.2
 	golang.org/x/image v0.47.0
+	golang.org/x/net v0.61.0
 	modernc.org/sqlite v1.57.0
 )
 

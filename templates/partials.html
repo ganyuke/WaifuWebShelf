@@ -120,7 +120,7 @@
   {{range .}}
   <li>
     <a href="{{.URL}}" rel="noopener noreferrer">
-      <img src="{{assetURL (printf "icons/%s.svg" .Icon)}}" alt="" width="16" height="16">
+      <img src="{{if .Favicon}}/images/{{.Favicon}}{{else}}{{assetURL "icons/generic.svg"}}{{end}}" alt="" width="16" height="16">
       {{.Label}}
     </a>
   </li>

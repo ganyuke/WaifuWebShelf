@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"waifuwebshelf/internal/config"
 	"waifuwebshelf/internal/db"
+	"waifuwebshelf/internal/favicon"
 )
 
 type Server struct {
@@ -25,6 +27,9 @@ type Server struct {
 	tmpl      *template.Template
 	assets    staticAssets
 	imagesDir string
+	favicons  *favicon.Store
+	// fetchIcons is off until StartFavicons, so tests never reach the network.
+	fetchIcons atomic.Bool
 	// receiptsDir is only served to the signed-in owner.
 	receiptsDir string
 	sessions    map[string]time.Time
@@ -82,6 +87,10 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 	if cfg.LoginEnabled() && cfg.AdminPass == "" {
 		return nil, fmt.Errorf("login is on but there is no admin password")
 	}
+	icons, err := favicon.New(cfg.ImagesDir(), false)
+	if err != nil {
+		return nil, err
+	}
 	trusted := cfg.TrustedProxies
 	if trusted == "" {
 		trusted = config.DefaultTrustedProxies
@@ -98,6 +107,7 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 		tmpl:        tmpl,
 		assets:      assets,
 		imagesDir:   cfg.ImagesDir(),
+		favicons:    icons,
 		receiptsDir: cfg.ReceiptsDir(),
 		sessions:    map[string]time.Time{},
 		pageHTML:    map[string][]byte{},

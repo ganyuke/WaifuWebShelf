@@ -11,7 +11,6 @@ import (
 
 	"waifuwebshelf/internal/catalog"
 	"waifuwebshelf/internal/db"
-	"waifuwebshelf/internal/links"
 	"waifuwebshelf/internal/money"
 )
 
@@ -160,15 +159,17 @@ func flashText(code string) string {
 	}
 }
 
+// LinkView shows a link with its site's own icon, or a plain one until the
+// icon has been saved or when the site has none.
 type LinkView struct {
 	db.Link
-	Icon string
+	Favicon string
 }
 
-func toLinkViews(ls []db.Link) []LinkView {
+func (s *Server) linkViews(ls []db.Link) []LinkView {
 	out := make([]LinkView, len(ls))
 	for i, l := range ls {
-		out[i] = LinkView{Link: l, Icon: links.Icon(l.URL)}
+		out[i] = LinkView{Link: l, Favicon: s.favicons.File(l.URL)}
 	}
 	return out
 }

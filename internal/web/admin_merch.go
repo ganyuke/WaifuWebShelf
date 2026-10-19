@@ -148,7 +148,7 @@ func (s *Server) loadMerchForm(id int64) (merchFormData, error) {
 		PriceInc:    moneyVal(m.PriceIncTaxCents, m.Currency),
 		Notes:       m.Notes,
 		Image:       nullImage(m.ImagePath),
-		Links:       toLinkViews(ll),
+		Links:       s.linkViews(ll),
 	}, nil
 }
 

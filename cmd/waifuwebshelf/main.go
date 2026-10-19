@@ -52,6 +52,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	srv.StartFavicons()
+
 	if photos.WebP() {
 		log.Printf("new photos are saved as WebP")
 	} else {

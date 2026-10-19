@@ -809,6 +809,24 @@ func (d *DB) CreateLink(ownerType string, ownerID int64, ownerKey, label, url st
 	return res.LastInsertId()
 }
 
+// ListLinkURLs lists every saved link address once.
+func (d *DB) ListLinkURLs() ([]string, error) {
+	rows, err := d.SQL.Query(`SELECT DISTINCT url FROM links ORDER BY url`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
 func (d *DB) GetLink(id int64) (Link, error) {
 	var l Link
 	err := d.SQL.QueryRow(`SELECT id, owner_type, owner_id, owner_key, label, url FROM links WHERE id = ?`, id).Scan(

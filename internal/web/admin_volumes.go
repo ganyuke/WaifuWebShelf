@@ -166,8 +166,8 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 		Notes:        v.Notes,
 		Image:        nullImage(v.ImagePath),
 		Cover:        nullImage(cover),
-		VolumeLinks:  toLinkViews(volumeLinks),
-		CopyLinks:    toLinkViews(copyLinks),
+		VolumeLinks:  s.linkViews(volumeLinks),
+		CopyLinks:    s.linkViews(copyLinks),
 	}, nil
 }
 

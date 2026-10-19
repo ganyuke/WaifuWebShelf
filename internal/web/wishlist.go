@@ -274,7 +274,7 @@ func (s *Server) wishlist(w http.ResponseWriter, r *http.Request) {
 			s.serverError(w, r, err)
 			return
 		}
-		items[i].Links = toLinkViews(ll)
+		items[i].Links = s.linkViews(ll)
 	}
 	s.render(w, r, "wishlist", "Wishlist", map[string]any{
 		"Groups": groupWishViews(items),
@@ -323,7 +323,7 @@ func (s *Server) wishlistDetail(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
-	v.Links = toLinkViews(ll)
+	v.Links = s.linkViews(ll)
 	s.renderPreview(w, r, "wishlist_detail", wishTitle(v), Preview{Text: v.SeriesName + " wishlist", Image: v.Picture()}, v)
 }
 
@@ -496,7 +496,7 @@ func (s *Server) loadWishlistForm(id int64) (wishlistFormData, error) {
 		MSRP:       moneyVal(w.MSRPCents, w.Currency),
 		Notes:      w.Notes,
 		Image:      nullImage(w.ImagePath),
-		Links:      toLinkViews(ll),
+		Links:      s.linkViews(ll),
 	}
 	data.applyLine(lineID)
 	return data, nil
