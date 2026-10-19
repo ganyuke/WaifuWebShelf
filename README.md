@@ -53,11 +53,10 @@ Money is stored as integer minor units (cents for CAD/USD, yen for JPY). Leave M
 ## Deploy on a VPS
 
 ```bash
-make dist                       # ARCH=arm64 for a Raspberry Pi
 scripts/deploy.sh user@host
 ```
 
-This installs to `/opt/waifuwebshelf` with a hardened systemd service and prints the admin password on the first run. Settings are in `/opt/waifuwebshelf/.env`. Run both again to update.
+This builds for the server's CPU, installs to `/opt/waifuwebshelf` with a hardened systemd service, and prints the admin password on the first run. Settings are in `/opt/waifuwebshelf/.env`. Run it again to update.
 
 ### By hand
 

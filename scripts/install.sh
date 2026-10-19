@@ -21,15 +21,18 @@ fi
 install -d -m 755 "$ROOT" "$ROOT/bin"
 install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$ROOT/data"
 
-echo "==> Unpacking $tarball"
-rm -rf "$ROOT/app.new" "$ROOT/app.old"
-install -d -m 755 "$ROOT/app.new"
-tar -xzf "$tarball" -C "$ROOT/app.new" --strip-components=1 --no-same-owner app
-if [[ -d "$ROOT/app" ]]; then
-  mv "$ROOT/app" "$ROOT/app.old"
+# Each deploy gets its own folder under releases/ and app points at the
+# newest one. Older ones stay for going back: sudo ln -sfn releases/OLD /opt/waifuwebshelf/app
+release=releases/$(date +%Y%m%d-%H%M%S)
+echo "==> Unpacking $tarball into $ROOT/$release"
+install -d -m 755 "$ROOT/releases" "$ROOT/$release"
+# Installs from before releases/ had app as a plain folder. It becomes the first release.
+if [[ -d "$ROOT/app" && ! -L "$ROOT/app" ]]; then
+  mv -T "$ROOT/app" "$ROOT/releases/first"
 fi
-mv "$ROOT/app.new" "$ROOT/app"
-rm -rf "$ROOT/app.old"
+tar -xzf "$tarball" -C "$ROOT/$release" --strip-components=1 --no-same-owner app
+ln -sfn "$release" "$ROOT/app.next"
+mv -T "$ROOT/app.next" "$ROOT/app"
 
 if [[ ! -f "$ROOT/.env" ]]; then
   echo "==> Creating $ROOT/.env"
