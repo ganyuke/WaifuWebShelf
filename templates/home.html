@@ -65,13 +65,13 @@
       <ul class="compact">
         {{range .Data.Recent}}
         <li>
-          <span class="pic" data-preview="{{if eq .Kind "volume"}}/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}{{else}}/merch/{{.ID}}{{end}}">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</span>
+          {{$url := printf "/merch/%d" .ID}}{{if eq .Kind "volume"}}{{$url = printf "/series/%s/%s/%s" .SeriesSlug .LineSlug .VolumeNumber}}{{end}}<a class="pic" href="{{$url}}" data-preview="{{$url}}" tabindex="-1" aria-hidden="true">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</a>
           <span class="text">
             {{if eq .Kind "volume"}}
-            <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
+            <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}" data-preview="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
             <span>{{lineFull .LineKind .LineLabel}}, bought {{date .PurchasedAt.String}}</span>
             {{else}}
-            <a href="/merch/{{.ID}}">{{.Name}}</a>
+            <a href="/merch/{{.ID}}" data-preview="/merch/{{.ID}}">{{.Name}}</a>
             <span>{{.SeriesName}}, bought {{date .PurchasedAt.String}}</span>
             {{end}}
           </span>
@@ -90,13 +90,13 @@
       <ul class="compact">
         {{range .Data.Wanted}}
         <li class="wanted">
-          <span class="pic" data-preview="/wishlist/{{.ID}}">{{if .Picture}}<img src="{{smallURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</span>
+          <a class="pic" href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}" tabindex="-1" aria-hidden="true">{{if .Picture}}<img src="{{smallURL .Picture}}" alt="" loading="lazy">{{else if eq .Kind "volumes"}}{{.RemainLabel}}{{end}}</a>
           <span class="text">
             {{if eq .Kind "merch"}}
-            <a href="/wishlist/{{.ID}}">{{.Name}}</a>
+            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.Name}}</a>
             <span>{{.SeriesName}}</span>
             {{else}}
-            <a href="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a>
+            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a>
             <span>{{.SeriesName}}</span>
             {{end}}
           </span>

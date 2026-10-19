@@ -186,10 +186,3 @@ func progressCaption(title string, uniqueOwned int, total *int, copies, extras i
 func itoa(n int) string {
 	return strconv.Itoa(n)
 }
-
-func ProgressLabel(owned int, total *int) string {
-	if total != nil {
-		return itoa(owned) + " / " + itoa(*total)
-	}
-	return itoa(owned) + " owned"
-}

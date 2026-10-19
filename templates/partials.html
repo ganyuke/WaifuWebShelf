@@ -45,12 +45,14 @@
 
 {{define "preview_card"}}
 {{with .Data}}
-<div class="pv-card">
+<div class="pv-card{{if .Image}} with-pic{{end}}">
   {{if .Image}}<img src="{{smallURL .Image}}" alt="">{{end}}
-  <p class="pv-title">{{.Title}}</p>
-  {{if .Sub}}<p class="muted">{{.Sub}}</p>{{end}}
-  {{if .Note}}<p>{{.Note}}</p>{{end}}
-  {{if .Facts}}<dl class="facts{{if .Tally}} tally{{end}}">{{range .Facts}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>{{end}}</dl>{{end}}
+  <div>
+    <p class="pv-title">{{.Title}}</p>
+    {{if .Sub}}<p class="muted">{{.Sub}}</p>{{end}}
+    {{if .Note}}<p>{{.Note}}</p>{{end}}
+    {{if .Facts}}<dl class="facts{{if .Tally}} tally{{end}}">{{range .Facts}}<dt>{{.Label}}</dt><dd>{{.Value}}</dd>{{end}}</dl>{{end}}
+  </div>
 </div>
 {{end}}
 {{end}}
@@ -58,14 +60,14 @@
 {{define "pager"}}
 {{if .Any}}
 <nav class="pager" aria-label="Previous and next">
-  {{if .PrevURL}}<a href="{{.PrevURL}}" title="{{.PrevTitle}}" rel="prev">← Previous</a>{{else}}<span class="off">← Previous</span>{{end}}
-  {{if .NextURL}}<a href="{{.NextURL}}" title="{{.NextTitle}}" rel="next">Next →</a>{{else}}<span class="off">Next →</span>{{end}}
+  {{if .PrevURL}}<a href="{{.PrevURL}}" title="{{.PrevTitle}}" rel="prev" data-preview="{{.PrevURL}}">← Previous</a>{{else}}<span class="off">← Previous</span>{{end}}
+  {{if .NextURL}}<a href="{{.NextURL}}" title="{{.NextTitle}}" rel="next" data-preview="{{.NextURL}}">Next →</a>{{else}}<span class="off">Next →</span>{{end}}
 </nav>
 {{end}}
 {{end}}
 
 {{define "tile"}}
-<a class="card{{if .Wanted}} wanted{{end}}" href="{{.URL}}">
+<a class="card{{if .Wanted}} wanted{{end}}" href="{{.URL}}" data-preview="{{.URL}}">
   <div class="cover">
     {{if .Image}}<img src="{{smallURL .Image}}" alt="" loading="lazy">{{else if .Text}}<span class="cover-text">{{.Text}}</span>{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
   </div>
@@ -80,7 +82,7 @@
 {{define "purchase_facts"}}
 <dl class="facts">
   {{with .P}}
-  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{end}}{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} at {{end}}{{.Store}}{{if .TripID.Valid}}</a>{{end}}</dd>{{end}}
+  {{if or .PurchasedAt.Valid .Store}}<dt>Bought</dt><dd>{{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}" data-preview="/trips/{{.TripID.Int64}}">{{end}}{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{end}}{{if and .PurchasedAt.Valid .Store}} at {{end}}{{.Store}}{{if .TripID.Valid}}</a>{{end}}</dd>{{end}}
   {{if .Paid.Valid}}<dt>Paid</dt><dd>{{amount .Paid.Int64 .Currency}}{{if .PlusTax}} <span class="muted">+ tax</span>{{end}}</dd>{{end}}
   {{if .MSRPCents.Valid}}<dt>List price</dt><dd>{{amount .MSRPCents.Int64 .Currency}}</dd>{{end}}
   {{if and $.SignedIn .PriceExTaxCents.Valid}}<dt>Before tax</dt><dd>{{amount .PriceExTaxCents.Int64 .Currency}}</dd>{{end}}
@@ -91,7 +93,7 @@
 {{define "haul_photo"}}
 <div class="haul{{if .Tagging}} tagging{{end}}" data-haul>
   {{if .Tagging}}<img class="hero-img" src="{{imageURL .Photo}}" alt="Everything bought on this trip">{{else}}<a href="{{imageURL .Photo}}"><img class="hero-img" src="{{imageURL .Photo}}" alt="Everything bought on this trip"></a>{{end}}
-  {{range .Tags}}<a class="tag-dot tx-{{.Left}} ty-{{.Top}}{{if .Highlight}} highlight{{end}}" href="{{.URL}}"><span>{{.Label}}</span></a>{{end}}
+  {{range .Tags}}<a class="tag-dot tx-{{.Left}} ty-{{.Top}}{{if .Highlight}} highlight{{end}}" href="{{.URL}}" data-preview="{{.URL}}"><span>{{.Label}}</span></a>{{end}}
 </div>
 {{end}}
 
@@ -101,7 +103,7 @@
 <div class="box">
   <div class="bar">
     <h2>Same trip</h2>
-    <a href="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} at {{.Trip.StoreName}}{{end}}</a>
+    <a href="/trips/{{.Trip.ID}}" data-preview="/trips/{{.Trip.ID}}">{{date .Trip.VisitedOn}}{{if .Trip.StoreName}} at {{.Trip.StoreName}}{{end}}</a>
   </div>
   <div class="same-trip{{if .Tagged}} with-photo{{end}}">
     {{if .Tagged}}{{template "haul_photo" dict "Photo" .Trip.PhotoPath.String "Tags" .Tags "Tagging" false}}{{end}}

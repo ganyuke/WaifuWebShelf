@@ -90,7 +90,7 @@
   <h3>Extras</h3>
   <ul class="extras">
     {{range $grid.Extras}}
-    <li><a href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.VolumeNumber}}">Vol. {{.VolumeNumber}}</a></li>
+    <li><a href="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.VolumeNumber}}" data-preview="/series/{{$.Data.Series.Slug}}/{{$grid.Line.Slug}}/{{.VolumeNumber}}">Vol. {{.VolumeNumber}}</a></li>
     {{end}}
   </ul>
   {{end}}

@@ -35,7 +35,7 @@
               <td class="date head">{{if .PurchasedAt.Valid}}{{date .PurchasedAt.String}}{{else}}—{{end}}</td>
               <td class="wide">
                 {{if .ImagePath.Valid}}<img class="thumb" src="{{smallURL .ImagePath.String}}" alt="">{{end}}
-                {{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}">{{if .Store}}{{.Store}}{{else}}Trip{{end}}</a>{{else if .Store}}{{.Store}}{{else}}—{{end}}
+                {{if .TripID.Valid}}<a href="/trips/{{.TripID.Int64}}" data-preview="/trips/{{.TripID.Int64}}">{{if .Store}}{{.Store}}{{else}}Trip{{end}}</a>{{else if .Store}}{{.Store}}{{else}}—{{end}}
                 {{template "links_list" .Links}}
                 {{if .Notes}}<p class="notes muted">{{.Notes}}</p>{{end}}
               </td>

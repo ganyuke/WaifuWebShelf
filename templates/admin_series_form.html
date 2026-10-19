@@ -21,42 +21,41 @@
 {{if not .Data.New}}
 <section class="panel">
   <h2>Formats</h2>
-  <ul>
+  {{if .Data.Lines}}
+  <table class="admin-table">
+    <tbody>
     {{range .Data.Lines}}
-    <li>
-      {{lineTitle .Kind .Label}}
-      <a class="row-link" href="/admin/book-lines/{{.ID}}/edit">Edit</a>
-      <a class="row-link" href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a>
-    </li>
-    {{else}}
-    <li class="muted">None yet</li>
+      <tr><td>{{lineTitle .Kind .Label}}</td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
-  </ul>
+    </tbody>
+  </table>
+  {{else}}<p class="muted">None yet</p>{{end}}
   <p><a class="btn" href="/admin/series/{{.Data.ID}}/book-lines/new">Add format</a></p>
 </section>
 <section class="panel">
   <h2>Merch</h2>
-  <ul>
+  {{if .Data.Merch}}
+  <table class="admin-table">
+    <tbody>
     {{range .Data.Merch}}
-    <li><a href="/admin/merch/{{.ID}}/edit">{{.Name}}</a></li>
-    {{else}}
-    <li class="muted">None yet</li>
+      <tr><td>{{.Name}}</td><td class="link-col"><a href="/admin/merch/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
-  </ul>
+    </tbody>
+  </table>
+  {{else}}<p class="muted">None yet</p>{{end}}
   <p><a class="btn" href="/admin/series/{{.Data.ID}}/merch/new">Add merch</a></p>
 </section>
 <section class="panel">
   <h2>Wishlist</h2>
-  <ul>
+  {{if .Data.Wishlist}}
+  <table class="admin-table">
+    <tbody>
     {{range .Data.Wishlist}}
-    <li>
-      {{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{if .RemainLabel}}, {{.VolumesLabel}}{{end}}{{end}}
-      <a class="row-link" href="/admin/wishlist/{{.ID}}/edit">Edit</a>
-    </li>
-    {{else}}
-    <li class="muted">None yet</li>
+      <tr><td>{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{if .RemainLabel}}, {{.VolumesLabel}}{{end}}{{end}}</td><td class="link-col"><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
-  </ul>
+    </tbody>
+  </table>
+  {{else}}<p class="muted">None yet</p>{{end}}
   <p><a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=volumes">Add volume</a>
   <a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=merch">Add merch</a></p>
 </section>

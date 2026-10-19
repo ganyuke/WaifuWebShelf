@@ -9,7 +9,7 @@ import (
 	"waifuwebshelf/internal/money"
 )
 
-// PreviewCard is the popup shown when a small picture is hovered: a bigger
+// PreviewCard is the popup shown when a link to the item is hovered: its
 // picture and the same details its page shows. Paths mirror the public pages
 // under /preview.
 type PreviewCard struct {

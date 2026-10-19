@@ -61,9 +61,6 @@ func funcMap() template.FuncMap {
 		"defaultCurrency": func() string { return money.Default },
 		"kindName":        catalog.KindName,
 		"lineTitle":       catalog.LineTitle,
-		"progress": func(owned int, total *int) string {
-			return catalog.ProgressLabel(owned, total)
-		},
 		"imageURL": func(path string) string {
 			if path == "" {
 				return ""

@@ -9,7 +9,7 @@
 {{range .Data}}
 <div class="box merch-group">
   <div class="bar">
-    <h2><a href="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
+    <h2><a href="/series/{{.SeriesSlug}}" data-preview="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
     {{if $.SignedIn}}<a href="/admin/series/{{.SeriesID}}/merch/new">Add merch</a>{{end}}
   </div>
   <div class="card-grid merch-grid">

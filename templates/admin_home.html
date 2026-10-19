@@ -13,14 +13,25 @@
       <tr>
         <td><a href="/admin/series/{{.ID}}/edit">{{.Name}}</a></td>
         <td>
-          {{range .Lines}}{{lineTitle .Kind .Label}} {{progress .Owned .Total}}
-          <a class="row-link" href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a><br>{{else}}—{{end}}
+          {{if .Lines}}
+          <table class="lines">
+            {{range .Lines}}
+            <tr>
+              <td>{{lineFull .Kind .Label}}</td>
+              <td class="num">{{volumesOwned .Owned .Total}}</td>
+              <td><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td>
+            </tr>
+            {{end}}
+          </table>
+          {{else}}—{{end}}
         </td>
         <td>{{.MerchCount}}</td>
-        <td class="actions">
-          <a href="/admin/series/{{.ID}}/edit">Edit</a>
-          <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
-          <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
+        <td>
+          <div class="actions">
+            <a href="/admin/series/{{.ID}}/edit">Edit</a>
+            <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
+            <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
+          </div>
         </td>
       </tr>
     {{end}}

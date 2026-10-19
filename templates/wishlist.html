@@ -30,7 +30,7 @@
 {{range .Data.Groups}}
 <div class="box" id="{{.SeriesSlug}}">
   <div class="bar">
-    <h2><a href="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
+    <h2><a href="/series/{{.SeriesSlug}}" data-preview="/series/{{.SeriesSlug}}">{{.SeriesName}}</a></h2>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/series/{{.SeriesID}}/wishlist/new?kind=volumes">Add volume</a>
@@ -44,11 +44,11 @@
     {{$item := .}}
     {{if eq .Kind "merch"}}
     <div class="card">
-      <a class="cover" href="/wishlist/{{.ID}}">
+      <a class="cover" href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">
         {{if .ImagePath.Valid}}<img src="{{smallURL .ImagePath.String}}" alt="" loading="lazy">{{else}}<span class="cover-letter">{{printf "%.1s" .Name}}</span>{{end}}
       </a>
       <div class="card-body">
-        <h3><a href="/wishlist/{{.ID}}">{{.Name}}</a></h3>
+        <h3><a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.Name}}</a></h3>
         {{with merchSub .Name .MerchKind .Quantity}}<p class="muted">{{.}}</p>{{end}}
         {{if .MSRPValid}}<p class="price">{{amount .MSRPAmount .Currency}}</p>{{end}}
         {{template "links_list" .Links}}
@@ -58,11 +58,11 @@
     {{else}}
     {{range .Volumes}}
     <div class="card">
-      <a class="cover" href="/wishlist/{{$item.ID}}">
+      <a class="cover" href="/wishlist/{{$item.ID}}" data-preview="/wishlist/{{$item.ID}}">
         {{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}
       </a>
       <div class="card-body">
-        <h3><a href="/wishlist/{{$item.ID}}">Volume {{.Number}}</a></h3>
+        <h3><a href="/wishlist/{{$item.ID}}" data-preview="/wishlist/{{$item.ID}}">Volume {{.Number}}</a></h3>
         <p class="muted">{{$item.LineTitle}}</p>
         {{with $item.UnitPrice}}<p class="price">{{.}}</p>{{end}}
         {{template "links_list" $item.Links}}
@@ -71,9 +71,9 @@
     </div>
     {{else}}
     <div class="card">
-      <a class="cover" href="/wishlist/{{.ID}}"><span class="cover-text">Vol. {{.RemainLabel}}</span></a>
+      <a class="cover" href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}"><span class="cover-text">Vol. {{.RemainLabel}}</span></a>
       <div class="card-body">
-        <h3><a href="/wishlist/{{.ID}}">Volume {{.RemainLabel}}</a></h3>
+        <h3><a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">Volume {{.RemainLabel}}</a></h3>
         <p class="muted">{{.LineTitle}}</p>
         {{with .UnitPrice}}<p class="price">{{.}}</p>{{end}}
       </div>

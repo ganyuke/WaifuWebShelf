@@ -29,16 +29,16 @@
 {{if not .Data.New}}
 <section class="panel">
   <h2>Volumes</h2>
-  <ul>
+  {{if .Data.Volumes}}
+  <table class="admin-table">
+    <thead><tr><th>Volume</th><th>Store</th><th></th></tr></thead>
+    <tbody>
     {{range .Data.Volumes}}
-    <li>
-      Vol. {{.VolumeNumber}}{{if .Store}} from {{.Store}}{{end}}
-      <a class="row-link" href="/admin/volumes/{{.ID}}/edit">Edit</a>
-    </li>
-    {{else}}
-    <li class="muted">None yet</li>
+      <tr><td>{{.VolumeNumber}}</td><td>{{if .Store}}{{.Store}}{{else}}—{{end}}</td><td class="link-col"><a href="/admin/volumes/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
-  </ul>
+    </tbody>
+  </table>
+  {{else}}<p class="muted">None yet</p>{{end}}
   <p><a class="btn" href="/admin/book-lines/{{.Data.ID}}/volumes/new">Add volume</a>
   <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
 </section>

@@ -1,5 +1,6 @@
-// Hovering a small picture shows a card with a bigger picture and its
-// details, fetched from the same path under /preview. Mouse only.
+// Hovering a link to a series, volume, merch, wishlist item, or trip shows a
+// card with its picture and details, fetched from the same path under
+// /preview and kept for the rest of the page. Mouse only.
 (() => {
  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
  const cards = new Map();
@@ -18,15 +19,22 @@
   return cards.get(path);
  };
 
- // Beside the picture, flipped to the other side or nudged up when it would leave the window.
+ // Beside a picture, flipped to the other side or nudged up when it would leave
+ // the window. Under a text link, or above it near the bottom of the window.
  const place = el => {
   const r = el.getBoundingClientRect();
   const w = card.offsetWidth;
   const h = card.offsetHeight;
-  let x = r.right + 12;
-  if (x + w > innerWidth - 8) x = r.left - 12 - w;
+  let x, y;
+  if (el.querySelector('img, .cover-letter, .cover-text') || el.matches('.vol-cell, .tag-dot, .pic')) {
+   x = r.right + 12;
+   if (x + w > innerWidth - 8) x = r.left - 12 - w;
+   y = Math.max(8, Math.min(r.top, innerHeight - 8 - h));
+  } else {
+   x = Math.min(r.left, innerWidth - 8 - w);
+   y = r.bottom + 6 + h > innerHeight - 8 ? r.top - 6 - h : r.bottom + 6;
+  }
   x = Math.max(8, x);
-  const y = Math.max(8, Math.min(r.top, innerHeight - 8 - h));
   card.style.left = x + scrollX + 'px';
   card.style.top = y + scrollY + 'px';
  };
