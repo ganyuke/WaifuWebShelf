@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,6 +16,8 @@ import (
 const DefaultTrustedProxies = "127.0.0.1,::1"
 
 type Config struct {
+	// Host is the address to listen on. Empty means every interface.
+	Host      string
 	Port      string
 	DataDir   string
 	AdminUser string
@@ -31,6 +34,7 @@ type Config struct {
 
 func FromEnv() Config {
 	c := Config{
+		Host:      os.Getenv("HOST"),
 		Port:      env("PORT", "8080"),
 		DataDir:   env("DATA_DIR", "data"),
 		AdminUser: env("ADMIN_USER", "admin"),
@@ -46,7 +50,7 @@ func FromEnv() Config {
 }
 
 func (c Config) Addr() string {
-	return ":" + c.Port
+	return net.JoinHostPort(c.Host, c.Port)
 }
 
 func (c Config) DBPath() string {

@@ -1,0 +1,59 @@
+[Unit]
+Description=WaifuWebShelf
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=waifuwebshelf
+Group=waifuwebshelf
+WorkingDirectory=/opt/waifuwebshelf/app
+EnvironmentFile=/opt/waifuwebshelf/.env
+ExecStart=/opt/waifuwebshelf/app/waifuwebshelf
+Restart=on-failure
+RestartSec=5
+
+# --- Hardening -------------------------------------------------------------
+# Check the result with systemd-analyze security waifuwebshelf
+
+# Block admin rights
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+
+# Make the filesystem read-only except the data directory (if you change
+# DATA_DIR in .env, set ReadWritePaths to the same path)
+ProtectSystem=strict
+ReadWritePaths=/opt/waifuwebshelf/data
+ProtectHome=true
+PrivateTmp=true
+UMask=0077
+
+# Outgoing connections stay open for fetching linked sites' icons. Set
+# HOST=127.0.0.1 in .env so only the local reverse proxy can connect.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Block access to the kernel, devices and other processes
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+
+# Limit system calls to what ordinary services use
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

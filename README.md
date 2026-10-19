@@ -39,6 +39,7 @@ Run from the repository root so `templates/` and `static/` resolve. The SQLite f
 
 | Variable | Default | Notes |
 | --- | --- | --- |
+| `HOST` | empty | Address to listen on. Set it to `127.0.0.1` so only a reverse proxy on the same machine can connect |
 | `PORT` | `8080` | Listen port |
 | `DATA_DIR` | `data` | SQLite + `images/` |
 | `ADMIN_USER` | `admin` | Login username |
@@ -50,6 +51,15 @@ Run from the repository root so `templates/` and `static/` resolve. The SQLite f
 Money is stored as integer minor units (cents for CAD/USD, yen for JPY). Leave MSRP blank when you do not know list price; spending totals skip those rows instead of treating them as $0.
 
 ## Deploy on a VPS
+
+```bash
+make dist                       # ARCH=arm64 for a Raspberry Pi
+scripts/deploy.sh user@host
+```
+
+This installs to `/opt/waifuwebshelf` with a hardened systemd service and prints the admin password on the first run. Settings are in `/opt/waifuwebshelf/.env`. Run both again to update.
+
+### By hand
 
 Build a binary, copy `templates/` and `static/` next to it, and point `DATA_DIR` at a writable directory.
 
