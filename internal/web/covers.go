@@ -223,7 +223,7 @@ func (s *Server) setCover(lineID int64, vol string, pic []byte) error {
 	}
 	if err := s.backupCover(lineID, vol, existing); err != nil {
 		log.Printf("back up cover %s: %v", existing.String, err)
-		return errors.New("Could not back up the old cover, so it was kept.")
+		return errors.New("Could not back up the old cover. Cover not changed.")
 	}
 	name, err := savePicture(s.imagesDir, pic, true)
 	if err != nil {

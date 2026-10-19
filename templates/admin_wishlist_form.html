@@ -2,7 +2,10 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a>{{if and (eq .Data.Kind "volumes") .Data.BookLineID}} › <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a>{{end}}</p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}Add to wishlist{{else}}Edit wishlist{{end}}</h1>
+  <div class="bar">
+    <h1>{{if .Data.New}}Add to wishlist{{else}}Edit wishlist{{end}}</h1>
+    {{if .Data.ID}}<span><a href="/wishlist/{{.Data.ID}}">View public page</a></span>{{end}}
+  </div>
   <form class="stack" method="post" enctype="multipart/form-data">
     <input type="hidden" name="kind" value="{{.Data.Kind}}">
     {{if eq .Data.Kind "volumes"}}

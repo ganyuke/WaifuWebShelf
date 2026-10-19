@@ -16,22 +16,27 @@
    const res = await fetch(url, {method: 'POST', body, headers: {Accept: 'application/json'}});
    return await res.json();
   } catch {
-   return {saved: 0, errors: ['Could not reach the site. Check your connection and try again.']};
+   return {saved: 0, errors: ['Could not reach the site. Try again.']};
   }
  };
 
  const busy = (form, on) => form.querySelectorAll('button').forEach(b => { b.disabled = on; });
 
+ // Leaving stops the saving, so the browser asks first. It shows its own wording.
+ const stay = e => { e.preventDefault(); e.returnValue = ''; };
+
  // run sends each job in turn and reloads the page when all of them worked.
  const run = async (form, jobs) => {
   let saved = 0;
   const errors = [];
+  addEventListener('beforeunload', stay);
   for (const [i, job] of jobs.entries()) {
-   show(`Saving cover ${i + 1} of ${jobs.length}…`);
+   show(`Saving cover ${i + 1} of ${jobs.length}… Do not close this tab.`);
    const res = await post(job.url, job.body);
    saved += res.saved || 0;
    errors.push(...(res.errors || []));
   }
+  removeEventListener('beforeunload', stay);
   if (!errors.length) {
    location.href = location.pathname + '?ok=covers-saved';
    return;

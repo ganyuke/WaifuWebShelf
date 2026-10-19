@@ -96,3 +96,25 @@ func TestApplyWishlistKnownTotal(t *testing.T) {
 		t.Fatalf("extras %+v", g.WantedExtras)
 	}
 }
+
+func TestApplyCoversGrowsUnknownTotal(t *testing.T) {
+	g := BuildGrid(db.BookLine{Kind: "manga"}, vols("1", "14"))
+	g.ApplyCovers(map[string]string{"1": "a.jpg", "37": "b.jpg", "omake": "c.jpg"})
+	if len(g.Cells) != 37 {
+		t.Fatalf("cells %d", len(g.Cells))
+	}
+	if g.Cells[0].Cover != "a.jpg" || !g.Cells[13].Owned || g.Cells[36].Number != 37 || g.Cells[36].Cover != "b.jpg" || g.Cells[36].Owned {
+		t.Fatalf("cells %+v %+v %+v", g.Cells[0], g.Cells[13], g.Cells[36])
+	}
+	if g.Owned != 2 {
+		t.Fatalf("owned %d", g.Owned)
+	}
+}
+
+func TestApplyCoversKeepsKnownTotal(t *testing.T) {
+	g := BuildGrid(db.BookLine{Kind: "manga", TotalVolumes: sql.NullInt64{Int64: 3, Valid: true}}, vols("1"))
+	g.ApplyCovers(map[string]string{"2": "a.jpg", "9": "b.jpg"})
+	if len(g.Cells) != 3 || g.Cells[1].Cover != "a.jpg" {
+		t.Fatalf("cells %+v", g.Cells)
+	}
+}

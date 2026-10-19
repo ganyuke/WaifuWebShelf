@@ -78,7 +78,28 @@ func BuildGrid(line db.BookLine, vols []db.Volume) VolumeGrid {
 }
 
 // ApplyCovers sets each cell's cover from a map of volume number to image path.
+// When the total is unknown, the grid grows to the highest volume with a
+// cover, since a cover shows that volume exists.
 func (g *VolumeGrid) ApplyCovers(covers map[string]string) {
+	if g.Total == nil {
+		present := map[int]bool{}
+		maxNum := 0
+		for _, c := range g.Cells {
+			present[c.Number] = true
+			maxNum = max(maxNum, c.Number)
+		}
+		for number := range covers {
+			if n, err := strconv.Atoi(number); err == nil && n > maxNum {
+				maxNum = n
+			}
+		}
+		for n := 1; n <= maxNum; n++ {
+			if !present[n] {
+				g.Cells = append(g.Cells, GridCell{Number: n})
+			}
+		}
+		sort.Slice(g.Cells, func(i, j int) bool { return g.Cells[i].Number < g.Cells[j].Number })
+	}
 	for i := range g.Cells {
 		g.Cells[i].Cover = covers[strconv.Itoa(g.Cells[i].Number)]
 	}

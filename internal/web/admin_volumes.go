@@ -38,6 +38,11 @@ func (d volumeFormData) PageURL() string {
 	return volumePageURL(d.SeriesSlug, d.LineSlug, d.VolumeNumber)
 }
 
+// PublicURL is the volume's page on the public site.
+func (d volumeFormData) PublicURL() string {
+	return volumePageURL(d.SeriesSlug, d.LineSlug, d.VolumeNumber)
+}
+
 func volumePageURL(seriesSlug, lineSlug, number string) string {
 	return "/series/" + seriesSlug + "/" + lineSlug + "/" + url.PathEscape(number)
 }

@@ -2,7 +2,10 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}New format{{else}}Edit format{{end}}</h1>
+  <div class="bar">
+    <h1>{{if .Data.New}}New format{{else}}Edit format{{end}}</h1>
+    {{if not .Data.New}}<span><a href="/series/{{.Data.SeriesSlug}}#{{.Data.LineSlug}}">View public page</a></span>{{end}}
+  </div>
   <form class="stack" method="post">
     <label>Format
       <select name="kind">

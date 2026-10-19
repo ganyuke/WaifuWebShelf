@@ -2,7 +2,10 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}Add merch{{else}}Edit {{.Data.Name}}{{end}}</h1>
+  <div class="bar">
+    <h1>{{if .Data.New}}Add merch{{else}}Edit {{.Data.Name}}{{end}}</h1>
+    {{if .Data.ID}}<span><a href="/merch/{{.Data.ID}}">View public page</a></span>{{end}}
+  </div>
   <form class="stack" method="post" enctype="multipart/form-data">
     <label>Name <input name="name" {{if fieldError .Err "name"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.Name}}" required></label>
     <label>Kind

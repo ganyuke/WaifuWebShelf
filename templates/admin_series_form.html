@@ -2,7 +2,10 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}New series{{else}}Edit {{.Data.Name}}{{end}}</h1>
+  <div class="bar">
+    <h1>{{if .Data.New}}New series{{else}}Edit {{.Data.Name}}{{end}}</h1>
+    {{if not .Data.New}}<span><a href="/series/{{.Data.Slug}}">View public page</a></span>{{end}}
+  </div>
   <form class="stack" method="post" enctype="multipart/form-data">
     <label>Name <input name="name" {{if fieldError .Err "name"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.Name}}" required></label>
     <details {{if .Data.Notes}}open{{end}}><summary>Additional details</summary><label>URL name (slug) <input name="slug" value="{{.Data.Slug}}" placeholder="generated from name if empty"></label>
@@ -59,7 +62,6 @@
   <p><a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=volumes">Add volume</a>
   <a class="btn" href="/admin/series/{{.Data.ID}}/wishlist/new?kind=merch">Add merch</a></p>
 </section>
-  <p class="admin-actions"><a href="/series/{{.Data.Slug}}">View public page</a></p>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "series" "OwnerID" .Data.ID "Next" (printf "/admin/series/%d/edit" .Data.ID)}}
 <p class="admin-actions"><a class="danger-text" href="/admin/series/{{.Data.ID}}/delete">Delete series</a></p>
 {{end}}

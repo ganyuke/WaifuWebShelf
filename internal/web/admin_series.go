@@ -244,6 +244,7 @@ type bookLineFormData struct {
 	SpareCovers []SpareCover
 	// CoverSites names the sites covers can be fetched from.
 	CoverSites string
+	LineSlug   string
 }
 
 type SpareCover struct {
@@ -370,6 +371,7 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 	return bookLineFormData{
 		SpareCovers:     spare,
 		CoverSites:      joinOr(s.covers.Names()),
+		LineSlug:        line.Slug,
 		ID:              line.ID,
 		SeriesID:        ser.ID,
 		SeriesName:      ser.Name,
