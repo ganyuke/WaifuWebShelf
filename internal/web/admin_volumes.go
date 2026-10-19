@@ -79,7 +79,7 @@ func (s *Server) volumeSaveNew(w http.ResponseWriter, r *http.Request) {
 	}
 	data := volumeFormData{
 		New: true, BookLineID: line.ID, SeriesID: ser.ID, SeriesName: ser.Name, SeriesSlug: ser.Slug,
-		LineTitle:    catalog.LineTitle(line.Kind, line.Label),
+		LineTitle:    catalog.LineFullTitle(line.Kind, line.Label),
 		VolumeNumber: r.FormValue("volume_number"), PurchasedAt: r.FormValue("purchased_at"),
 		Store: r.FormValue("store"), Currency: r.FormValue("currency"),
 		MSRP: r.FormValue("msrp"), PriceEx: r.FormValue("price_ex_tax"), PriceInc: r.FormValue("price_inc_tax"),
@@ -155,7 +155,7 @@ func (s *Server) loadVolumeForm(id int64) (volumeFormData, error) {
 		SeriesName:   ser.Name,
 		SeriesSlug:   ser.Slug,
 		LineSlug:     line.Slug,
-		LineTitle:    catalog.LineTitle(line.Kind, line.Label),
+		LineTitle:    catalog.LineFullTitle(line.Kind, line.Label),
 		VolumeNumber: v.VolumeNumber,
 		PurchasedAt:  dateVal(v.PurchasedAt),
 		Store:        v.Store,

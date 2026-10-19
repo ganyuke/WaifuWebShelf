@@ -17,7 +17,7 @@
 </div>
 <section data-book>
 <label for="line">Format</label>
-<select id="line" name="line"><option value="">Choose a format</option>{{range .Data.Lines}}<option value="{{.ID}}" data-series="{{.SeriesID}}" data-currency="{{.DefaultCurrency}}" data-msrp="{{moneyInput .DefaultMSRPCents .DefaultCurrency}}" {{if eq (printf "%d" .ID) $.Data.LineChoice}}selected{{end}}>{{lineTitle .Kind .Label}} — {{.SeriesName}}</option>{{end}}<option value="new" {{if eq .Data.LineChoice "new"}}selected{{end}}>New format…</option></select>
+<select id="line" name="line"><option value="">Choose a format</option>{{range .Data.Lines}}<option value="{{.ID}}" data-series="{{.SeriesID}}" data-currency="{{.DefaultCurrency}}" data-msrp="{{moneyInput .DefaultMSRPCents .DefaultCurrency}}" {{if eq (printf "%d" .ID) $.Data.LineChoice}}selected{{end}}>{{.SeriesName}}, {{lineFull .Kind .Label}}</option>{{end}}<option value="new" {{if eq .Data.LineChoice "new"}}selected{{end}}>New format…</option></select>
 {{template "item_error" dict "Key" "line" "Errors" .Data.Errors}}
 <div data-new-format>
 <label for="kind">New format</label><select id="kind" name="kind">{{range $v := kinds}}<option value="{{$v}}" {{if eq $v $.Data.Kind}}selected{{end}}>{{kindName $v}}</option>{{end}}</select>

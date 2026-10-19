@@ -7,32 +7,15 @@
   </div>
   {{if .Data.Series}}
   <table class="admin-table">
-    <thead><tr><th>Series</th><th>Books</th><th>Merch</th><th></th></tr></thead>
+    <thead><tr><th>Series</th><th class="num">Formats</th><th class="num">Volumes</th><th class="num">Merch</th><th></th></tr></thead>
     <tbody>
     {{range .Data.Series}}
       <tr>
-        <td><a href="/admin/series/{{.ID}}/edit">{{.Name}}</a></td>
-        <td>
-          {{if .Lines}}
-          <table class="lines">
-            {{range .Lines}}
-            <tr>
-              <td>{{lineFull .Kind .Label}}</td>
-              <td class="num">{{volumesOwned .Owned .Total}}</td>
-              <td><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td>
-            </tr>
-            {{end}}
-          </table>
-          {{else}}—{{end}}
-        </td>
-        <td>{{.MerchCount}}</td>
-        <td>
-          <div class="actions">
-            <a href="/admin/series/{{.ID}}/edit">Edit</a>
-            <a href="/admin/series/{{.ID}}/book-lines/new">Add format</a>
-            <a href="/admin/series/{{.ID}}/merch/new">Add merch</a>
-          </div>
-        </td>
+        <td><a href="/series/{{.Slug}}" data-preview="/series/{{.Slug}}">{{.Name}}</a></td>
+        <td class="num">{{len .Lines}}</td>
+        <td class="num">{{.VolumesOwned}}</td>
+        <td class="num">{{.MerchCount}}</td>
+        <td class="link-col"><a href="/admin/series/{{.ID}}/edit">Edit</a></td>
       </tr>
     {{end}}
     </tbody>

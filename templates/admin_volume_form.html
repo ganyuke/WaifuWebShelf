@@ -2,7 +2,7 @@
 {{template "header" .}}
 <p class="crumb"><a href="/admin">Admin</a> › <a href="/admin/series/{{.Data.SeriesID}}/edit">{{.Data.SeriesName}}</a> › <a href="/admin/book-lines/{{.Data.BookLineID}}/edit">{{.Data.LineTitle}}</a></p>
 <div class="box">
-  <h1 class="bar">{{if .Data.New}}Add volume{{else}}Edit volume {{.Data.VolumeNumber}}{{end}}</h1>
+  <h1 class="bar">{{if .Data.New}}Add volume{{else}}Edit vol. {{.Data.VolumeNumber}}{{end}}</h1>
   <form class="stack" method="post" enctype="multipart/form-data">
     <label>Volume number <input name="volume_number" {{if fieldError .Err "volume_number"}}aria-invalid="true" aria-describedby="form-error"{{end}} value="{{.Data.VolumeNumber}}" required placeholder="1, 8.5, omake…"></label>
     <details {{if or .Data.Cover .Data.Image .Err}}open{{end}}><summary>Images (optional)</summary>

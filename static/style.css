@@ -141,9 +141,7 @@ h3 { font-size: 13px; font-weight: 700; margin: 14px 0 6px; }
 }
 .catalog tbody tr:hover, .admin-table tbody tr:hover { background: var(--soft); }
 .admin-table .link-col { width: 1%; white-space: nowrap; }
-.admin-table .lines td { padding: 1px 16px 1px 0; }
-.admin-table .lines td.num { color: var(--muted); }
-.catalog .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.catalog .num, .admin-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .catalog .date { white-space: nowrap; }
 .catalog .strong { font-weight: 700; }
 .catalog .under { color: var(--ok); font-weight: 700; }
@@ -293,7 +291,7 @@ a.vol-cell.missing:hover, a.vol-cell.wanted:hover { border-color: var(--bar); co
 .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
 .crumb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 14px 0 -8px; font-size: 13px; }
 .crumb-row .crumb { margin: 0; }
-.bar > span, .actions { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; }
+.bar > span { display: inline-flex; flex-wrap: wrap; gap: 4px 16px; }
 .pager { display: flex; gap: 16px; flex: none; }
 .pager .off { color: var(--muted); opacity: 0.5; }
 

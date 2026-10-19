@@ -508,7 +508,7 @@ func (s *Server) bookLineDeleteForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "admin_confirm_delete", "Delete format", map[string]any{
-		"Title":  catalog.LineTitle(data.Kind, data.Label),
+		"Title":  catalog.LineFullTitle(data.Kind, data.Label),
 		"Action": "/admin/book-lines/" + r.PathValue("id") + "/delete",
 		"Cancel": "/admin/book-lines/" + r.PathValue("id") + "/edit",
 		"Body":   "This deletes the format and every volume on it.",

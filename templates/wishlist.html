@@ -62,7 +62,7 @@
         {{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}
       </a>
       <div class="card-body">
-        <h3><a href="/wishlist/{{$item.ID}}" data-preview="/wishlist/{{$item.ID}}">Volume {{.Number}}</a></h3>
+        <h3><a href="/wishlist/{{$item.ID}}" data-preview="/wishlist/{{$item.ID}}">Vol. {{.Number}}</a></h3>
         <p class="muted">{{$item.LineTitle}}</p>
         {{with $item.UnitPrice}}<p class="price">{{.}}</p>{{end}}
         {{template "links_list" $item.Links}}
@@ -73,7 +73,7 @@
     <div class="card">
       <a class="cover" href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}"><span class="cover-text">Vol. {{.RemainLabel}}</span></a>
       <div class="card-body">
-        <h3><a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">Volume {{.RemainLabel}}</a></h3>
+        <h3><a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">Vol. {{.RemainLabel}}</a></h3>
         <p class="muted">{{.LineTitle}}</p>
         {{with .UnitPrice}}<p class="price">{{.}}</p>{{end}}
       </div>
@@ -94,7 +94,7 @@
   {{range .}}
   <div class="card">
     <div class="cover">{{if .Cover}}<img src="{{smallURL .Cover}}" alt="" loading="lazy">{{else}}<span class="cover-text">Vol. {{.Number}}</span>{{end}}</div>
-    <div class="card-body"><h3>Volume {{.Number}}</h3></div>
+    <div class="card-body"><h3>Vol. {{.Number}}</h3></div>
   </div>
   {{end}}
 </div>

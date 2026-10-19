@@ -135,7 +135,7 @@ func TestTripFlow(t *testing.T) {
 
 	// Hovering a small picture shows the same details as its page.
 	card := get("/preview/series/rag/english/2")
-	for _, want := range []string{"Volume 2", "Rent-A-Girlfriend, English manga", "11 Oct 2026 at Book Off Robson", "Before tax"} {
+	for _, want := range []string{"Rent-A-Girlfriend vol. 2", "English manga", "11 Oct 2026 at Book Off Robson", "Before tax"} {
 		if !strings.Contains(card, want) {
 			t.Fatalf("volume card missing %q:\n%s", want, card)
 		}

@@ -111,6 +111,15 @@ type SeriesCard struct {
 	MerchCount int
 }
 
+// VolumesOwned counts volumes owned across all formats.
+func (c SeriesCard) VolumesOwned() int {
+	n := 0
+	for _, l := range c.Lines {
+		n += l.Owned
+	}
+	return n
+}
+
 type LineProgress struct {
 	ID    int64
 	Kind  string

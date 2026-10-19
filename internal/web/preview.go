@@ -147,8 +147,8 @@ func (s *Server) previewLineVolume(w http.ResponseWriter, r *http.Request, ser d
 	}
 	card := PreviewCard{
 		Image: nullImage(cover),
-		Title: "Volume " + number,
-		Sub:   ser.Name + ", " + catalog.LineFullTitle(line.Kind, line.Label),
+		Title: ser.Name + " vol. " + number,
+		Sub:   catalog.LineFullTitle(line.Kind, line.Label),
 	}
 	signedIn := s.loggedIn(r)
 	switch len(copies) {
@@ -276,6 +276,9 @@ func (s *Server) previewWishlist(w http.ResponseWriter, r *http.Request) {
 	}
 	v.applyCovers(covers)
 	card := PreviewCard{Image: v.Picture(), Title: wishTitle(v), Sub: v.SeriesName, Note: "On the wishlist"}
+	if v.Kind == "volumes" {
+		card.Sub = v.LineTitle
+	}
 	if v.MSRPValid() {
 		price := money.Display(v.MSRPAmount(), v.Currency)
 		if each := v.Each(); each != "" {

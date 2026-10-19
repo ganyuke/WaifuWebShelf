@@ -71,9 +71,9 @@ func tripTile(i db.TripItem) TripTile {
 			Name: i.Name, Sub: merchSub(i.Name, "", i.Quantity), EditURL: fmt.Sprintf("/admin/merch/%d/edit", i.ID)}
 	}
 	return TripTile{Kind: "volume", ID: i.ID, URL: "/series/" + i.SeriesSlug + "/" + i.LineSlug + "/" + i.VolumeNumber,
-		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: "Vol. " + i.VolumeNumber,
-		Label: i.SeriesName + " " + catalog.LineTitle(i.LineKind, i.LineLabel) + " vol. " + i.VolumeNumber,
-		Sub:   i.SeriesName + ", " + catalog.LineFullTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
+		Image: nullImage(i.Image), Text: "Vol. " + i.VolumeNumber, Name: i.SeriesName + " vol. " + i.VolumeNumber,
+		Label: i.SeriesName + " vol. " + i.VolumeNumber + ", " + catalog.LineFullTitle(i.LineKind, i.LineLabel),
+		Sub:   catalog.LineFullTitle(i.LineKind, i.LineLabel), EditURL: fmt.Sprintf("/admin/volumes/%d/edit", i.ID)}
 }
 
 type sameTripView struct {

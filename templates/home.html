@@ -65,7 +65,7 @@
       <ul class="compact">
         {{range .Data.Recent}}
         <li>
-          {{$url := printf "/merch/%d" .ID}}{{if eq .Kind "volume"}}{{$url = printf "/series/%s/%s/%s" .SeriesSlug .LineSlug .VolumeNumber}}{{end}}<a class="pic" href="{{$url}}" data-preview="{{$url}}" tabindex="-1" aria-hidden="true">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{end}}</a>
+          {{$url := printf "/merch/%d" .ID}}{{if eq .Kind "volume"}}{{$url = printf "/series/%s/%s/%s" .SeriesSlug .LineSlug .VolumeNumber}}{{end}}<a class="pic" href="{{$url}}" data-preview="{{$url}}" tabindex="-1" aria-hidden="true">{{if .Image.Valid}}<img src="{{smallURL .Image.String}}" alt="" loading="lazy">{{else if eq .Kind "volume"}}{{.VolumeNumber}}{{end}}</a>
           <span class="text">
             {{if eq .Kind "volume"}}
             <a href="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}" data-preview="/series/{{.SeriesSlug}}/{{.LineSlug}}/{{.VolumeNumber}}">{{.SeriesName}} vol. {{.VolumeNumber}}</a>
@@ -96,8 +96,8 @@
             <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.Name}}</a>
             <span>{{.SeriesName}}</span>
             {{else}}
-            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.LineTitle}}, {{.VolumesLabel}}</a>
-            <span>{{.SeriesName}}</span>
+            <a href="/wishlist/{{.ID}}" data-preview="/wishlist/{{.ID}}">{{.SeriesName}} {{.VolumesLabel}}</a>
+            <span>{{.LineTitle}}</span>
             {{end}}
           </span>
           {{if .MSRPValid}}<span class="price">{{amount .MSRPAmount .Currency}}</span>{{end}}

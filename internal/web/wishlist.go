@@ -74,12 +74,9 @@ func (v WishView) Active() bool {
 	return true
 }
 
-// VolumesLabel reads "volume 3" or "volumes 25–29".
+// VolumesLabel reads "vol. 3" or "vol. 25–29".
 func (v WishView) VolumesLabel() string {
-	if v.RemainCount == 1 {
-		return "volume " + v.RemainLabel
-	}
-	return "volumes " + v.RemainLabel
+	return "vol. " + v.RemainLabel
 }
 
 func (v WishView) MSRPValid() bool {
@@ -129,7 +126,7 @@ func (data *wishlistFormData) applyLine(id int64) {
 		if line.ID != id {
 			continue
 		}
-		data.LineTitle = catalog.LineTitle(line.Kind, line.Label)
+		data.LineTitle = catalog.LineFullTitle(line.Kind, line.Label)
 		return
 	}
 }
@@ -229,7 +226,7 @@ func wishMoneyTotals(items []WishView) []db.MoneyTotals {
 			by[cur] = t
 			order = append(order, cur)
 		}
-		t.ItemCount++
+		t.ItemCount += item.RemainCount
 		if item.MSRPTotal != nil {
 			t.MSRPCents += *item.MSRPTotal
 			t.WithMSRP++
@@ -335,7 +332,7 @@ func wishTitle(v WishView) string {
 		return v.Name
 	}
 	if v.RemainLabel != "" {
-		return v.LineTitle + ", " + v.VolumesLabel()
+		return v.SeriesName + " " + v.VolumesLabel()
 	}
 	return "Wishlist"
 }

@@ -25,7 +25,7 @@
   <table class="admin-table">
     <tbody>
     {{range .Data.Lines}}
-      <tr><td>{{lineTitle .Kind .Label}}</td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/edit">Edit</a></td></tr>
+      <tr><td>{{lineFull .Kind .Label}}</td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/volumes/new">Add volume</a></td><td class="link-col"><a href="/admin/book-lines/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
     </tbody>
   </table>
@@ -51,7 +51,7 @@
   <table class="admin-table">
     <tbody>
     {{range .Data.Wishlist}}
-      <tr><td>{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{if .RemainLabel}}, {{.VolumesLabel}}{{end}}{{end}}</td><td class="link-col"><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></td></tr>
+      <tr><td>{{if eq .Kind "merch"}}{{.Name}}{{else}}{{.LineTitle}}{{if .RemainLabel}} {{.VolumesLabel}}{{end}}{{end}}</td><td class="link-col"><a href="/admin/wishlist/{{.ID}}/edit">Edit</a></td></tr>
     {{end}}
     </tbody>
   </table>

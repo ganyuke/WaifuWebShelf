@@ -3,7 +3,7 @@
 <p class="crumb"><a href="/wishlist">Wishlist</a> › <a href="/series/{{.Data.SeriesSlug}}">{{.Data.SeriesName}}</a></p>
 <div class="box">
   <div class="bar">
-    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.LineTitle}}, {{.Data.VolumesLabel}}{{end}}</h1>
+    <h1>{{if eq .Data.Kind "merch"}}{{.Data.Name}}{{else}}{{.Data.SeriesName}} {{.Data.VolumesLabel}}{{end}}</h1>
     {{if $.SignedIn}}
     <span>
       <a href="/admin/wishlist/{{.Data.ID}}/edit">Edit</a>
@@ -13,6 +13,7 @@
     {{end}}
   </div>
   {{if eq .Data.Kind "volumes"}}
+  <p class="muted">{{.Data.LineTitle}}</p>
   {{template "links_list" .Data.Links}}
   <dl class="facts">
     {{if gt .Data.RemainCount 1}}<dt>Volumes</dt><dd>{{.Data.RemainCount}}</dd>{{end}}

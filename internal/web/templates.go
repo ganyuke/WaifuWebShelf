@@ -60,7 +60,6 @@ func funcMap() template.FuncMap {
 		"amountDelta":     money.FormatAmountDelta,
 		"defaultCurrency": func() string { return money.Default },
 		"kindName":        catalog.KindName,
-		"lineTitle":       catalog.LineTitle,
 		"imageURL": func(path string) string {
 			if path == "" {
 				return ""

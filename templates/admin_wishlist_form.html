@@ -10,7 +10,7 @@
     <label>Format
       <select name="book_line_id">
         {{range .Data.Lines}}
-        <option value="{{.ID}}" {{if eq .ID $.Data.BookLineID}}selected{{end}}>{{lineTitle .Kind .Label}}</option>
+        <option value="{{.ID}}" {{if eq .ID $.Data.BookLineID}}selected{{end}}>{{lineFull .Kind .Label}}</option>
         {{end}}
       </select>
     </label>

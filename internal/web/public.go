@@ -270,10 +270,10 @@ func (p Pager) Any() bool { return p.PrevURL != "" || p.NextURL != "" }
 func volumePager(seriesSlug, lineSlug, prev, next string) Pager {
 	var p Pager
 	if prev != "" {
-		p.PrevURL, p.PrevTitle = volumePageURL(seriesSlug, lineSlug, prev), "Volume "+prev
+		p.PrevURL, p.PrevTitle = volumePageURL(seriesSlug, lineSlug, prev), "Vol. "+prev
 	}
 	if next != "" {
-		p.NextURL, p.NextTitle = volumePageURL(seriesSlug, lineSlug, next), "Volume "+next
+		p.NextURL, p.NextTitle = volumePageURL(seriesSlug, lineSlug, next), "Vol. "+next
 	}
 	return p
 }
@@ -556,7 +556,7 @@ func (s *Server) statsPage(w http.ResponseWriter, r *http.Request) {
 		Receipts       []db.ReceiptTotal
 		WishCount      int
 		WishByCurrency []db.MoneyTotals
-	}{stats, mergeTrips(groupTrips(purchases), saved), months, stores, receipts, len(wishItems), wishMoneyTotals(wishItems)})
+	}{stats, mergeTrips(groupTrips(purchases), saved), months, stores, receipts, wishCount(wishItems), wishMoneyTotals(wishItems)})
 }
 
 // mergeTrips puts saved trips into the purchases list. A saved trip shows its own

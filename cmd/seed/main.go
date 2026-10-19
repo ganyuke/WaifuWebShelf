@@ -120,11 +120,11 @@ func main() {
 	mustErr(addVols(store, shyID, []int{2}, buy("CAD", "Book Off", "2025-02-08", 1699, 800, 800, "used")))
 	mustErr(addVols(store, anthID, []int{1}, buy("CAD", "Kinokuniya", "2023-11-04", 1699, 1699, 1924, "")))
 
-	n := applyCovers(store, client, cfg.ImagesDir(), enID, dexMain, mainCovers, []string{"en", "ja"}, seq(1, int(enTotal)), "rag-en")
+	n := applyCovers(store, client, cfg.ImagesDir(), enID, dexMain, mainCovers, []string{"en"}, seq(1, int(enTotal)), "rag-en")
 	log.Printf("english covers %d/%d", n, enTotal)
-	n = applyCovers(store, client, cfg.ImagesDir(), jpID, dexMain, mainCovers, []string{"ja", "en"}, seq(1, int(jpTotal)), "rag-jp")
+	n = applyCovers(store, client, cfg.ImagesDir(), jpID, dexMain, mainCovers, []string{"ja"}, seq(1, int(jpTotal)), "rag-jp")
 	log.Printf("japanese covers %d/%d", n, jpTotal)
-	n = applyCovers(store, client, cfg.ImagesDir(), shyID, dexShy, shyCovers, []string{"en", "ja"}, seq(1, int(shyTotal)), "rag-shy")
+	n = applyCovers(store, client, cfg.ImagesDir(), shyID, dexShy, shyCovers, []string{"en"}, seq(1, int(shyTotal)), "rag-shy")
 	log.Printf("shy covers %d/%d", n, shyTotal)
 	n = applyCovers(store, client, cfg.ImagesDir(), anthID, dexAnth, anthCovers, []string{"ja", "en"}, []int{1}, "rag-anth")
 	log.Printf("anthology covers %d/1", n)
@@ -153,7 +153,9 @@ func main() {
 		}))
 	}
 
-	log.Printf("seeded Rent-A-Girlfriend into %s", cfg.DBPath())
+	seedMore(store, client, cfg.ImagesDir())
+
+	log.Printf("seeded into %s", cfg.DBPath())
 }
 
 func applyCovers(store *db.DB, client *http.Client, imagesDir string, lineID int64, mangaID string, covers map[string]map[string]string, locales []string, numbers []int, prefix string) int {
