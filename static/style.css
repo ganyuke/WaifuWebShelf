@@ -303,6 +303,7 @@ a.vol-cell.missing:hover, a.vol-cell.wanted:hover { border-color: var(--bar); co
 /* Forms */
 .stack { display: grid; gap: 10px; max-width: 36rem; padding: 4px 0 0; }
 .stack label { display: grid; gap: 2px; }
+.stack label[for] { display: block; }
 .check, .stack label.check { display: flex; align-items: center; gap: 8px; }
 .pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; }
 .pair .dash { color: var(--muted); }

@@ -154,6 +154,8 @@ func flashText(code string) string {
 		return "Trip saved."
 	case "grouped":
 		return "Grouped into trips."
+	case "covers-saved":
+		return "Covers saved."
 	default:
 		return ""
 	}

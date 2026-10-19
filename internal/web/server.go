@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"waifuwebshelf/internal/config"
+	"waifuwebshelf/internal/coversource"
 	"waifuwebshelf/internal/db"
 	"waifuwebshelf/internal/favicon"
 )
@@ -28,6 +29,7 @@ type Server struct {
 	assets    staticAssets
 	imagesDir string
 	favicons  *favicon.Store
+	covers    *coversource.Client
 	// fetchIcons is off until StartFavicons, so tests never reach the network.
 	fetchIcons atomic.Bool
 	// receiptsDir is only served to the signed-in owner.
@@ -108,6 +110,7 @@ func New(cfg config.Config, store *db.DB) (*Server, error) {
 		assets:      assets,
 		imagesDir:   cfg.ImagesDir(),
 		favicons:    icons,
+		covers:      coversource.New(coversource.Sources, false),
 		receiptsDir: cfg.ReceiptsDir(),
 		sessions:    map[string]time.Time{},
 		pageHTML:    map[string][]byte{},
@@ -169,6 +172,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDeleteForm))
 	mux.HandleFunc("POST /admin/book-lines/{id}/delete", s.requireAdmin(s.bookLineDelete))
 	mux.HandleFunc("POST /admin/book-lines/{id}/covers", s.requireAdmin(s.bookLineCoverSave))
+	mux.HandleFunc("POST /admin/book-lines/{id}/covers/find", s.requireAdmin(s.bookLineCoverFind))
+	mux.HandleFunc("POST /admin/book-lines/{id}/covers/get", s.requireAdmin(s.bookLineCoverGet))
 	mux.HandleFunc("POST /admin/book-lines/{id}/covers/delete", s.requireAdmin(s.bookLineCoverDelete))
 
 	mux.HandleFunc("GET /admin/book-lines/{id}/volumes/new", s.requireAdmin(s.volumeNewForm))

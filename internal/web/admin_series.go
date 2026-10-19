@@ -242,6 +242,8 @@ type bookLineFormData struct {
 	Volumes         []db.Volume
 	// SpareCovers are covers stored for volumes that are not owned.
 	SpareCovers []SpareCover
+	// CoverSites names the sites covers can be fetched from.
+	CoverSites string
 }
 
 type SpareCover struct {
@@ -367,6 +369,7 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 	})
 	return bookLineFormData{
 		SpareCovers:     spare,
+		CoverSites:      joinOr(s.covers.Names()),
 		ID:              line.ID,
 		SeriesID:        ser.ID,
 		SeriesName:      ser.Name,
@@ -379,52 +382,6 @@ func (s *Server) loadBookLineForm(id int64) (bookLineFormData, error) {
 		Links:           s.linkViews(ll),
 		Volumes:         vols,
 	}, nil
-}
-
-// bookLineCoverSave stores a cover for a volume number, owned or not.
-func (s *Server) bookLineCoverSave(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.PathValue("id"))
-	if err != nil {
-		s.notFound(w, r)
-		return
-	}
-	if err := parseMaybeMultipart(r); err != nil {
-		s.badRequest(w, r, "Reload the page and try again.")
-		return
-	}
-	data, err := s.loadBookLineForm(id)
-	if db.IsNotFound(err) {
-		s.notFound(w, r)
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	number := normalizeVolumeNumber(r.FormValue("volume_number"))
-	if number == "" {
-		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Enter a volume number.", data)
-		return
-	}
-	existing, err := s.db.VolumeCover(id, number)
-	if err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	cover, err := s.applyImageField(r, "cover", "", existing)
-	if err != nil {
-		s.renderErr(w, r, "admin_bookline_form", "Edit format", err.Error(), data)
-		return
-	}
-	if cover == existing {
-		s.renderErr(w, r, "admin_bookline_form", "Edit format", "Choose a picture for the cover.", data)
-		return
-	}
-	if err := s.db.SetVolumeCover(id, number, cover); err != nil {
-		s.serverError(w, r, err)
-		return
-	}
-	http.Redirect(w, r, "/admin/book-lines/"+formatID(id)+"/edit?ok=updated", http.StatusSeeOther)
 }
 
 func (s *Server) bookLineCoverDelete(w http.ResponseWriter, r *http.Request) {

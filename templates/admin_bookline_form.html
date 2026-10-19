@@ -43,8 +43,9 @@
   <a class="btn" href="/admin/series/{{.Data.SeriesID}}/wishlist/new?kind=volumes&line={{.Data.ID}}">Add to wishlist</a></p>
 </section>
 <section class="panel">
-  <h2>Covers for volumes not owned</h2>
+  <h2>Covers</h2>
   {{if .Data.SpareCovers}}
+  <p class="muted">Volumes not owned</p>
   <ul class="cover-list">
     {{range .Data.SpareCovers}}
     <li>
@@ -58,12 +59,21 @@
     {{end}}
   </ul>
   {{end}}
-  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers" enctype="multipart/form-data">
-    <label>Volume number <input name="volume_number" required></label>
-    <label>Cover <input type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" required></label>
-    <button type="submit">Add cover</button>
+  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers" enctype="multipart/form-data" data-covers="upload">
+    <label for="cover_volume">Volume number <span class="hint" title="Leave empty to take each volume number from the file name, like vol-14.jpg" tabindex="0">(?)</span></label>
+    <input id="cover_volume" name="volume_number">
+    <label for="cover_files">Covers <span class="hint" title="Replaces covers you already have. The old ones are kept in backups in the data folder." tabindex="0">(?)</span></label>
+    <input id="cover_files" type="file" name="cover" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
+    <button type="submit">Add covers</button>
   </form>
+  <form class="stack" method="post" action="/admin/book-lines/{{.Data.ID}}/covers/find" data-covers="find" data-get="/admin/book-lines/{{.Data.ID}}/covers/get">
+    <label for="cover_link">Book page <span class="hint" title="A link to any volume on {{.Data.CoverSites}}. Saves the cover of every volume in the series and replaces covers you already have." tabindex="0">(?)</span></label>
+    <input id="cover_link" type="url" name="link" placeholder="https://www.kobo.com/ww/en/ebook/…" required>
+    <button type="submit">Get covers</button>
+  </form>
+  <p data-covers-status role="status" hidden></p>
 </section>
+<script src="{{assetURL "covers.js"}}" defer></script>
 {{template "links_editor" dict "Links" .Data.Links "OwnerType" "book_line" "OwnerID" .Data.ID "Next" (printf "/admin/book-lines/%d/edit" .Data.ID)}}
 <p class="admin-actions"><a class="danger-text" href="/admin/book-lines/{{.Data.ID}}/delete">Delete format</a></p>
 {{end}}

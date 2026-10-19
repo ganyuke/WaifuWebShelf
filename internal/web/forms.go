@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -92,50 +93,74 @@ func saveUploadIn(dir string, r *http.Request, field string, withSmall bool) (st
 	if err != nil {
 		return "", false, err
 	}
-	defer file.Close()
-	if header.Size > maxUpload {
-		return "", false, fmt.Errorf("Use a photo under 25 MB.")
-	}
-	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
+	file.Close()
+	data, err := readUpload(header)
 	if err != nil {
 		return "", false, err
 	}
-	if len(data) > maxUpload {
-		return "", false, fmt.Errorf("Use a photo under 25 MB.")
+	name, err := savePicture(dir, data, withSmall)
+	if err != nil {
+		return "", false, err
 	}
+	return name, true, nil
+}
+
+// readUpload reads one uploaded file, refusing it past the size limit.
+func readUpload(header *multipart.FileHeader) ([]byte, error) {
+	if header.Size > maxUpload {
+		return nil, fmt.Errorf("Use a photo under 25 MB.")
+	}
+	file, err := header.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	data, err := io.ReadAll(io.LimitReader(file, maxUpload+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxUpload {
+		return nil, fmt.Errorf("Use a photo under 25 MB.")
+	}
+	return data, nil
+}
+
+// savePicture saves a prepared copy of a picture in dir under a new random
+// name, plus a small version when withSmall is set.
+func savePicture(dir string, data []byte, withSmall bool) (string, error) {
 	// The file's own bytes decide the type. The name and the browser's claim are ignored.
 	switch http.DetectContentType(data) {
 	case "image/jpeg", "image/png", "image/webp", "image/gif":
 	default:
-		return "", false, fmt.Errorf("Use a JPEG, PNG, WebP, or GIF photo.")
+		return "", fmt.Errorf("Use a JPEG, PNG, WebP, or GIF photo.")
 	}
 	pic, err := photos.Process(data, withSmall)
 	if errors.Is(err, photos.ErrTooLarge) {
-		return "", false, err
+		return "", err
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("Photo file is broken. Re-save it and upload again.")
+		return "", fmt.Errorf("Photo file is broken. Re-save it and upload again.")
 	}
 
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
-		return "", false, err
+		return "", err
 	}
 	name := hex.EncodeToString(buf[:]) + pic.Ext
 	dest := filepath.Join(dir, name)
 	if err := os.WriteFile(dest, pic.Full, 0o644); err != nil {
 		_ = os.Remove(dest)
-		return "", false, err
+		return "", err
 	}
 	if withSmall {
 		small := filepath.Join(dir, photos.SmallName(name))
 		if err := os.WriteFile(small, pic.Small, 0o644); err != nil {
 			_ = os.Remove(dest)
 			_ = os.Remove(small)
-			return "", false, err
+			return "", err
 		}
 	}
-	return name, true, nil
+	return name, nil
 }
 
 func (s *Server) deleteImage(existing sql.NullString) {
