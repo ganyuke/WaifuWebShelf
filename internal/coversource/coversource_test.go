@@ -85,20 +85,40 @@ func TestKoboMatch(t *testing.T) {
 // fakeKobo serves the sample page and one cover from a local server.
 func fakeKobo(t *testing.T) (*Client, string) {
 	t.Helper()
-	page, err := os.ReadFile("testdata/kobo-volume.html")
-	if err != nil {
-		t.Fatal(err)
+	read := func(name string) string {
+		b, err := os.ReadFile("testdata/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
 	}
+	page := read("kobo-volume.html")
+	usPage := read("kobo-us-volume.html")
+	series := []string{read("kobo-series-1.html"), read("kobo-series-2.html")}
 	var ts *httptest.Server
 	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/ebook/komi-can-t-communicate-vol-14") && r.URL.RawQuery == "with=series":
+			p := strings.Replace(page, "<ul class=\"series\">", `<a href="/ww/en/series/komi-can-t-communicate">Komi</a><ul class="series">`, 1)
+			w.Write([]byte(strings.ReplaceAll(p, "https://cdn.kobo.com", ts.URL)))
 		case strings.HasSuffix(r.URL.Path, "/ebook/komi-can-t-communicate-vol-14"):
 			if r.Header.Get("Sec-Fetch-Mode") != "navigate" || r.Header.Get("User-Agent") != UserAgent {
 				http.Error(w, "challenged", http.StatusForbidden)
 				return
 			}
 			// The page names the real CDN, so point it at this server.
-			w.Write([]byte(strings.ReplaceAll(string(page), "https://cdn.kobo.com", ts.URL)))
+			w.Write([]byte(strings.ReplaceAll(page, "https://cdn.kobo.com", ts.URL)))
+		case r.URL.Path == "/us/en/ebook/no-game-no-life-vol-1-light-novel-2":
+			w.Write([]byte(usPage))
+		case r.URL.Path == "/us/en/series/no-game-no-life":
+			switch r.URL.RawQuery {
+			case "":
+				w.Write([]byte(series[0]))
+			case "pageNumber=2":
+				w.Write([]byte(series[1]))
+			default:
+				http.NotFound(w, r)
+			}
 		case r.URL.Path == "/book-images/eae87c75-501e-4bc2-b680-e7d05a072b2a/0/0/100/False/komi-can-t-communicate-vol-1.jpg":
 			w.Write([]byte("cover one"))
 		case r.URL.Path == "/elsewhere":
@@ -127,6 +147,33 @@ func TestFindAndDownload(t *testing.T) {
 	}
 	if string(body) != "cover one" {
 		t.Fatalf("got %q", body)
+	}
+}
+
+func TestFindReadsSeriesPages(t *testing.T) {
+	c, base := fakeKobo(t)
+	_, covers, err := c.Find(context.Background(), base+"/us/en/ebook/no-game-no-life-vol-1-light-novel-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vols []string
+	for _, c := range covers {
+		vols = append(vols, c.Volume)
+	}
+	if got := strings.Join(vols, " "); got != "1 2 7 8 9 12" {
+		t.Fatalf("got volumes %q", got)
+	}
+}
+
+func TestFindWithoutSeriesPage(t *testing.T) {
+	c, base := fakeKobo(t)
+	// The fake server has no Komi series page, like the real www store.
+	_, covers, err := c.Find(context.Background(), base+"/ww/en/ebook/komi-can-t-communicate-vol-14?with=series")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(covers) != 4 {
+		t.Fatalf("got %v", covers)
 	}
 }
 

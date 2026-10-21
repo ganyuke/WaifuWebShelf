@@ -1,8 +1,11 @@
 package coversource
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -13,9 +16,14 @@ import (
 
 // Kobo reads book pages on kobo.com, like /ww/en/ebook/komi-can-t-communicate-vol-14.
 //
-// A volume page lists the covers of every volume in its series among its
-// recommendations, so one page is enough. Volumes are picked by name: the
-// page's own name with its volume number swapped for any number.
+// A volume page links to its series page, which lists every volume a few
+// pages at a time. On the worldwide store (/ww/) the volume page also lists
+// most of the series among its recommendations, but regional stores like
+// /us/ show only a handful there, so the series pages are read too. Volumes
+// are picked by name: the page's own name with its volume number swapped for
+// any number. The worldwide store links some series pages that are not there
+// (Komi's is 404 on /ww/ and fine on /us/), so then the volume page is used
+// alone.
 //
 // Kobo keeps names unique by adding -1, -2 and so on, unevenly within one
 // series (no-game-no-life-vol-7-light-novel-2, -vol-8-light-novel-1,
@@ -77,15 +85,61 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 	if err != nil {
 		return nil, err
 	}
+	pages := [][]byte{body}
+	if m := koboSeriesLink.FindSubmatch(body); m != nil {
+		series, err := page.Parse(html.UnescapeString(string(m[1])))
+		if err != nil {
+			return nil, err
+		}
+		more, err := koboSeriesPages(ctx, f, series)
+		if err != nil && !errors.Is(err, errNoSeriesPage) {
+			return nil, err
+		}
+		pages = append(pages, more...)
+	}
 	cdn := "https://cdn.kobo.com"
 	if k.Base != "" {
 		cdn = k.Base
 	}
-	return koboCovers(body, slug, cdn), nil
+	return koboCovers(bytes.Join(pages, []byte("\n")), slug, cdn), nil
+}
+
+// koboMaxSeriesPages caps how many series pages are read. Each shows 12 books.
+const koboMaxSeriesPages = 20
+
+// errNoSeriesPage means the first page of a series listing could not be read.
+var errNoSeriesPage = errors.New("no series page")
+
+// koboSeriesPages fetches every page of a series listing.
+func koboSeriesPages(ctx context.Context, f *Fetcher, series *url.URL) ([][]byte, error) {
+	var out [][]byte
+	last := 1
+	for n := 1; n <= last && n <= koboMaxSeriesPages; n++ {
+		u := *series
+		if n > 1 {
+			u.RawQuery = url.Values{"pageNumber": {strconv.Itoa(n)}}.Encode()
+		}
+		body, err := f.Get(ctx, u.String(), MaxPage, koboHeaders)
+		if err != nil {
+			if n == 1 && ctx.Err() == nil {
+				return nil, fmt.Errorf("%w: %w", errNoSeriesPage, err)
+			}
+			return nil, err
+		}
+		out = append(out, body)
+		for _, m := range koboPageNumber.FindAllSubmatch(body, -1) {
+			if p, err := strconv.Atoi(string(m[1])); err == nil && p > last {
+				last = p
+			}
+		}
+	}
+	return out, nil
 }
 
 var (
-	koboImage = regexp.MustCompile(`book-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/[^"'\s\\]*?([A-Za-z0-9._-]+)\.(?:jpg|jpeg|png|webp)`)
+	koboImage      = regexp.MustCompile(`book-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/[^"'\s\\]*?([A-Za-z0-9._-]+)\.(?:jpg|jpeg|png|webp)`)
+	koboSeriesLink = regexp.MustCompile(`href="((?:https?://[^/"]+)?/[a-z]{2}/[a-z]{2}/series/[^"?#]+)"`)
+	koboPageNumber = regexp.MustCompile(`/series/[^"?#]+\?pageNumber=([0-9]+)`)
 	// koboVolNumber finds the number after vol- or volume-.
 	koboVolNumber = regexp.MustCompile(`^(.*-vol(?:ume)?-)([0-9]+)(.*)$`)
 	// koboLastNumber is for names without vol-, like k-on-shuffle-3.
