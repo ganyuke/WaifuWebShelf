@@ -35,6 +35,34 @@ func TestKoboCovers(t *testing.T) {
 	}
 }
 
+func TestKoboCoversIgnoreUniqueNumbers(t *testing.T) {
+	page := []byte(`
+book-images/11111111-1111-1111-1111-111111111111/1/1/90/False/no-game-no-life-vol-1-light-novel-2.jpg
+book-images/22222222-2222-2222-2222-222222222222/1/1/90/False/no-game-no-life-vol-8-light-novel-1.jpg
+book-images/33333333-3333-3333-3333-333333333333/1/1/90/False/no-game-no-life-vol-10-light-novel.jpg
+book-images/44444444-4444-4444-4444-444444444444/1/1/90/False/no-game-no-life-vol-2-2.jpg
+book-images/55555555-5555-5555-5555-555555555555/1/1/90/False/no-game-no-life-please-vol-3.jpg
+book-images/66666666-6666-6666-6666-666666666666/1/1/90/False/no-game-no-life-practical-war-game.jpg
+book-images/77777777-7777-7777-7777-777777777777/1/1/90/False/k-on-shuffle-3.jpg
+book-images/88888888-8888-8888-8888-888888888888/1/1/90/False/k-on-shuffle-1.jpg
+`)
+	for slug, want := range map[string]string{
+		"no-game-no-life-vol-1-light-novel-2": "1 8 10",
+		"no-game-no-life-vol-10-light-novel":  "1 8 10",
+		"no-game-no-life-vol-1-2":             "2",
+		"no-game-no-life-please-vol-1-1":      "3",
+		"k-on-shuffle-1":                      "1 3",
+	} {
+		var vols []string
+		for _, c := range koboCovers(page, slug, "https://cdn.kobo.com") {
+			vols = append(vols, c.Volume)
+		}
+		if got := strings.Join(vols, " "); got != want {
+			t.Errorf("%s: got volumes %q want %q", slug, got, want)
+		}
+	}
+}
+
 func TestKoboMatch(t *testing.T) {
 	c := New(Sources, false)
 	for link, want := range map[string]bool{

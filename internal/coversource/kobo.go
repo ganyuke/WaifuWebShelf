@@ -15,7 +15,11 @@ import (
 //
 // A volume page lists the covers of every volume in its series among its
 // recommendations, so one page is enough. Volumes are picked by name: the
-// page's own name with its last number swapped for any number.
+// page's own name with its volume number swapped for any number.
+//
+// Kobo keeps names unique by adding -1, -2 and so on, unevenly within one
+// series (no-game-no-life-vol-7-light-novel-2, -vol-8-light-novel-1,
+// -vol-9-light-novel), so a trailing number after the volume is ignored.
 //
 // Covers are on cdn.kobo.com as book-images/ID/WIDTH/HEIGHT/QUALITY/GREYSCALE/NAME.EXT.
 // WIDTH upscales past the source, and 0/0 returns the stored size. Quality 100
@@ -81,34 +85,44 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 }
 
 var (
-	koboImage   = regexp.MustCompile(`book-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/[^"'\s\\]*?([A-Za-z0-9._-]+)\.(?:jpg|jpeg|png|webp)`)
-	koboVolName = regexp.MustCompile(`^(.*[^0-9])([0-9]+)([^0-9]*)$`)
+	koboImage = regexp.MustCompile(`book-images/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/[^"'\s\\]*?([A-Za-z0-9._-]+)\.(?:jpg|jpeg|png|webp)`)
+	// koboVolNumber finds the number after vol- or volume-.
+	koboVolNumber = regexp.MustCompile(`^(.*-vol(?:ume)?-)([0-9]+)(.*)$`)
+	// koboLastNumber is for names without vol-, like k-on-shuffle-3.
+	koboLastNumber = regexp.MustCompile(`^(.*[^0-9])([0-9]+)([^0-9]*)$`)
+	koboUniqueTail = regexp.MustCompile(`-[0-9]+$`)
 )
+
+// koboVolume splits a book's name into its series, the part every volume
+// shares, and its volume number.
+func koboVolume(name string) (series string, vol int, ok bool) {
+	if m := koboVolNumber.FindStringSubmatch(name); m != nil {
+		n, err := strconv.Atoi(m[2])
+		return m[1] + "#" + koboUniqueTail.ReplaceAllString(m[3], ""), n, err == nil && n > 0
+	}
+	if m := koboLastNumber.FindStringSubmatch(name); m != nil {
+		n, err := strconv.Atoi(m[2])
+		return m[1] + "#" + m[3], n, err == nil && n > 0
+	}
+	return "", 0, false
+}
 
 // koboCovers picks the covers of slug's series out of a page, in volume order.
 func koboCovers(page []byte, slug, cdn string) []Cover {
-	m := koboVolName.FindStringSubmatch(slug)
-	if m == nil {
+	want, _, ok := koboVolume(slug)
+	if !ok {
 		return nil
 	}
-	prefix, suffix := m[1], m[3]
-	seen := map[string]bool{}
+	seen := map[int]bool{}
 	var out []Cover
 	for _, hit := range koboImage.FindAllSubmatch(page, -1) {
 		id, name := string(hit[1]), string(hit[2])
-		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) || len(name) <= len(prefix)+len(suffix) {
+		series, n, ok := koboVolume(name)
+		if !ok || series != want || seen[n] {
 			continue
 		}
-		n, err := strconv.Atoi(name[len(prefix) : len(name)-len(suffix)])
-		if err != nil || n < 1 {
-			continue
-		}
-		vol := strconv.Itoa(n)
-		if seen[vol] {
-			continue
-		}
-		seen[vol] = true
-		out = append(out, Cover{Volume: vol, URL: fmt.Sprintf("%s/book-images/%s/0/0/100/False/%s.jpg", cdn, id, name)})
+		seen[n] = true
+		out = append(out, Cover{Volume: strconv.Itoa(n), URL: fmt.Sprintf("%s/book-images/%s/0/0/100/False/%s.jpg", cdn, id, name)})
 	}
 	slices.SortFunc(out, func(a, b Cover) int {
 		x, _ := strconv.Atoi(a.Volume)
