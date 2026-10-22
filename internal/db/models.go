@@ -222,7 +222,7 @@ func (d *DB) SeriesCards() ([]SeriesCard, error) {
 	if err != nil {
 		return nil, err
 	}
-	covers, err := d.fallbackCovers()
+	covers, err := d.fallbackCovers("")
 	if err != nil {
 		return nil, err
 	}
@@ -296,14 +296,29 @@ func (d *DB) merchCounts() (map[int64]int, error) {
 	return out, rows.Err()
 }
 
-func (d *DB) fallbackCovers() (map[int64]string, error) {
+// SeriesCover returns the series' own image, or the first volume cover in
+// the series when it has none, the same picture the series table shows.
+func (d *DB) SeriesCover(s Series) (string, error) {
+	if s.ImagePath.Valid {
+		return s.ImagePath.String, nil
+	}
+	covers, err := d.fallbackCovers(` AND n.series_id = ?`, s.ID)
+	if err != nil {
+		return "", err
+	}
+	return covers[s.ID], nil
+}
+
+// fallbackCovers maps each series to its first volume cover. filter narrows
+// both queries, e.g. to one series.
+func (d *DB) fallbackCovers(filter string, args ...any) (map[int64]string, error) {
 	out := map[int64]string{}
 	rows, err := d.SQL.Query(`
 		SELECT n.series_id, i.cover_path
 		FROM volume_info i
 		JOIN edition_names n ON n.edition_id = i.edition_id
-		WHERE i.cover_path IS NOT NULL AND i.cover_path != ''
-		ORDER BY n.work_order, n.edition_order, i.volume_number, i.edition_id`)
+		WHERE i.cover_path IS NOT NULL AND i.cover_path != ''`+filter+`
+		ORDER BY n.work_order, n.edition_order, i.volume_number, i.edition_id`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -328,8 +343,8 @@ func (d *DB) fallbackCovers() (map[int64]string, error) {
 		SELECT n.series_id, v.image_path
 		FROM volumes v
 		JOIN edition_names n ON n.edition_id = v.edition_id
-		WHERE v.image_path IS NOT NULL AND v.image_path != ''
-		ORDER BY n.work_order, n.edition_order, v.sort_order, v.id`)
+		WHERE v.image_path IS NOT NULL AND v.image_path != ''`+filter+`
+		ORDER BY n.work_order, n.edition_order, v.sort_order, v.id`, args...)
 	if err != nil {
 		return nil, err
 	}

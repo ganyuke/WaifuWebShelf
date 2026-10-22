@@ -142,7 +142,11 @@ func (s *Server) seriesDetail(w http.ResponseWriter, r *http.Request) {
 			wantMerch = append(wantMerch, item)
 		}
 	}
-	cover := nullImage(series.ImagePath)
+	cover, err := s.db.SeriesCover(series)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	s.renderPreview(w, r, "series_detail", series.Name, Preview{Image: cover}, map[string]any{
 		"Series":    series,
 		"Links":     s.linkViews(slinks),
