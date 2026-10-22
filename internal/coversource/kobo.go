@@ -33,9 +33,11 @@ import (
 //
 // Kobo sometimes files one series under several series pages, each listing
 // only some volumes (Rent-A-Girlfriend has rent-a-girlfriend with 1 to 16,
-// -2 with 16 to 27, and -3 with 19 to 39). When volumes are missing, the
-// page of a found volume next to the gap is opened and its series page read,
-// a few times at most.
+// -2 with 16 to 27, and -3 with 19 to 39), and some series pages are not
+// there at all. When volumes are missing, a page is opened for the first
+// missing one, a few times at most: its own page under the name the other
+// volumes' names predict, or else the page of a found volume next to it. Its
+// recommendations and its series page are read like the first page's.
 //
 // Series pages also give each book's number in the series ("Book 15 -"). It
 // is used for books whose name does not match, like rent-a-girlfirend-15,
@@ -150,9 +152,10 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 		maps.Copy(out, named)
 		return out
 	}
+	pattern, _, _ := koboVolume(slug)
 	opened := map[string]bool{slug: true}
-	for range koboMaxSeriesEntries {
-		name, ok := koboNextBook(all(), opened)
+	for range koboMaxGapPages {
+		name, ok := koboNextBook(all(), opened, pattern)
 		if !ok {
 			break
 		}
@@ -165,8 +168,9 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 			if ctx.Err() != nil {
 				return nil, err
 			}
-			continue // the cover's name is not always the page's
+			continue // names are a guess, and not every one is a page
 		}
+		add(named, koboCovers(body, slug, cdn))
 		if err := readSeries(&book, body); err != nil {
 			return nil, err
 		}
@@ -180,13 +184,15 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 	return out, nil
 }
 
-// koboMaxSeriesEntries caps how many found volumes' pages are opened to look
-// for more series pages.
-const koboMaxSeriesEntries = 3
+// koboMaxGapPages caps how many found volumes' pages are opened to look for
+// missing ones.
+const koboMaxGapPages = 3
 
-// koboNextBook picks the book whose page to open next: the found volume
-// nearest the first missing one, below it when there is a choice.
-func koboNextBook(found map[string]Cover, opened map[string]bool) (string, bool) {
+// koboNextBook picks the book whose page to open next for the first missing
+// volume: its own page under the name the series' names predict, and when
+// that was tried, the found volume nearest it, below it when there is a
+// choice. pattern is the series part of a name from koboVolume.
+func koboNextBook(found map[string]Cover, opened map[string]bool, pattern string) (string, bool) {
 	vols := map[int]string{}
 	highest := 0
 	for v, c := range found {
@@ -203,6 +209,9 @@ func koboNextBook(found map[string]Cover, opened map[string]bool) (string, bool)
 	}
 	if gap == 0 {
 		return "", false
+	}
+	if name := strings.Replace(pattern, "#", strconv.Itoa(gap), 1); !opened[name] {
+		return name, true
 	}
 	for d := 1; d < highest; d++ {
 		for _, n := range []int{gap - d, gap + d} {
