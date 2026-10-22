@@ -99,6 +99,10 @@ func (s *Server) editionCoverFind(w http.ResponseWriter, r *http.Request) {
 		msg := "Paste a link to a book on " + joinOr(s.covers.Names()) + "."
 		s.coverDone(w, r, id, data, coverResult{Errors: []string{msg}})
 		return
+	case errors.Is(err, coversource.ErrPart):
+		msg := "That book is one part of a volume. Paste a link to a whole volume."
+		s.coverDone(w, r, id, data, coverResult{Errors: []string{msg}})
+		return
 	case err != nil:
 		log.Printf("covers from %s: %v", link, err)
 		msg := "Could not open that page on " + src.Name() + ". Try again later."

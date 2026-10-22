@@ -29,6 +29,11 @@ import (
 // series (no-game-no-life-vol-7-light-novel-2, -vol-8-light-novel-1,
 // -vol-9-light-novel), so a trailing number after the volume is ignored.
 //
+// Some editions cut each volume into parts sold as separate books, like
+// Higehiro's KADOKAWA light novel (vol-1-part-1 to vol-1-part-6). Shelves
+// count whole volumes, so links to parts get ErrPart, and whole-volume links
+// skip part covers because their names do not match.
+//
 // Covers are on cdn.kobo.com as book-images/ID/WIDTH/HEIGHT/QUALITY/GREYSCALE/NAME.EXT.
 // WIDTH upscales past the source, and 0/0 returns the stored size. Quality 100
 // keeps JPEG re-encoding loss down.
@@ -80,6 +85,9 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 	slug, ok := koboSlug(page)
 	if !ok {
 		return nil, ErrNoSource
+	}
+	if koboPart.MatchString(slug) {
+		return nil, ErrPart
 	}
 	body, err := f.Get(ctx, page.String(), MaxPage, koboHeaders)
 	if err != nil {
@@ -145,6 +153,7 @@ var (
 	// koboLastNumber is for names without vol-, like k-on-shuffle-3.
 	koboLastNumber = regexp.MustCompile(`^(.*[^0-9])([0-9]+)([^0-9]*)$`)
 	koboUniqueTail = regexp.MustCompile(`-[0-9]+$`)
+	koboPart       = regexp.MustCompile(`-vol(?:ume)?-[0-9]+-part-[0-9]+`)
 )
 
 // koboVolume splits a book's name into its series, the part every volume

@@ -45,6 +45,8 @@ book-images/55555555-5555-5555-5555-555555555555/1/1/90/False/no-game-no-life-pl
 book-images/66666666-6666-6666-6666-666666666666/1/1/90/False/no-game-no-life-practical-war-game.jpg
 book-images/77777777-7777-7777-7777-777777777777/1/1/90/False/k-on-shuffle-3.jpg
 book-images/88888888-8888-8888-8888-888888888888/1/1/90/False/k-on-shuffle-1.jpg
+book-images/99999999-9999-9999-9999-999999999999/1/1/90/False/no-game-no-life-vol-3-part-1-light-novel.jpg
+book-images/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/1/1/90/False/no-game-no-life-vol-4-part-1.jpg
 `)
 	for slug, want := range map[string]string{
 		"no-game-no-life-vol-1-light-novel-2": "1 8 10",
@@ -174,6 +176,14 @@ func TestFindWithoutSeriesPage(t *testing.T) {
 	}
 	if len(covers) != 4 {
 		t.Fatalf("got %v", covers)
+	}
+}
+
+func TestFindRefusesParts(t *testing.T) {
+	c, base := fakeKobo(t)
+	link := base + "/ww/en/ebook/higehiro-after-being-rejected-i-shaved-and-took-in-a-high-school-runaway-vol-1-part-1-1"
+	if _, _, err := c.Find(context.Background(), link); !errors.Is(err, ErrPart) {
+		t.Fatalf("got %v", err)
 	}
 }
 

@@ -56,6 +56,10 @@ var Sources = []Source{Kobo{}}
 // ErrNoSource means no source reads the link.
 var ErrNoSource = errors.New("no cover source for this link")
 
+// ErrPart means the link is to one part of a volume sold in parts, which
+// shelves do not track.
+var ErrPart = errors.New("book is one part of a volume")
+
 // Client finds covers with a set of sources.
 type Client struct {
 	sources []Source

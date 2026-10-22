@@ -247,6 +247,16 @@ func TestGetCoversRefusesOtherSites(t *testing.T) {
 	}
 }
 
+func TestGetCoversRefusesParts(t *testing.T) {
+	c := newCoverTest(t)
+	link := c.withFakeKobo()
+	link = strings.Replace(link, "komi-can-t-communicate-vol-14", "higehiro-vol-1-part-2", 1)
+	res, body := c.post("/find", true, url.Values{"link": {link}})
+	if res.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(body, "That book is one part of a volume.") {
+		t.Fatalf("%d %s", res.StatusCode, body)
+	}
+}
+
 func TestCoverRoutesNeedLogin(t *testing.T) {
 	c := newCoverTest(t)
 	stranger := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
