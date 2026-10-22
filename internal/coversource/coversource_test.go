@@ -3,6 +3,7 @@ package coversource
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -184,6 +185,55 @@ func TestFindRefusesParts(t *testing.T) {
 	link := base + "/ww/en/ebook/higehiro-after-being-rejected-i-shaved-and-took-in-a-high-school-runaway-vol-1-part-1-1"
 	if _, _, err := c.Find(context.Background(), link); !errors.Is(err, ErrPart) {
 		t.Fatalf("got %v", err)
+	}
+}
+
+// fakeSplitSeries serves a series Kobo files under two series pages, like
+// Rent-A-Girlfriend: the volume page recommends 1 to 3 and links series-b
+// (5 and 6), and only volume 3's page links series-a (4 under a misspelled
+// name, and a side story Kobo also numbers 2).
+func fakeSplitSeries(t *testing.T) (*Client, string) {
+	t.Helper()
+	img := func(id int, name string) string {
+		return fmt.Sprintf(`<img src="https://cdn.kobo.com/book-images/%08d-0000-0000-0000-000000000000/353/569/90/False/%s.jpg">`, id, name)
+	}
+	item := func(id, book int, name string) string {
+		return `<li class="item-wrapper book">` + img(id, name) + fmt.Sprintf(`<span class="sequenced-name-prefix">Book %d - </span></li>`, book)
+	}
+	pages := map[string]string{
+		"/ww/en/ebook/rent-a-girlfriend-5": img(5, "rent-a-girlfriend-5") + img(1, "rent-a-girlfriend-1") +
+			img(2, "rent-a-girlfriend-2") + img(3, "rent-a-girlfriend-3") + `<a href="/ww/en/series/series-b">`,
+		"/ww/en/series/series-b":           item(5, 5, "rent-a-girlfriend-5") + item(6, 6, "rent-a-girlfriend-6"),
+		"/ww/en/ebook/rent-a-girlfriend-3": img(3, "rent-a-girlfriend-3") + `<a href="/ww/en/series/series-a">`,
+		"/ww/en/series/series-a": item(1, 1, "rent-a-girlfriend-1") + item(4, 4, "rent-a-girlfirend-4") +
+			item(9, 2, "rent-a-girlfriend-side-story"),
+	}
+	var ts *httptest.Server
+	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page, ok := pages[r.URL.Path]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(strings.ReplaceAll(page, "https://cdn.kobo.com", ts.URL)))
+	}))
+	t.Cleanup(ts.Close)
+	return New([]Source{Kobo{Base: ts.URL}}, true), ts.URL
+}
+
+func TestFindReadsOtherSeriesPages(t *testing.T) {
+	c, base := fakeSplitSeries(t)
+	_, covers, err := c.Find(context.Background(), base+"/ww/en/ebook/rent-a-girlfriend-5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, c := range covers {
+		got = append(got, c.Volume+"="+c.URL[strings.LastIndex(c.URL, "/")+1:])
+	}
+	want := "1=rent-a-girlfriend-1.jpg 2=rent-a-girlfriend-2.jpg 3=rent-a-girlfriend-3.jpg 4=rent-a-girlfirend-4.jpg 5=rent-a-girlfriend-5.jpg 6=rent-a-girlfriend-6.jpg"
+	if strings.Join(got, " ") != want {
+		t.Fatalf("got %v", got)
 	}
 }
 

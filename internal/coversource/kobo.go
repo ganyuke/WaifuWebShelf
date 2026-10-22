@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"maps"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -28,6 +30,18 @@ import (
 // Kobo keeps names unique by adding -1, -2 and so on, unevenly within one
 // series (no-game-no-life-vol-7-light-novel-2, -vol-8-light-novel-1,
 // -vol-9-light-novel), so a trailing number after the volume is ignored.
+//
+// Kobo sometimes files one series under several series pages, each listing
+// only some volumes (Rent-A-Girlfriend has rent-a-girlfriend with 1 to 16,
+// -2 with 16 to 27, and -3 with 19 to 39). When volumes are missing, the
+// page of a found volume next to the gap is opened and its series page read,
+// a few times at most.
+//
+// Series pages also give each book's number in the series ("Book 15 -"). It
+// is used for books whose name does not match, like rent-a-girlfirend-15,
+// but only when the name holds the same number. Kobo's numbers alone are not
+// enough, since side stories get one too (No Game No Life Practical War Game
+// is "Book 12").
 //
 // Some editions cut each volume into parts sold as separate books, like
 // Higehiro's KADOKAWA light novel (vol-1-part-1 to vol-1-part-6). Shelves
@@ -89,27 +103,115 @@ func (k Kobo) Covers(ctx context.Context, f *Fetcher, page *url.URL) ([]Cover, e
 	if koboPart.MatchString(slug) {
 		return nil, ErrPart
 	}
-	body, err := f.Get(ctx, page.String(), MaxPage, koboHeaders)
-	if err != nil {
-		return nil, err
-	}
-	pages := [][]byte{body}
-	if m := koboSeriesLink.FindSubmatch(body); m != nil {
-		series, err := page.Parse(html.UnescapeString(string(m[1])))
-		if err != nil {
-			return nil, err
-		}
-		more, err := koboSeriesPages(ctx, f, series)
-		if err != nil && !errors.Is(err, errNoSeriesPage) {
-			return nil, err
-		}
-		pages = append(pages, more...)
-	}
 	cdn := "https://cdn.kobo.com"
 	if k.Base != "" {
 		cdn = k.Base
 	}
-	return koboCovers(bytes.Join(pages, []byte("\n")), slug, cdn), nil
+	body, err := f.Get(ctx, page.String(), MaxPage, koboHeaders)
+	if err != nil {
+		return nil, err
+	}
+	// Covers matched by name win over ones matched by Kobo's book number.
+	named, numbered := map[string]Cover{}, map[string]Cover{}
+	add := func(to map[string]Cover, covers []Cover) {
+		for _, c := range covers {
+			if _, ok := to[c.Volume]; !ok {
+				to[c.Volume] = c
+			}
+		}
+	}
+	add(named, koboCovers(body, slug, cdn))
+	read := map[string]bool{}
+	readSeries := func(from *url.URL, body []byte) error {
+		m := koboSeriesLink.FindSubmatch(body)
+		if m == nil {
+			return nil
+		}
+		series, err := from.Parse(html.UnescapeString(string(m[1])))
+		if err != nil || read[series.String()] {
+			return err
+		}
+		read[series.String()] = true
+		pages, err := koboSeriesPages(ctx, f, series)
+		if err != nil && !errors.Is(err, errNoSeriesPage) {
+			return err
+		}
+		for _, p := range pages {
+			add(named, koboCovers(p, slug, cdn))
+			add(numbered, koboNumbered(p, slug, cdn))
+		}
+		return nil
+	}
+	if err := readSeries(page, body); err != nil {
+		return nil, err
+	}
+	all := func() map[string]Cover {
+		out := maps.Clone(numbered)
+		maps.Copy(out, named)
+		return out
+	}
+	opened := map[string]bool{slug: true}
+	for range koboMaxSeriesEntries {
+		name, ok := koboNextBook(all(), opened)
+		if !ok {
+			break
+		}
+		opened[name] = true
+		book := *page
+		book.RawQuery, book.Fragment = "", ""
+		book.Path = path.Join(path.Dir(page.Path), name)
+		body, err := f.Get(ctx, book.String(), MaxPage, koboHeaders)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, err
+			}
+			continue // the cover's name is not always the page's
+		}
+		if err := readSeries(&book, body); err != nil {
+			return nil, err
+		}
+	}
+	out := slices.Collect(maps.Values(all()))
+	slices.SortFunc(out, func(a, b Cover) int {
+		x, _ := strconv.Atoi(a.Volume)
+		y, _ := strconv.Atoi(b.Volume)
+		return x - y
+	})
+	return out, nil
+}
+
+// koboMaxSeriesEntries caps how many found volumes' pages are opened to look
+// for more series pages.
+const koboMaxSeriesEntries = 3
+
+// koboNextBook picks the book whose page to open next: the found volume
+// nearest the first missing one, below it when there is a choice.
+func koboNextBook(found map[string]Cover, opened map[string]bool) (string, bool) {
+	vols := map[int]string{}
+	highest := 0
+	for v, c := range found {
+		n, _ := strconv.Atoi(v)
+		vols[n] = strings.TrimSuffix(path.Base(c.URL), ".jpg")
+		highest = max(highest, n)
+	}
+	gap := 0
+	for n := 1; n < highest; n++ {
+		if _, ok := vols[n]; !ok {
+			gap = n
+			break
+		}
+	}
+	if gap == 0 {
+		return "", false
+	}
+	for d := 1; d < highest; d++ {
+		for _, n := range []int{gap - d, gap + d} {
+			if name, ok := vols[n]; ok && !opened[name] {
+				return name, true
+			}
+		}
+	}
+	return "", false
 }
 
 // koboMaxSeriesPages caps how many series pages are read. Each shows 12 books.
@@ -154,6 +256,7 @@ var (
 	koboLastNumber = regexp.MustCompile(`^(.*[^0-9])([0-9]+)([^0-9]*)$`)
 	koboUniqueTail = regexp.MustCompile(`-[0-9]+$`)
 	koboPart       = regexp.MustCompile(`-vol(?:ume)?-[0-9]+-part-[0-9]+`)
+	koboSequence   = regexp.MustCompile(`class="sequenced-name-prefix">\s*Book ([0-9]+) -`)
 )
 
 // koboVolume splits a book's name into its series, the part every volume
@@ -192,5 +295,27 @@ func koboCovers(page []byte, slug, cdn string) []Cover {
 		y, _ := strconv.Atoi(b.Volume)
 		return x - y
 	})
+	return out
+}
+
+// koboNumbered picks books out of a series page by Kobo's book number, for
+// names that do not match slug's. The name must hold the same number.
+func koboNumbered(page []byte, slug, cdn string) []Cover {
+	if _, _, ok := koboVolume(slug); !ok {
+		return nil
+	}
+	var out []Cover
+	for _, item := range bytes.Split(page, []byte(`<li class="item-wrapper book"`))[1:] {
+		seq := koboSequence.FindSubmatch(item)
+		hit := koboImage.FindSubmatch(item)
+		if seq == nil || hit == nil {
+			continue
+		}
+		id, name := string(hit[1]), string(hit[2])
+		if _, n, ok := koboVolume(name); !ok || strconv.Itoa(n) != string(seq[1]) {
+			continue
+		}
+		out = append(out, Cover{Volume: string(seq[1]), URL: fmt.Sprintf("%s/book-images/%s/0/0/100/False/%s.jpg", cdn, id, name)})
+	}
 	return out
 }
