@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestVolumeCoverSharedAndPruned(t *testing.T) {
+func TestVolumeCoverSharedAndKept(t *testing.T) {
 	dir := t.TempDir()
 	store, err := Open(filepath.Join(dir, "shelf.db"))
 	if err != nil {
@@ -56,8 +56,12 @@ func TestVolumeCoverSharedAndPruned(t *testing.T) {
 		t.Fatal(err)
 	}
 	cover, err = store.VolumeCover(lineID, "1")
-	if err != nil || cover.Valid {
-		t.Fatalf("pruned %+v %v", cover, err)
+	if err != nil || cover.String != "cover.jpg" {
+		t.Fatalf("kept after the last copy is deleted %+v %v", cover, err)
+	}
+	covers, err := store.EditionCovers(lineID)
+	if err != nil || covers["1"] != "cover.jpg" {
+		t.Fatalf("spare covers %v %v", covers, err)
 	}
 }
 

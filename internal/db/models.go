@@ -482,8 +482,9 @@ func (d *DB) pruneVolumeNumber(editionID int64, number string) error {
 	if _, err := d.SQL.Exec(`DELETE FROM links WHERE owner_type = 'volume_number' AND owner_id = ? AND owner_key = ?`, editionID, number); err != nil {
 		return err
 	}
-	_, err := d.SQL.Exec(`DELETE FROM volume_info WHERE edition_id = ? AND volume_number = ?`, editionID, number)
-	return err
+	// The cover stays, so adding the volume again brings it back. Until then it
+	// is listed with the edition's spare covers.
+	return setVolumeInfo(d.SQL, editionID, number, `title`, "")
 }
 
 // VolumeInfo is what belongs to a volume number rather than to one copy.
