@@ -550,6 +550,47 @@ func (d *DB) TakeOffTrip(kind string, id int64) error {
 	return err
 }
 
+// PutOnTrip moves an item onto a trip, off any receipt line, and gives it the
+// trip's date and store. An item with no prices also takes the trip's currency.
+func (d *DB) PutOnTrip(kind string, id, tripID int64) error {
+	table, err := itemTable(kind)
+	if err != nil {
+		return err
+	}
+	col := "volume_id"
+	if kind == "merch" {
+		col = "merch_id"
+	}
+	tx, err := d.SQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	p, _, err := tripPurchase(tx, tripID, 0, 1)
+	if err != nil {
+		return err
+	}
+	// A tag on the old trip's photo only makes sense while the item is on that trip.
+	if _, err := tx.Exec(`DELETE FROM photo_tags WHERE `+col+` = ? AND trip_id != ?`, id, tripID); err != nil {
+		return err
+	}
+	res, err := tx.Exec(`
+		UPDATE `+table+` SET trip_id = ?, receipt_line_id = NULL, purchased_at = ?, store = ?,
+			currency = CASE WHEN msrp_cents IS NULL AND price_ex_tax_cents IS NULL AND price_inc_tax_cents IS NULL
+				THEN ? ELSE currency END,
+			updated_at = ?
+		WHERE id = ?`, tripID, nullStr(p.PurchasedAt), p.Store, p.Currency, nowUTC(), id)
+	if err != nil {
+		return err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n == 0 {
+		return sql.ErrNoRows
+	}
+	return tx.Commit()
+}
+
 // SetReceiptLine moves an item onto one of its trip's receipt lines, which sets its
 // price to that line's price. With lineID 0 it leaves every line and keeps its price.
 func (d *DB) SetReceiptLine(kind string, id, lineID int64) error {

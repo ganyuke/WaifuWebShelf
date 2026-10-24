@@ -22,6 +22,7 @@
     <label class="check"><input type="checkbox" name="remove_image" value="1"> Remove copy photo</label></p>
     {{end}}
     <p class="muted">JPEG, PNG, WebP, or GIF, up to 25 MB.{{if .Err}} Choose the photo again.{{end}}</p></details>
+    {{if not .Data.New}}{{template "put_on_trip" .Data}}{{end}}
     {{if .Data.Trip.TripID}}{{template "trip_purchase_fields" .}}{{else}}{{template "purchase_fields" .}}{{end}}
     <div class="form-actions"><button type="submit">Save</button><a href="{{if .Data.New}}{{.Data.EditionURL}}{{else}}{{.Data.PublicURL}}{{end}}">Cancel</a></div>
   </form>
@@ -34,6 +35,7 @@
 </section>
 {{template "links_editor" dict "Title" "Volume links" "Links" .Data.VolumeLinks "OwnerType" "volume_number" "OwnerID" .Data.EditionID "OwnerKey" .Data.VolumeNumber "Next" (printf "/admin/volumes/%d/edit" .Data.ID)}}
 {{template "links_editor" dict "Title" "This copy" "Links" .Data.CopyLinks "OwnerType" "volume" "OwnerID" .Data.ID "Next" (printf "/admin/volumes/%d/edit" .Data.ID)}}
+{{template "put_on_trip_form" dict "Trip" .Data.Trip "Action" (printf "/admin/volumes/%d/put-on" .Data.ID)}}
 <div class="admin-actions">{{template "take_off_trip" dict "Trip" .Data.Trip "Action" (printf "/admin/volumes/%d/take-off" .Data.ID)}}<a class="danger-text" href="/admin/volumes/{{.Data.ID}}/delete">Delete volume</a></div>
 {{end}}
 {{template "footer" .}}

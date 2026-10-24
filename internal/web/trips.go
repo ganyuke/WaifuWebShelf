@@ -752,6 +752,40 @@ func (s *Server) itemTakeOff(kind string) http.HandlerFunc {
 	}
 }
 
+// itemPutOn moves a volume or merch row onto the trip chosen on its edit form.
+func (s *Server) itemPutOn(kind string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r.PathValue("id"))
+		if err != nil {
+			s.notFound(w, r)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			s.badRequest(w, r, "Reload the page and try again.")
+			return
+		}
+		tripID, err := parseID(r.FormValue("trip"))
+		if err != nil {
+			s.badRequest(w, r, "Choose a trip.")
+			return
+		}
+		err = s.db.PutOnTrip(kind, id, tripID)
+		if db.IsNotFound(err) {
+			s.notFound(w, r)
+			return
+		}
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		path := "volumes"
+		if kind == "merch" {
+			path = "merch"
+		}
+		http.Redirect(w, r, fmt.Sprintf("/admin/%s/%d/edit?ok=updated", path, id), http.StatusSeeOther)
+	}
+}
+
 type storeFormData struct {
 	ID                  int64
 	Name, Currency, Tax string
@@ -830,18 +864,33 @@ func containsFold(list []string, s string) bool {
 	return false
 }
 
-// itemTripFields is what an item's edit form shows when the item is on a trip.
+// itemTripFields is what an item's edit form shows when the item is on a trip,
+// or the trips it can be put on when it is not.
 type itemTripFields struct {
 	TripID       int64
 	TripTitle    string
 	ReceiptLine  string
 	ReceiptLines []db.ReceiptLine
 	OnLine       bool
+	Choices      []tripChoice
+}
+
+type tripChoice struct {
+	ID    int64
+	Title string
 }
 
 func (s *Server) loadItemTrip(trip, line sql.NullInt64) (itemTripFields, error) {
 	if !trip.Valid {
-		return itemTripFields{}, nil
+		trips, err := s.db.ListTrips()
+		if err != nil {
+			return itemTripFields{}, err
+		}
+		var f itemTripFields
+		for _, t := range trips {
+			f.Choices = append(f.Choices, tripChoice{ID: t.ID, Title: tripTitle(t)})
+		}
+		return f, nil
 	}
 	t, err := s.db.GetTrip(trip.Int64)
 	if err != nil {

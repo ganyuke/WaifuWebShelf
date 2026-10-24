@@ -165,6 +165,59 @@ func TestPhotoTags(t *testing.T) {
 	}
 }
 
+func TestPutOnTrip(t *testing.T) {
+	d, lid := tripFixture(t)
+	a, _ := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Book Off"}, VisitedOn: "2026-10-11", Currency: "CAD",
+		Lines: []ReceiptLineWrite{{Label: "Book", UnitCents: 200, Count: 2}}})
+	b, _ := d.CreateTrip(TripWrite{NewStore: &StoreWrite{Name: "Kinokuniya"}, VisitedOn: "2026-10-18", Currency: "JPY"})
+	paid := int64(900)
+	priced, err := d.CreateVolume(lid, "1", 100, Purchase{PurchasedAt: "2024-01-02", Store: "Amazon", Currency: "USD", PriceExTaxCents: &paid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bare, err := d.CreateVolume(lid, "2", 200, Purchase{Currency: "USD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.PutOnTrip("volume", priced, a); err != nil {
+		t.Fatal(err)
+	}
+	v, _ := d.GetVolume(priced)
+	if v.TripID.Int64 != a || v.Store != "Book Off" || v.PurchasedAt.String != "2026-10-11" || v.Currency != "USD" || v.PriceExTaxCents.Int64 != 900 {
+		t.Fatalf("priced volume keeps its price and currency: %+v", v)
+	}
+	if err := d.PutOnTrip("volume", bare, b); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := d.GetVolume(bare); v.TripID.Int64 != b || v.Currency != "JPY" {
+		t.Fatalf("unpriced volume takes the trip's currency: %+v", v)
+	}
+
+	// Moving to another trip leaves the old receipt line and the old photo's tag.
+	lines, _ := d.ReceiptLines(a)
+	if err := d.SetReceiptLine("volume", priced, lines[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.AddTag(a, "volume", priced, 100, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.PutOnTrip("volume", priced, b); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := d.GetVolume(priced); v.TripID.Int64 != b || v.ReceiptLineID.Valid || v.Store != "Kinokuniya" {
+		t.Fatalf("moved volume %+v", v)
+	}
+	if tags, _ := d.TripTags(a); len(tags) != 0 {
+		t.Fatalf("tag kept on the old trip: %+v", tags)
+	}
+	if err := d.PutOnTrip("merch", 999, a); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("unknown merch %v", err)
+	}
+	if err := d.PutOnTrip("volume", bare, 999); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("unknown trip %v", err)
+	}
+}
+
 func TestAddVolumesNewSeries(t *testing.T) {
 	d, lid := tripFixture(t)
 	tid, err := d.CreateTrip(TripWrite{

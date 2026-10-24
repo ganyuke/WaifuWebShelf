@@ -169,6 +169,28 @@ func TestTripFlow(t *testing.T) {
 		t.Fatalf("tags %+v", tags)
 	}
 
+	// A volume entered before the trip can be put on it from its edit page.
+	old, _ := store.ListVolumesByNumber(lid, "1")
+	oldID := strconv.FormatInt(old[0].ID, 10)
+	if page := get("/admin/volumes/" + oldID + "/edit"); !strings.Contains(page, "Put on this trip") || strings.Contains(page, "Take off this trip") {
+		t.Fatal("a volume on no trip should offer the trips")
+	}
+	if res, _ := post("/admin/volumes/"+oldID+"/put-on", url.Values{"trip": {trip}}); res.StatusCode != 303 {
+		t.Fatalf("put on %d", res.StatusCode)
+	}
+	if page := get("/admin/volumes/" + oldID + "/edit"); !strings.Contains(page, "Take off this trip") || strings.Contains(page, "Put on this trip") {
+		t.Fatal("a volume on a trip should show the trip")
+	}
+	if page := get("/trips/" + trip); !strings.Contains(page, "/admin/volumes/"+oldID+"/edit") {
+		t.Fatal("the trip should list the volume")
+	}
+	if res, _ := post("/admin/volumes/"+oldID+"/put-on", url.Values{"trip": {"x"}}); res.StatusCode != 400 {
+		t.Fatalf("no trip chosen %d", res.StatusCode)
+	}
+	if res, _ := post("/admin/merch/999/put-on", url.Values{"trip": {trip}}); res.StatusCode != 404 {
+		t.Fatalf("unknown merch %d", res.StatusCode)
+	}
+
 	// A visit with nothing bought still counts as a trip.
 	if res, _ := post("/admin/trips/new", url.Values{"visited_on": {"2026-10-04"}, "store": {"1"}}); res.StatusCode != 303 {
 		t.Fatalf("empty visit %d", res.StatusCode)

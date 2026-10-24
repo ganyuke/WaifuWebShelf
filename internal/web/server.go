@@ -215,6 +215,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /admin/tags/{id}/delete", s.requireAdmin(s.tagDelete))
 	mux.HandleFunc("POST /admin/volumes/{id}/take-off", s.requireAdmin(s.itemTakeOff("volume")))
 	mux.HandleFunc("POST /admin/merch/{id}/take-off", s.requireAdmin(s.itemTakeOff("merch")))
+	mux.HandleFunc("POST /admin/volumes/{id}/put-on", s.requireAdmin(s.itemPutOn("volume")))
+	mux.HandleFunc("POST /admin/merch/{id}/put-on", s.requireAdmin(s.itemPutOn("merch")))
 	mux.HandleFunc("GET /admin/stores/{id}/edit", s.requireAdmin(s.storeEdit))
 	mux.HandleFunc("POST /admin/stores/{id}/edit", s.requireAdmin(s.storeSaveEdit))
 

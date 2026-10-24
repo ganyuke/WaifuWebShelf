@@ -194,6 +194,24 @@
 {{end}}
 {{end}}
 
+{{define "put_on_trip"}}
+{{if and (not .Trip.TripID) .Trip.Choices}}
+<fieldset class="trip-box">
+  <legend>Trip</legend>
+  <label>Trip
+    <select name="trip" form="put-on-trip">
+      {{range .Trip.Choices}}<option value="{{.ID}}">{{.Title}}</option>{{end}}
+    </select>
+  </label>
+  <div class="form-actions"><button type="submit" form="put-on-trip">Put on this trip</button></div>
+</fieldset>
+{{end}}
+{{end}}
+
+{{define "put_on_trip_form"}}
+{{if and (not .Trip.TripID) .Trip.Choices}}<form id="put-on-trip" method="post" action="{{.Action}}"></form>{{end}}
+{{end}}
+
 {{define "take_off_trip"}}
 {{if .Trip.TripID}}
 <form class="inline" method="post" action="{{.Action}}"><button type="submit" class="danger-text">Take off this trip</button></form>
